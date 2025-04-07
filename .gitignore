@@ -23,3 +23,25 @@
 hs_err_pid*
 replay_pid*
 .target
+
+# Web-related files and directories
+Web/node_modules/
+Web/bower_components/
+Web/dist/
+Web/build/
+Web/npm-debug.log*
+Web/yarn-debug.log*
+Web/yarn-error.log*
+Web/package-lock.json
+Web/dist/
+Web/build/
+
+# Sistema e IDEs
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+
+# VS Code
+.vscode/
