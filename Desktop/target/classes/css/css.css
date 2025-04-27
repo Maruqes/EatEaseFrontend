@@ -1,38 +1,213 @@
+/* Desktop Application Login Page Styling */
+
+/* Main layout */
 .root {
-    -fx-background-color: linear-gradient(to bottom right, #f9f9f9, #dbe5f1);
-    -fx-padding: 20px;
-    -fx-spacing: 15px;
-}
-
-.titulo {
-    -fx-font-size: 22px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #3f51b5;
-}
-
-.input {
-    -fx-pref-width: 250px;
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
     -fx-font-size: 14px;
-    -fx-padding: 8px;
-    -fx-background-radius: 5;
-    -fx-border-radius: 5;
-    -fx-border-color: #ccc;
+}
+
+/* Left panel with logo/image */
+.left-panel {
+    -fx-background-color: linear-gradient(to bottom right, #1e3c72, #2a5298);
+    -fx-alignment: center;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0.5, 0.0, 0.0);
+}
+
+/* Logo styling */
+.logo-image {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 8, 0.3, 0, 2);
+}
+
+/* App name styling */
+.app-name {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 10, 0.5, 0, 2);
+}
+
+/* App tagline */
+.tagline {
+    -fx-text-fill: rgba(255, 255, 255, 0.85);
+    -fx-font-size: 16px;
+    -fx-font-style: italic;
+}
+
+/* Right panel with login form */
+.right-panel {
     -fx-background-color: white;
+    -fx-border-width: 0 0 0 0;
+}
+
+/* Login title */
+.login-title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2a5298;
+    -fx-padding: 0 0 15 0;
+}
+
+/* Input field labels */
+.input-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #555;
+}
+
+/* Input fields */
+.input {
+    -fx-pref-height: 40px;
+    -fx-font-size: 14px;
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #ddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 5 10;
 }
 
 .input:focused {
-    -fx-border-color: #3f51b5;
+    -fx-background-color: white;
+    -fx-border-color: #2a5298;
+    -fx-border-width: 2px;
 }
 
-.botao {
-    -fx-background-color: #3f51b5;
+/* Login button */
+.login-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 40px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0, 0, 1);
+    -fx-min-width: 200px;
+    -fx-min-height: 45px;
+}
+
+.login-button:hover {
+    -fx-background-color: #5cb85c;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 6, 0, 0, 2);
+}
+
+.login-button:pressed {
+    -fx-background-color: #3e8e41;
+}
+
+/* Admin Dashboard Styling */
+
+/* Top Bar */
+.top-bar {
+    -fx-background-color: linear-gradient(to right, #1e3c72, #2a5298);
+    -fx-padding: 8px 15px;
+    -fx-spacing: 10px;
+}
+
+.top-bar .label {
+    -fx-text-fill: white;
+}
+
+.brand-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.user-label {
+    -fx-font-size: 14px;
+    -fx-padding: 0 15 0 0;
+}
+
+.logout-button {
+    -fx-background-color: #f44336;
     -fx-text-fill: white;
     -fx-font-weight: bold;
-    -fx-padding: 10 20;
-    -fx-background-radius: 6;
+    -fx-background-radius: 4px;
+}
+
+.logout-button:hover {
+    -fx-background-color: #e53935;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #263238;
+    -fx-padding: 10px;
+}
+
+.sidebar-header {
+    -fx-text-fill: #90a4ae;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 15 0 5 5;
+}
+
+.sidebar-menu-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 10 15;
     -fx-cursor: hand;
 }
 
-.botao:hover {
-    -fx-background-color: #5c6bc0;
+.sidebar-menu-button:hover {
+    -fx-background-color: #455a64;
+}
+
+.sidebar-menu-button:pressed {
+    -fx-background-color: #607d8b;
+}
+
+/* Content area */
+.content-area {
+    -fx-background-color: #f5f5f5;
+    -fx-padding: 20px;
+}
+
+.welcome-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-fill: #37474f;
+}
+
+/* Card styling for dashboard widgets */
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 1);
+    -fx-padding: 15px;
+}
+
+.card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #455a64;
+}
+
+/* Table styling */
+.table-view {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header {
+    -fx-background-color: #2a5298;
+    -fx-text-fill: white;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: #f0f0f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #bbdefb;
 }
