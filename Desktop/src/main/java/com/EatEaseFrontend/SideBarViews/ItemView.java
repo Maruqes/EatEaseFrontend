@@ -1,10 +1,12 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
+import com.EatEaseFrontend.DialogHelper;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
+import com.EatEaseFrontend.StageManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -301,6 +303,14 @@ public class ItemView {
         Dialog<Item> dialog = new Dialog<>();
         dialog.setTitle("Adicionar Item ao Menu");
         dialog.setHeaderText("Preencha as informações do novo item");
+
+        // Configurar o diálogo para usar o primaryStage como owner e não ser
+        // redimensionável
+        DialogHelper.configureDialog(dialog);
+
+        // Configurar o dialog para usar o primaryStage como owner e evitar
+        // redimensionamento
+        StageManager.setupDialog(dialog);
 
         // Botões do diálogo
         ButtonType addButtonType = new ButtonType("Adicionar", ButtonBar.ButtonData.OK_DONE);
@@ -914,46 +924,6 @@ public class ItemView {
 
         ingredientsTable.getColumns().addAll(idColumn, nameColumn, quantityColumn, actionColumn);
 
-        // Preencher a tabela com os ingredientes atuais (precisa carregar os nomes)
-        if (item.isEComposto() && !item.getIngredientes().isEmpty()) {
-            // Fazer requisição para obter todos os ingredientes para conseguir os nomes
-            HttpRequest getIngredientsReq = HttpRequest.newBuilder()
-                    .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
-                    .GET()
-                    .build();
-
-            httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            List<Ingredient> allIngredients = JsonParser.parseIngredients(resp.body());
-
-                            // Converter os ingredientes do item para IngredientRowData
-                            List<IngredientRowData> ingredientRows = new ArrayList<>();
-                            for (Item.ItemIngrediente itemIng : item.getIngredientes()) {
-                                // Encontrar o nome do ingrediente
-                                String nome = allIngredients.stream()
-                                        .filter(ing -> ing.getId() == itemIng.getIngredienteId())
-                                        .map(Ingredient::getNome)
-                                        .findFirst()
-                                        .orElse("Desconhecido (ID: " + itemIng.getIngredienteId() + ")");
-
-                                ingredientRows.add(new IngredientRowData(
-                                        itemIng.getIngredienteId(),
-                                        nome,
-                                        itemIng.getQuantidade()));
-                            }
-
-                            Platform.runLater(() -> {
-                                ingredientsTable.getItems().addAll(ingredientRows);
-                            });
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        ex.printStackTrace();
-                        return null;
-                    });
-        }
-
         // Adicionar controles para selecionar ingredientes
         HBox ingredientSelectionBox = new HBox(10);
         ComboBox<Ingredient> ingredientComboBox = new ComboBox<>();
@@ -1017,16 +987,7 @@ public class ItemView {
         Button loadIngredientsButton = new Button("Carregar Lista de Ingredientes");
         loadIngredientsButton.setPrefWidth(200);
 
-        ingredientSelectionBox.getChildren().addAll(ingredientComboBox, addIngredientButton);
-        ingredientesBox.getChildren().addAll(loadIngredientsButton, ingredientSelectionBox, ingredientsTable);
-        ingredientesPane.setContent(ingredientesBox);
-
-        // Adicionar tudo em um container principal
-        VBox mainContainer = new VBox(20);
-        mainContainer.getChildren().addAll(grid, ingredientesPane);
-        dialog.getDialogPane().setContent(mainContainer);
-
-        // Carregar lista de ingredientes quando o botão for clicado
+        // Configurar o botão para recarregar ingredientes quando clicado
         loadIngredientsButton.setOnAction(e -> {
             loadIngredientsButton.setDisable(true);
             loadIngredientsButton.setText("Carregando...");
@@ -1077,11 +1038,114 @@ public class ItemView {
                     });
         });
 
+        ingredientSelectionBox.getChildren().addAll(ingredientComboBox, addIngredientButton);
+        ingredientesBox.getChildren().addAll(loadIngredientsButton, ingredientSelectionBox, ingredientsTable);
+        ingredientesPane.setContent(ingredientesBox);
+
+        // Carregar a lista de ingredientes automaticamente quando o diálogo é aberto
+        Platform.runLater(() -> {
+            loadIngredientsButton.setDisable(true);
+            loadIngredientsButton.setText("Carregando...");
+
+            // Fazer requisição à API
+            HttpRequest getIngredientsReq = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
+                    .GET()
+                    .build();
+
+            httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
+
+                            Platform.runLater(() -> {
+                                try {
+                                    // Primeiro, preencher o ComboBox com todos os ingredientes disponíveis
+                                    ingredientComboBox.getItems().clear();
+                                    ingredientComboBox.getItems().addAll(ingredients);
+
+                                    // Se o item sendo editado é composto e tem ingredientes, carregá-los na tabela
+                                    if (item.getIngredientes() != null
+                                            && !item.getIngredientes().isEmpty()) {
+                                        System.out.println("Carregando " + item.getIngredientes().size()
+                                                + " ingredientes para o item " + item.getNome());
+
+                                        // Converter os ingredientes do item para IngredientRowData
+                                        List<IngredientRowData> ingredientRows = new ArrayList<>();
+                                        for (Item.ItemIngrediente itemIng : item.getIngredientes()) {
+                                            int ingredientId = itemIng.getIngredienteId();
+                                            // Encontrar o nome do ingrediente
+                                            String nome = ingredients.stream()
+                                                    .filter(ing -> ing.getId() == ingredientId)
+                                                    .map(Ingredient::getNome)
+                                                    .findFirst()
+                                                    .orElse("Desconhecido (ID: " + ingredientId + ")");
+
+                                            System.out.println("Adicionando ingrediente: " + nome + " (ID: "
+                                                    + ingredientId + ") - Quantidade: " + itemIng.getQuantidade());
+
+                                            ingredientRows.add(new IngredientRowData(
+                                                    ingredientId,
+                                                    nome,
+                                                    itemIng.getQuantidade()));
+                                        }
+
+                                        // Limpar e adicionar todos os ingredientes do item à tabela
+                                        ingredientsTable.getItems().clear();
+                                        ingredientsTable.getItems().addAll(ingredientRows);
+                                    } else {
+                                        System.out.println("Item não possui ingredientes");
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    System.err.println("Erro ao carregar ingredientes: " + e.getMessage());
+                                }
+
+                                loadIngredientsButton.setText("Recarregar Ingredientes");
+                                loadIngredientsButton.setDisable(false);
+                            });
+                        } else {
+                            Platform.runLater(() -> {
+                                loadIngredientsButton.setText("Falha ao Carregar");
+                                loadIngredientsButton.setDisable(false);
+
+                                Alert alert = new Alert(Alert.AlertType.ERROR);
+                                alert.setTitle("Erro");
+                                alert.setHeaderText("Falha ao carregar ingredientes");
+                                alert.setContentText("Status code: " + resp.statusCode());
+                                alert.showAndWait();
+                            });
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        ex.printStackTrace();
+                        Platform.runLater(() -> {
+                            loadIngredientsButton.setText("Falha ao Carregar");
+                            loadIngredientsButton.setDisable(false);
+
+                            Alert alert = new Alert(Alert.AlertType.ERROR);
+                            alert.setTitle("Erro");
+                            alert.setHeaderText("Falha ao carregar ingredientes");
+                            alert.setContentText("Erro: " + ex.getMessage());
+                            alert.showAndWait();
+                        });
+                        return null;
+                    });
+        });
+
+        // Adicionar tudo em um container principal
+        VBox mainContainer = new VBox(20);
+        mainContainer.getChildren().addAll(grid, ingredientesPane);
+        dialog.getDialogPane().setContent(mainContainer);
+
         // Ativar/desativar o painel de ingredientes com base no checkbox
         compostoCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
             ingredientesPane.setDisable(!newVal);
             ingredientesPane.setExpanded(newVal);
         });
+
+        ingredientesPane.setDisable(false);
+        ingredientesPane.setExpanded(true);
 
         // Configurar validação de campos
         Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);

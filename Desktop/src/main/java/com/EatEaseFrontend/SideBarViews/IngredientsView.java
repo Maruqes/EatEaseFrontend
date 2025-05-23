@@ -1,18 +1,27 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
+import com.EatEaseFrontend.DialogHelper;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.JsonParser;
+import com.EatEaseFrontend.StageManager;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
+import javafx.stage.Popup;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
 
@@ -20,7 +29,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -31,6 +43,18 @@ public class IngredientsView {
     private final StackPane contentArea;
     private final HttpClient httpClient;
 
+    // Map to store unit IDs and their corresponding names
+    private static final Map<Integer, String> UNIDADE_MAP = new HashMap<>();
+    private static final List<String> UNIDADE_NAMES = Arrays.asList(
+            "Selecione uma unidade", // placeholder for index 0
+            "Quilos",
+            "Gramas",
+            "Litros",
+            "Mililitros",
+            "Unidades",
+            "Doses",
+            "Caixas");
+
     /**
      * Construtor da view de ingredientes
      *
@@ -40,6 +64,36 @@ public class IngredientsView {
     public IngredientsView(StackPane contentArea, HttpClient httpClient) {
         this.contentArea = contentArea;
         this.httpClient = httpClient;
+
+        // Initialize the unit mapping
+        for (int i = 1; i < UNIDADE_NAMES.size(); i++) {
+            UNIDADE_MAP.put(i, UNIDADE_NAMES.get(i));
+        }
+    }
+
+    /**
+     * Get the name of the unit from its ID
+     * 
+     * @param unidadeId ID of the unit
+     * @return Name of the unit or "Desconhecido" if not found
+     */
+    private String getUnidadeName(int unidadeId) {
+        return UNIDADE_MAP.getOrDefault(unidadeId, "Desconhecido");
+    }
+
+    /**
+     * Get the unit ID from its name
+     * 
+     * @param unidadeName Name of the unit
+     * @return ID of the unit or 1 (Quilos) if not found
+     */
+    private int getUnidadeId(String unidadeName) {
+        for (Map.Entry<Integer, String> entry : UNIDADE_MAP.entrySet()) {
+            if (entry.getValue().equals(unidadeName)) {
+                return entry.getKey();
+            }
+        }
+        return 1; // Default to Quilos if not found
     }
 
     /**
@@ -64,35 +118,89 @@ public class IngredientsView {
                 .build();
 
         httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200) {
-                        System.out.println("Ingredientes -> " + resp.body());
-                        List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
+            .thenAccept(resp -> {
+                if (resp.statusCode() == 200) {
+                System.out.println("Ingredientes -> " + resp.body());
+                List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
 
-                        Platform.runLater(() -> {
-                            displayIngredientsAsCards(ingredients);
-                        });
-                    } else {
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingredientes");
-                            alert.setContentText("Status code: " + resp.statusCode());
-                            alert.showAndWait();
-                        });
-                    }
-                })
-                .exceptionally(ex -> {
-                    ex.printStackTrace();
-                    Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar ingredientes");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
-                    });
-                    return null;
+                Platform.runLater(() -> {
+                    displayIngredientsAsCards(ingredients);
                 });
+                } else {
+                Platform.runLater(() -> {
+                    Popup errorPopup = new Popup();
+                    errorPopup.setAutoHide(true);
+
+                    VBox popupContent = new VBox(10);
+                    popupContent.setPadding(new Insets(15));
+                    popupContent.setStyle(
+                        "-fx-background-color: #ffebee;" + // light red background
+                            "-fx-border-color: #ef5350;" + // red border
+                            "-fx-border-width: 1;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                    Label titleLabel = new Label("Erro");
+                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                    titleLabel.setTextFill(Color.RED);
+
+                    Label headerLabel = new Label("Falha ao carregar ingredientes");
+                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                    Label contentLabel = new Label("Status code: " + resp.statusCode());
+                    contentLabel.setWrapText(true);
+                    contentLabel.setMaxWidth(300);
+
+                    Button closeButton = new Button("Fechar");
+                    closeButton.setOnAction(evt -> errorPopup.hide());
+
+                    popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                    errorPopup.getContent().add(popupContent);
+
+                    Stage primaryStage = StageManager.getPrimaryStage();
+                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                    errorPopup.show(primaryStage, centerX, centerY);
+                });
+                }
+            })
+            .exceptionally(ex -> {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                Popup errorPopup = new Popup();
+                errorPopup.setAutoHide(true);
+
+                VBox popupContent = new VBox(10);
+                popupContent.setPadding(new Insets(15));
+                popupContent.setStyle(
+                    "-fx-background-color: #ffebee;" + // light red background
+                        "-fx-border-color: #ef5350;" + // red border
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                Label titleLabel = new Label("Erro");
+                titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                titleLabel.setTextFill(Color.RED);
+
+                Label headerLabel = new Label("Falha ao carregar ingredientes");
+                headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                Label contentLabel = new Label("Erro: " + ex.getMessage());
+                contentLabel.setWrapText(true);
+                contentLabel.setMaxWidth(300);
+
+                Button closeButton = new Button("Fechar");
+                closeButton.setOnAction(evt -> errorPopup.hide());
+
+                popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                errorPopup.getContent().add(popupContent);
+
+                Stage primaryStage = StageManager.getPrimaryStage();
+                double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                errorPopup.show(primaryStage, centerX, centerY);
+                });
+                return null;
+            });
     }
 
     /**
@@ -127,7 +235,7 @@ public class IngredientsView {
         Button addButton = new Button("Adicionar");
         addButton.setGraphic(new FontIcon(MaterialDesign.MDI_PLUS));
         addButton.getStyleClass().add("login-button"); // Use the same style as login button for consistency
-        addButton.setOnAction(e -> showAddIngredientDialog());
+        addButton.setOnAction(e -> showAddIngredientPopup());
 
         // Create a spacer to push the button to the right
         Region spacer = new Region();
@@ -205,7 +313,7 @@ public class IngredientsView {
         stockBox.getChildren().addAll(stockIndicator, stockLabel);
 
         // Unit information
-        Label unitLabel = new Label("Unidade ID: " + ingredient.getUnidade_id());
+        Label unitLabel = new Label("Unidade: " + getUnidadeName(ingredient.getUnidade_id()));
 
         // Add action buttons
         HBox buttonsBox = new HBox(10);
@@ -219,7 +327,7 @@ public class IngredientsView {
         editIcon.setIconColor(Color.BLUE);
         editButton.setGraphic(editIcon);
         editButton.getStyleClass().add("icon-button");
-        editButton.setOnAction(e -> showEditIngredientDialog(ingredient));
+        editButton.setOnAction(e -> showEditIngredientPopup(ingredient));
 
         // Delete button
         Button deleteButton = new Button("");
@@ -241,112 +349,94 @@ public class IngredientsView {
     /**
      * Exibe o diálogo para adicionar um novo ingrediente
      */
-    private void showAddIngredientDialog() {
-        Dialog<Ingredient> dialog = new Dialog<>();
-        dialog.setTitle("Adicionar Ingrediente");
-        dialog.setHeaderText("Preencha as informações do novo ingrediente");
+    private void showAddIngredientPopup() {
+        // 1) Pega no primaryStage para posicionar a popup ao centro
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Criação dos campos de entrada
+        // 2) Cria a Popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true); // fecha ao clicar fora
+
+        // 3) Campos do formulário
         TextField nameField = new TextField();
         nameField.setPromptText("Nome do ingrediente");
 
         TextField stockField = new TextField();
         stockField.setPromptText("Quantidade em stock");
+        stockField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                stockField.setText(n.replaceAll("[^\\d]", ""));
+        });
 
         TextField stockMinField = new TextField();
-        stockMinField.setPromptText("Quantidade mínima em stock");
+        stockMinField.setPromptText("Stock mínimo");
+        stockMinField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                stockMinField.setText(n.replaceAll("[^\\d]", ""));
+        });
 
-        TextField unidadeMedidaField = new TextField();
-        unidadeMedidaField.setPromptText("Unidade de Medida");
+        ComboBox<String> unidadeCombo = new ComboBox<>();
+        unidadeCombo.getItems().addAll(UNIDADE_NAMES.subList(1, UNIDADE_NAMES.size()));
+        unidadeCombo.setPromptText("Unidade de medida");
+        unidadeCombo.setPrefWidth(200);
 
-        // Layout do diálogo
+        // 4) Botões e validação
+        Button addBtn = new Button("Adicionar");
+        Button cancelBtn = new Button("Cancelar");
+        addBtn.setDisable(true);
+
+        ChangeListener<String> valida = (obs, o, n) -> {
+            boolean ok = !nameField.getText().trim().isEmpty()
+                    && !stockField.getText().trim().isEmpty()
+                    && !stockMinField.getText().trim().isEmpty()
+                    && unidadeCombo.getValue() != null;
+            addBtn.setDisable(!ok);
+        };
+        nameField.textProperty().addListener(valida);
+        stockField.textProperty().addListener(valida);
+        stockMinField.textProperty().addListener(valida);
+        unidadeCombo.valueProperty().addListener((o, ov, nv) -> valida.changed(null, null, null));
+
+        // 5) Layout no GridPane
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(20));
         grid.setVgap(10);
         grid.setHgap(10);
+        grid.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
         grid.add(new Label("Nome:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Stock:"), 0, 1);
         grid.add(stockField, 1, 1);
         grid.add(new Label("Stock Mínimo:"), 0, 2);
         grid.add(stockMinField, 1, 2);
-        grid.add(new Label("Unidade de Medida:"), 0, 3);
-        grid.add(unidadeMedidaField, 1, 3);
+        grid.add(new Label("Unidade:"), 0, 3);
+        grid.add(unidadeCombo, 1, 3);
+        HBox buttons = new HBox(10, addBtn, cancelBtn);
+        grid.add(buttons, 1, 4);
 
-        dialog.getDialogPane().setContent(grid);
+        // 6) Adiciona o grid à popup
+        popup.getContent().add(grid);
 
-        // Botões do diálogo
-        ButtonType addButtonType = new ButtonType("Adicionar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+        // 7) Mostra a popup centrada
+        // (ajusta 200x150 se mudares o tamanho do grid)
+        popup.show(primary, centerX - 200, centerY - 150);
 
-        // Habilitar/desabilitar botão de adicionar baseado na validação
-        Node addButton = dialog.getDialogPane().lookupButton(addButtonType);
-        addButton.setDisable(true);
-
-        // Validar campos à medida que são preenchidos
-        nameField.textProperty().addListener((observable, oldValue, newValue) -> {
-            addButton.setDisable(newValue.trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        stockField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                stockField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-            addButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        stockMinField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                stockMinField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-            addButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        unidadeMedidaField.textProperty().addListener((observable, oldValue, newValue) -> {
-            addButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty());
-        });
-
-        // Converter resultado do diálogo para criar um novo ingrediente
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == addButtonType) {
-                try {
-                    String nome = nameField.getText();
-                    int stock = Integer.parseInt(stockField.getText());
-                    int stockMinimo = Integer.parseInt(stockMinField.getText());
-                    // We don't need to store unidadeMedida here as it's passed directly to
-                    // createIngredient
-
-                    // Create and return a new ingredient object
-                    return new Ingredient(nome, stock, stockMinimo, 0); // Temporarily use 0 for unidade_id
-                } catch (NumberFormatException e) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Erro");
-                    alert.setHeaderText("Valores inválidos");
-                    alert.setContentText("Por favor, insira valores numéricos válidos para stock e stock mínimo.");
-                    alert.showAndWait();
-                    return null;
-                }
-            }
-            return null;
-        });
-
-        // Exibir o diálogo e processar o resultado
-        Optional<Ingredient> result = dialog.showAndWait();
-        result.ifPresent(ingredient -> {
-            createIngredient(ingredient.getNome(), ingredient.getStock(), ingredient.getStock_min(),
-                    unidadeMedidaField.getText());
+        // 8) Ações dos botões
+        cancelBtn.setOnAction(e -> popup.hide());
+        addBtn.setOnAction(e -> {
+            String nome = nameField.getText().trim();
+            int stock = Integer.parseInt(stockField.getText());
+            int stockMin = Integer.parseInt(stockMinField.getText());
+            String unidade = unidadeCombo.getValue();
+            createIngredient(nome, stock, stockMin, unidade);
+            popup.hide();
         });
     }
 
@@ -359,6 +449,8 @@ public class IngredientsView {
      * @param unidadeMedida Unidade de medida do ingrediente
      */
     private void createIngredient(String nome, int stock, int stockMin, String unidadeMedida) {
+        unidadeMedida = unidadeMedida.toLowerCase();
+
         // Criar JSON para a requisição exatamente no formato solicitado
         String jsonBody = String.format(
                 "{\"nome\":\"%s\",\"stock\":%d,\"stock_min\":%d,\"unidadeMedida\":\"%s\"}",
@@ -384,22 +476,52 @@ public class IngredientsView {
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Sucesso");
-                            alert.setHeaderText("Ingrediente adicionado");
-                            alert.setContentText("O ingrediente foi adicionado com sucesso.");
-                            alert.showAndWait();
+                            Popup popup = new Popup();
+                            Label label = new Label("Ingrediente adicionado!");
+                            label.setStyle("-fx-background-color: lightgreen; -fx-padding: 10;");
+                            popup.getContent().add(label);
+                            popup.setAutoHide(true);
+                            popup.show(StageManager.getPrimaryStage(), 100, 100);
                         });
                     } else {
                         System.err.println("Erro ao criar ingrediente: " + resp.statusCode() + " - " + resp.body());
 
                         // Mostrar mensagem de erro
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao adicionar ingrediente");
-                            alert.setContentText("Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                            alert.showAndWait();
+                            Popup errorPopup = new Popup();
+                            errorPopup.setAutoHide(true);
+
+                            VBox popupContent = new VBox(10);
+                            popupContent.setPadding(new Insets(15));
+                            popupContent.setStyle(
+                                    "-fx-background-color: #ffebee;" + // light red background
+                                            "-fx-border-color: #ef5350;" + // red border
+                                            "-fx-border-width: 1;" +
+                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                            Label titleLabel = new Label("Erro");
+                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                            titleLabel.setTextFill(Color.RED);
+
+                            Label headerLabel = new Label("Falha ao adicionar ingrediente");
+                            headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                            Label contentLabel = new Label(
+                                    "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                            contentLabel.setWrapText(true);
+                            contentLabel.setMaxWidth(300);
+
+                            Button closeButton = new Button("Fechar");
+                            closeButton.setOnAction(evt -> errorPopup.hide());
+
+                            popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                            errorPopup.getContent().add(popupContent);
+
+                            Stage primaryStage = StageManager.getPrimaryStage();
+                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                            errorPopup.show(primaryStage, centerX, centerY);
+
                         });
                     }
                 })
@@ -408,11 +530,38 @@ public class IngredientsView {
 
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao adicionar ingrediente");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
+                        Popup errorPopup = new Popup();
+                        errorPopup.setAutoHide(true);
+
+                        VBox popupContent = new VBox(10);
+                        popupContent.setPadding(new Insets(15));
+                        popupContent.setStyle(
+                                "-fx-background-color: #ffebee;" + // light red background
+                                        "-fx-border-color: #ef5350;" + // red border
+                                        "-fx-border-width: 1;" +
+                                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                        Label titleLabel = new Label("Erro");
+                        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                        titleLabel.setTextFill(Color.RED);
+
+                        Label headerLabel = new Label("Falha ao adicionar ingrediente");
+                        headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                        Label contentLabel = new Label("Erro: " + ex.getMessage());
+                        contentLabel.setWrapText(true);
+                        contentLabel.setMaxWidth(300);
+
+                        Button closeButton = new Button("Fechar");
+                        closeButton.setOnAction(evt -> errorPopup.hide());
+
+                        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                        errorPopup.getContent().add(popupContent);
+
+                        Stage primaryStage = StageManager.getPrimaryStage();
+                        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                        errorPopup.show(primaryStage, centerX, centerY);
                     });
                     return null;
                 });
@@ -423,29 +572,65 @@ public class IngredientsView {
      *
      * @param ingredient Ingrediente a ser editado
      */
-    private void showEditIngredientDialog(Ingredient ingredient) {
-        Dialog<Ingredient> dialog = new Dialog<>();
-        dialog.setTitle("Editar Ingrediente");
-        dialog.setHeaderText("Editar informações do ingrediente");
+    private void showEditIngredientPopup(Ingredient ingredient) {
+        // 1) Pega no primaryStage para posicionar o popup ao centro
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Criação dos campos de entrada com valores atuais
+        // 2) Cria o Popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true); // fecha ao clicar fora
+
+        // 3) Campos do formulário já preenchidos
         TextField nameField = new TextField(ingredient.getNome());
-        nameField.setPromptText("Nome do ingrediente");
-
         TextField stockField = new TextField(String.valueOf(ingredient.getStock()));
-        stockField.setPromptText("Quantidade em stock");
-
         TextField stockMinField = new TextField(String.valueOf(ingredient.getStock_min()));
-        stockMinField.setPromptText("Quantidade mínima em stock");
 
-        TextField unidadeMedidaField = new TextField(String.valueOf(ingredient.getUnidade_id()));
-        unidadeMedidaField.setPromptText("Unidade de Medida");
+        // Use ComboBox para unidades de medida
+        ComboBox<String> unidadeCombo = new ComboBox<>();
+        unidadeCombo.getItems().addAll(UNIDADE_NAMES.subList(1, UNIDADE_NAMES.size()));
+        unidadeCombo.setValue(getUnidadeName(ingredient.getUnidade_id()));
+        unidadeCombo.setPrefWidth(200);
 
-        // Layout do diálogo
+        // só números em stock e stock mínimo
+        stockField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                stockField.setText(n.replaceAll("[^\\d]", ""));
+        });
+        stockMinField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                stockMinField.setText(n.replaceAll("[^\\d]", ""));
+        });
+
+        // 4) Botões e validação
+        Button saveBtn = new Button("Salvar");
+        Button cancelBtn = new Button("Cancelar");
+        saveBtn.setDisable(true);
+
+        ChangeListener<String> valida = (obs, o, n) -> {
+            boolean ok = !nameField.getText().trim().isEmpty()
+                    && !stockField.getText().trim().isEmpty()
+                    && !stockMinField.getText().trim().isEmpty()
+                    && unidadeCombo.getValue() != null;
+            saveBtn.setDisable(!ok);
+        };
+        nameField.textProperty().addListener(valida);
+        stockField.textProperty().addListener(valida);
+        stockMinField.textProperty().addListener(valida);
+        unidadeCombo.valueProperty().addListener((o, ov, nv) -> valida.changed(null, null, null));
+
+        // 5) Layout no GridPane
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(20));
         grid.setVgap(10);
         grid.setHgap(10);
+        grid.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
         grid.add(new Label("Nome:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Stock:"), 0, 1);
@@ -453,86 +638,26 @@ public class IngredientsView {
         grid.add(new Label("Stock Mínimo:"), 0, 2);
         grid.add(stockMinField, 1, 2);
         grid.add(new Label("Unidade de Medida:"), 0, 3);
-        grid.add(unidadeMedidaField, 1, 3);
+        grid.add(unidadeCombo, 1, 3);
+        HBox buttons = new HBox(10, saveBtn, cancelBtn);
+        grid.add(buttons, 1, 4);
 
-        dialog.getDialogPane().setContent(grid);
+        // 6) Adiciona o grid à popup
+        popup.getContent().add(grid);
 
-        // Botões do diálogo
-        ButtonType saveButtonType = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        // 7) Mostra a popup centrada (ajusta se necessário)
+        popup.show(primary, centerX - 200, centerY - 150);
 
-        // Habilitar/desabilitar botão de salvar baseado na validação
-        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.setDisable(true);
-
-        // Validar campos à medida que são preenchidos
-        nameField.textProperty().addListener((observable, oldValue, newValue) -> {
-            saveButton.setDisable(newValue.trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        stockField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                stockField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-            saveButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        stockMinField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                stockMinField.setText(newValue.replaceAll("[^\\d]", ""));
-            }
-            saveButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty() ||
-                    unidadeMedidaField.getText().trim().isEmpty());
-        });
-
-        unidadeMedidaField.textProperty().addListener((observable, oldValue, newValue) -> {
-            saveButton.setDisable(nameField.getText().trim().isEmpty() ||
-                    stockField.getText().trim().isEmpty() ||
-                    stockMinField.getText().trim().isEmpty() ||
-                    newValue.trim().isEmpty());
-        });
-
-        // Converter resultado do diálogo para editar ingrediente
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                try {
-                    String nome = nameField.getText();
-                    int stock = Integer.parseInt(stockField.getText());
-                    int stockMinimo = Integer.parseInt(stockMinField.getText());
-                    // We'll get unidadeMedida directly when calling updateIngredient
-
-                    // Update and return ingredient object
-                    ingredient.setNome(nome);
-                    ingredient.setStock(stock);
-                    ingredient.setStock_min(stockMinimo);
-
-                    return ingredient;
-                } catch (NumberFormatException e) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Erro");
-                    alert.setHeaderText("Valores inválidos");
-                    alert.setContentText("Por favor, insira valores numéricos válidos para stock e stock mínimo.");
-                    alert.showAndWait();
-                    return null;
-                }
-            }
-            return null;
-        });
-
-        // Exibir o diálogo e processar o resultado
-        Optional<Ingredient> result = dialog.showAndWait();
-        result.ifPresent(updatedIngredient -> {
-            updateIngredient(updatedIngredient.getId(), updatedIngredient.getNome(),
-                    updatedIngredient.getStock(), updatedIngredient.getStock_min(),
-                    unidadeMedidaField.getText());
+        // 8) Ações dos botões
+        cancelBtn.setOnAction(e -> popup.hide());
+        saveBtn.setOnAction(e -> {
+            String nome = nameField.getText().trim();
+            int stock = Integer.parseInt(stockField.getText());
+            int stockMin = Integer.parseInt(stockMinField.getText());
+            String unidade = unidadeCombo.getValue();
+            // chama o teu método de update
+            updateIngredient(ingredient.getId(), nome, stock, stockMin, unidade);
+            popup.hide();
         });
     }
 
@@ -546,6 +671,7 @@ public class IngredientsView {
      * @param unidadeMedida Unidade de medida do ingrediente
      */
     private void updateIngredient(int id, String nome, int stock, int stockMin, String unidadeMedida) {
+        unidadeMedida = unidadeMedida.toLowerCase();
         // Criar JSON para a requisição
         String jsonBody = String.format(
                 "{\"nome\":\"%s\",\"stock\":%d,\"stock_min\":%d,\"unidadeMedida\":\"%s\"}",
@@ -571,22 +697,74 @@ public class IngredientsView {
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Sucesso");
-                            alert.setHeaderText("Ingrediente atualizado");
-                            alert.setContentText("O ingrediente foi atualizado com sucesso.");
-                            alert.showAndWait();
+                            Popup successPopup = new Popup();
+                            successPopup.setAutoHide(true);
+
+                            VBox popupContent = new VBox(10);
+                            popupContent.setPadding(new Insets(15));
+                            popupContent.setStyle(
+                                    "-fx-background-color: #e8f5e9;" + // light green background
+                                            "-fx-border-color: #66bb6a;" + // green border
+                                            "-fx-border-width: 1;" +
+                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                            Label titleLabel = new Label("Sucesso");
+                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                            titleLabel.setTextFill(Color.GREEN);
+
+                            Label messageLabel = new Label("O ingrediente foi atualizado com sucesso.");
+                            messageLabel.setWrapText(true);
+                            messageLabel.setMaxWidth(300);
+
+                            Button closeButton = new Button("Fechar");
+                            closeButton.setOnAction(evt -> successPopup.hide());
+
+                            popupContent.getChildren().addAll(titleLabel, messageLabel, closeButton);
+                            successPopup.getContent().add(popupContent);
+
+                            Stage primaryStage = StageManager.getPrimaryStage();
+                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                            successPopup.show(primaryStage, centerX, centerY);
                         });
                     } else {
                         System.err.println("Erro ao atualizar ingrediente: " + resp.statusCode() + " - " + resp.body());
 
                         // Mostrar mensagem de erro
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao atualizar ingrediente");
-                            alert.setContentText("Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                            alert.showAndWait();
+                            Popup errorPopup = new Popup();
+                            errorPopup.setAutoHide(true);
+
+                            VBox popupContent = new VBox(10);
+                            popupContent.setPadding(new Insets(15));
+                            popupContent.setStyle(
+                                    "-fx-background-color: #ffebee;" + // light red background
+                                            "-fx-border-color: #ef5350;" + // red border
+                                            "-fx-border-width: 1;" +
+                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                            Label titleLabel = new Label("Erro");
+                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                            titleLabel.setTextFill(Color.RED);
+
+                            Label headerLabel = new Label("Falha ao atualizar ingrediente");
+                            headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                            Label contentLabel = new Label(
+                                    "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                            contentLabel.setWrapText(true);
+                            contentLabel.setMaxWidth(300);
+
+                            Button closeButton = new Button("Fechar");
+                            closeButton.setOnAction(evt -> errorPopup.hide());
+
+                            popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                            errorPopup.getContent().add(popupContent);
+
+                            Stage primaryStage = StageManager.getPrimaryStage();
+                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                            errorPopup.show(primaryStage, centerX, centerY);
                         });
                     }
                 })
@@ -595,11 +773,38 @@ public class IngredientsView {
 
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao atualizar ingrediente");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
+                        Popup errorPopup = new Popup();
+                        errorPopup.setAutoHide(true);
+
+                        VBox popupContent = new VBox(10);
+                        popupContent.setPadding(new Insets(15));
+                        popupContent.setStyle(
+                                "-fx-background-color: #ffebee;" + // light red background
+                                        "-fx-border-color: #ef5350;" + // red border
+                                        "-fx-border-width: 1;" +
+                                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                        Label titleLabel = new Label("Erro");
+                        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                        titleLabel.setTextFill(Color.RED);
+
+                        Label headerLabel = new Label("Falha ao atualizar ingrediente");
+                        headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                        Label contentLabel = new Label("Erro: " + ex.getMessage());
+                        contentLabel.setWrapText(true);
+                        contentLabel.setMaxWidth(300);
+
+                        Button closeButton = new Button("Fechar");
+                        closeButton.setOnAction(evt -> errorPopup.hide());
+
+                        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                        errorPopup.getContent().add(popupContent);
+
+                        Stage primaryStage = StageManager.getPrimaryStage();
+                        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                        errorPopup.show(primaryStage, centerX, centerY);
                     });
                     return null;
                 });
@@ -611,15 +816,60 @@ public class IngredientsView {
      * @param ingredient Ingrediente a ser excluído
      */
     private void confirmDeleteIngredient(Ingredient ingredient) {
-        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmDialog.setTitle("Confirmar Exclusão");
-        confirmDialog.setHeaderText("Excluir Ingrediente");
-        confirmDialog.setContentText("Tem certeza que deseja excluir o ingrediente '" + ingredient.getNome() + "'?");
+        // Get primary stage for positioning
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        Optional<ButtonType> result = confirmDialog.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        // Create popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
+
+        // Create content
+        VBox popupContent = new VBox(10);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
+        // Warning icon
+        FontIcon warningIcon = new FontIcon(MaterialDesign.MDI_ALERT);
+        warningIcon.setIconSize(32);
+        warningIcon.setIconColor(Color.ORANGE);
+
+        // Title and message
+        Label titleLabel = new Label("Excluir Ingrediente");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+
+        Label messageLabel = new Label("Tem certeza que deseja excluir o ingrediente '" + ingredient.getNome() + "'?");
+        messageLabel.setWrapText(true);
+        messageLabel.setMaxWidth(300);
+
+        // Buttons
+        Button yesButton = new Button("Sim");
+        Button noButton = new Button("Não");
+
+        HBox buttonBox = new HBox(10, yesButton, noButton);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+
+        // Add all elements to the popup content
+        popupContent.getChildren().addAll(warningIcon, titleLabel, messageLabel, buttonBox);
+        popupContent.setAlignment(Pos.CENTER);
+
+        popup.getContent().add(popupContent);
+
+        // Position popup
+        popup.show(primary, centerX - 170, centerY - 100);
+
+        // Button actions
+        noButton.setOnAction(e -> popup.hide());
+        yesButton.setOnAction(e -> {
             deleteIngredient(ingredient.getId());
-        }
+            popup.hide();
+        });
     }
 
     /**
@@ -638,46 +888,128 @@ public class IngredientsView {
 
         // Enviar a requisição de forma assíncrona
         httpClient.sendAsync(deleteIngredientReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200 || resp.statusCode() == 204) {
-                        System.out.println("Ingrediente excluído com sucesso: " + resp.body());
+            .thenAccept(resp -> {
+                if (resp.statusCode() == 200 || resp.statusCode() == 204) {
+                System.out.println("Ingrediente excluído com sucesso: " + resp.body());
 
-                        // Recarregar a lista de ingredientes
-                        Platform.runLater(this::show);
+                // Recarregar a lista de ingredientes
+                Platform.runLater(this::show);
 
-                        // Mostrar mensagem de sucesso
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Sucesso");
-                            alert.setHeaderText("Ingrediente excluído");
-                            alert.setContentText("O ingrediente foi excluído com sucesso.");
-                            alert.showAndWait();
-                        });
-                    } else {
-                        System.err.println("Erro ao excluir ingrediente: " + resp.statusCode() + " - " + resp.body());
+                // Mostrar mensagem de sucesso
+                Platform.runLater(() -> {
+                    Popup successPopup = new Popup();
+                    successPopup.setAutoHide(true);
 
-                        // Mostrar mensagem de erro
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao excluir ingrediente");
-                            alert.setContentText("Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                            alert.showAndWait();
-                        });
-                    }
-                })
-                .exceptionally(ex -> {
-                    ex.printStackTrace();
+                    VBox popupContent = new VBox(10);
+                    popupContent.setPadding(new Insets(15));
+                    popupContent.setStyle(
+                        "-fx-background-color: #e8f5e9;" + // light green background
+                            "-fx-border-color: #66bb6a;" + // green border
+                            "-fx-border-width: 1;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
 
-                    // Mostrar mensagem de erro
-                    Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao excluir ingrediente");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
-                    });
-                    return null;
+                    Label titleLabel = new Label("Sucesso");
+                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                    titleLabel.setTextFill(Color.GREEN);
+
+                    Label headerLabel = new Label("Ingrediente excluído");
+                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                    Label messageLabel = new Label("O ingrediente foi excluído com sucesso.");
+                    messageLabel.setWrapText(true);
+                    messageLabel.setMaxWidth(300);
+
+                    Button closeButton = new Button("Fechar");
+                    closeButton.setOnAction(evt -> successPopup.hide());
+
+                    popupContent.getChildren().addAll(titleLabel, headerLabel, messageLabel, closeButton);
+                    successPopup.getContent().add(popupContent);
+
+                    Stage primaryStage = StageManager.getPrimaryStage();
+                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                    successPopup.show(primaryStage, centerX, centerY);
                 });
+                } else {
+                System.err.println("Erro ao excluir ingrediente: " + resp.statusCode() + " - " + resp.body());
+
+                // Mostrar mensagem de erro
+                Platform.runLater(() -> {
+                    Popup errorPopup = new Popup();
+                    errorPopup.setAutoHide(true);
+
+                    VBox popupContent = new VBox(10);
+                    popupContent.setPadding(new Insets(15));
+                    popupContent.setStyle(
+                        "-fx-background-color: #ffebee;" + // light red background
+                            "-fx-border-color: #ef5350;" + // red border
+                            "-fx-border-width: 1;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                    Label titleLabel = new Label("Erro");
+                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                    titleLabel.setTextFill(Color.RED);
+
+                    Label headerLabel = new Label("Falha ao excluir ingrediente");
+                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                    Label contentLabel = new Label(
+                        "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                    contentLabel.setWrapText(true);
+                    contentLabel.setMaxWidth(300);
+
+                    Button closeButton = new Button("Fechar");
+                    closeButton.setOnAction(evt -> errorPopup.hide());
+
+                    popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                    errorPopup.getContent().add(popupContent);
+
+                    Stage primaryStage = StageManager.getPrimaryStage();
+                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                    errorPopup.show(primaryStage, centerX, centerY);
+                });
+                }
+            })
+            .exceptionally(ex -> {
+                ex.printStackTrace();
+
+                // Mostrar mensagem de erro
+                Platform.runLater(() -> {
+                Popup errorPopup = new Popup();
+                errorPopup.setAutoHide(true);
+
+                VBox popupContent = new VBox(10);
+                popupContent.setPadding(new Insets(15));
+                popupContent.setStyle(
+                    "-fx-background-color: #ffebee;" + // light red background
+                        "-fx-border-color: #ef5350;" + // red border
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+                Label titleLabel = new Label("Erro");
+                titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+                titleLabel.setTextFill(Color.RED);
+
+                Label headerLabel = new Label("Falha ao excluir ingrediente");
+                headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
+
+                Label contentLabel = new Label("Erro: " + ex.getMessage());
+                contentLabel.setWrapText(true);
+                contentLabel.setMaxWidth(300);
+
+                Button closeButton = new Button("Fechar");
+                closeButton.setOnAction(evt -> errorPopup.hide());
+
+                popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
+                errorPopup.getContent().add(popupContent);
+
+                Stage primaryStage = StageManager.getPrimaryStage();
+                double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
+                double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
+                errorPopup.show(primaryStage, centerX, centerY);
+                });
+                return null;
+            });
     }
 }

@@ -52,6 +52,14 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
+        StageManager.setPrimaryStage(stage);
+
+        // Permitir que o utilizador redimensione
+        stage.setResizable(true);
+        // Define limites mínimos, se quiseres
+        stage.setMinWidth(800);
+        stage.setMinHeight(600);
+
         stage.setScene(LoginPage.createScene(stage, this::fazerLoginEListarFuncionarios));
         stage.setTitle("EatEase - Login");
         stage.show();
@@ -101,56 +109,72 @@ public class Main extends Application {
 
     private void mostrarAdminPanel(String username) {
         BorderPane root = new BorderPane();
-
-        // Create top header with logout button
         HBox topBar = createTopBar(username);
         root.setTop(topBar);
-
-        // Create sidebar with navigation options
         VBox sidebar = createSidebar();
         root.setLeft(sidebar);
 
-        // Create main content area (initially empty with welcome message)
         contentArea = new StackPane();
         contentArea.getStyleClass().add("content-area");
-
         Text welcomeText = new Text("Bem-vindo ao EatEase Admin");
         welcomeText.getStyleClass().add("welcome-text");
         contentArea.getChildren().add(welcomeText);
-
         root.setCenter(contentArea);
 
-        // Inicializar views
+        // 2) Inicializa todas as views AQUI, antes de criar os botões
         employeeView = new EmployeeView(contentArea, http);
         ingredientsView = new IngredientsView(contentArea, http);
         itemView = new ItemView(contentArea, http);
-        menuView = new MenuView(contentArea, http);
+        menuView = new MenuView(contentArea, http); // ← aqui
         mesasView = new MesasView(contentArea, http);
         pedidosView = new PedidosView(contentArea, http);
         qrCodesView = new QRCodesView(contentArea, http);
 
-        // Set scene and show
+        // **Cria a cena com tamanho fixo inicial**
         Scene dashboardScene = new Scene(root, 1024, 768);
-        dashboardScene.getStylesheets().add(getClass().getResource("/css/css.css").toExternalForm());
+        dashboardScene.getStylesheets().add(
+                getClass().getResource("/css/modern_style.css").toExternalForm());
+
+        // **Aplica ao stage**
         primaryStage.setTitle("EatEase - Painel de Administração");
         primaryStage.setScene(dashboardScene);
-        primaryStage.setMaximized(true);
+
+        // Garante que o utilizador pode continuar a redimensionar
+        primaryStage.setResizable(true);
+        // (Opcional) mantém os limites mínimos
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(600);
+
+        // Se não quiseres obrigar o maximize inicial, podes remover isto:
+        // primaryStage.setMaximized(true);
     }
 
     private HBox createTopBar(String username) {
         HBox topBar = new HBox();
         topBar.getStyleClass().add("top-bar");
-        topBar.setPrefHeight(50);
+        topBar.setPrefHeight(60);
         topBar.setAlignment(Pos.CENTER_RIGHT);
 
         // Branding on left
         Label brandLabel = new Label("EatEase");
         brandLabel.getStyleClass().add("brand-label");
 
-        // User info and logout in center-right
-        Label userLabel = new Label("Usuário: " + username);
+        // User info with icon
+        HBox userBox = new HBox(10);
+        userBox.setAlignment(Pos.CENTER);
+
+        // User icon
+        FontIcon userIcon = new FontIcon(MaterialDesign.MDI_ACCOUNT_CIRCLE);
+        userIcon.setIconColor(Color.WHITE);
+        userIcon.setIconSize(22);
+
+        // User info
+        Label userLabel = new Label("Olá, " + username);
         userLabel.getStyleClass().add("user-label");
 
+        userBox.getChildren().addAll(userIcon, userLabel);
+
+        // Modern logout button
         Button logoutBtn = new Button("Logout");
         logoutBtn.getStyleClass().add("logout-button");
         logoutBtn.setOnAction(e -> logout());
@@ -158,8 +182,8 @@ public class Main extends Application {
         HBox spacer = new HBox();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        topBar.getChildren().addAll(brandLabel, spacer, userLabel, logoutBtn);
-        topBar.setPadding(new Insets(5, 15, 5, 15));
+        topBar.getChildren().addAll(brandLabel, spacer, userBox, logoutBtn);
+        topBar.setPadding(new Insets(5, 20, 5, 20));
 
         return topBar;
     }

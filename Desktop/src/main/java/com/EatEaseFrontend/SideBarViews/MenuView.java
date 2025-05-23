@@ -5,6 +5,7 @@ import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.Menu;
+import com.EatEaseFrontend.StageManager;
 import com.EatEaseFrontend.TipoMenu;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -25,6 +26,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -335,8 +337,8 @@ public class MenuView {
 
         // Expandir a área de itens quando clicada
         itemsPane.expandedProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue && loadingItemsLabel.isVisible()) {
-                // Carregar itens da API quando expandir pela primeira vez
+            if (newValue) {
+                // Carregar itens da API quando expandir
                 loadItems(itemsContainer, selectedItemsIds);
             }
         });
@@ -397,15 +399,24 @@ public class MenuView {
                                             item.getTipoPratoName() + " (€" + item.getPreco() + ")");
                                     cb.setUserData(item.getId());
 
+                                    // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
+                                    if (selectedItemsIds.contains(item.getId())) {
+                                        cb.setSelected(true);
+                                        System.out.println(
+                                                "Item pré-selecionado: " + item.getId() + " - " + item.getNome());
+                                    }
+
                                     // Quando o checkbox é marcado/desmarcado, atualize a lista de IDs selecionados
                                     cb.selectedProperty().addListener((obs, oldVal, newVal) -> {
                                         int itemId = (int) cb.getUserData();
                                         if (newVal) {
                                             if (!selectedItemsIds.contains(itemId)) {
                                                 selectedItemsIds.add(itemId);
+                                                System.out.println("Item selecionado: " + itemId);
                                             }
                                         } else {
                                             selectedItemsIds.remove(Integer.valueOf(itemId));
+                                            System.out.println("Item removido: " + itemId);
                                         }
                                     });
 
@@ -413,7 +424,7 @@ public class MenuView {
                                 }
 
                                 // Display selected count
-                                Label selectionLabel = new Label("0 item(s) selecionado(s)");
+                                Label selectionLabel = new Label(selectedItemsIds.size() + " item(s) selecionado(s)");
 
                                 // Update selection counter when list changes
                                 selectedItemsIds.addListener(
@@ -671,8 +682,12 @@ public class MenuView {
         // Configurar o conteúdo do diálogo
         dialog.getDialogPane().setContent(grid);
 
-        // Focar no campo de nome ao abrir o diálogo
-        Platform.runLater(() -> nomeField.requestFocus());
+        // Focar no campo de nome ao abrir o diálogo e expandir os itens automaticamente
+        Platform.runLater(() -> {
+            nomeField.requestFocus();
+            // Expandir os itens automaticamente para mostrar os itens selecionados
+            itemsPane.setExpanded(true);
+        });
 
         // Validar os campos antes de habilitar o botão de salvar
         Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
@@ -699,8 +714,8 @@ public class MenuView {
 
         // Expandir a área de itens quando clicada
         itemsPane.expandedProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue && loadingItemsLabel.isVisible()) {
-                // Carregar itens da API quando expandir pela primeira vez
+            if (newValue) {
+                // Carregar itens da API quando expandir
                 loadItems(itemsContainer, selectedItemsIds);
             }
         });
@@ -727,8 +742,9 @@ public class MenuView {
      *                         selecionados
      */
     private void loadMenuItems(int menuId, ObservableList<Integer> selectedItemsIds) {
+        System.out.println("Carregando itens do menu ID: " + menuId);
         HttpRequest getItemsReq = HttpRequest.newBuilder()
-                .uri(URI.create(AppConfig.getApiEndpoint("/menu/getItemIds?menuId=" + menuId)))
+                .uri(URI.create(AppConfig.getApiEndpoint("/menu/getMenuItens?id=" + menuId)))
                 .GET()
                 .build();
 
@@ -736,18 +752,37 @@ public class MenuView {
                 .thenAccept(resp -> {
                     if (resp.statusCode() == 200) {
                         try {
-                            List<Integer> itemIds = JsonParser.parseMenuItemIds(resp.body());
+                            System.out.println("Resposta recebida: " + resp.body());
+                            List<Integer> itemIds = new ArrayList<Integer>();
+
+                            List<Item> items = new ArrayList<>();
+                            try {
+                                items = ItemJsonLoader.parseItems(resp.body());
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            for (Item item : items) {
+                                itemIds.add(item.getId());
+                            }
+
+                            System.out.println("IDs dos itens obtidos: " + itemIds);
                             Platform.runLater(() -> {
-                                selectedItemsIds.setAll(itemIds);
+                                selectedItemsIds.clear(); // Limpar a lista antes de adicionar
+                                selectedItemsIds.addAll(itemIds); // Usar addAll em vez de setAll
+                                System.out.println("IDs dos itens adicionados à lista: " + selectedItemsIds);
                             });
                         } catch (Exception ex) {
                             ex.printStackTrace();
+                            System.err.println("Erro ao carregar itens do menu: " + ex.getMessage());
                             // Se houver erro, simplesmente não carrega os IDs existentes
                         }
+                    } else {
+                        System.err.println("Erro ao carregar itens do menu. Status: " + resp.statusCode());
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
+                    System.err.println("Exceção ao carregar itens do menu: " + ex.getMessage());
                     return null;
                 });
     }

@@ -3,6 +3,7 @@ package com.EatEaseFrontend.SideBarViews;
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Employee;
 import com.EatEaseFrontend.JsonParser;
+import com.EatEaseFrontend.StageManager;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -213,7 +214,7 @@ public class EmployeeView {
         deleteButton.setGraphic(deleteIcon);
         deleteButton.getStyleClass().add("icon-button");
         deleteButton.setOnAction(e -> System.out.println("Em Desenvolvimento"));
-        
+
         // Add buttons to container
         buttonsBox.getChildren().addAll(editButton, deleteButton);
 

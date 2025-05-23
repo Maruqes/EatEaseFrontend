@@ -234,19 +234,44 @@ public class JsonParser {
     public static List<Integer> parseMenuItemIds(String json) {
         List<Integer> itemIds = new ArrayList<>();
 
-        // Regular expression to find all item IDs in the JSON array
-        Pattern pattern = Pattern.compile("\\d+");
-        Matcher matcher = pattern.matcher(json);
+        System.out.println("Parsing menu item IDs from JSON: " + json);
 
-        while (matcher.find()) {
-            try {
-                int itemId = Integer.parseInt(matcher.group());
-                itemIds.add(itemId);
-            } catch (NumberFormatException e) {
-                System.err.println("Erro ao converter ID de item: " + e.getMessage());
+        // Remove any brackets, quotes and whitespace to get a clean list of numbers
+        if (json.startsWith("[") && json.endsWith("]")) {
+            // Clean the string by removing brackets
+            String cleaned = json.substring(1, json.length() - 1).trim();
+
+            // Split by comma if there's content
+            if (!cleaned.isEmpty()) {
+                String[] idStrings = cleaned.split(",");
+                for (String idStr : idStrings) {
+                    try {
+                        // Trim and parse each ID
+                        int itemId = Integer.parseInt(idStr.trim());
+                        itemIds.add(itemId);
+                        System.out.println("Added item ID: " + itemId);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Erro ao converter ID de item '" + idStr + "': " + e.getMessage());
+                    }
+                }
+            }
+        } else {
+            // Fallback to regex approach if the JSON is not a simple array
+            Pattern pattern = Pattern.compile("\\d+");
+            Matcher matcher = pattern.matcher(json);
+
+            while (matcher.find()) {
+                try {
+                    int itemId = Integer.parseInt(matcher.group());
+                    itemIds.add(itemId);
+                    System.out.println("Added item ID (regex): " + itemId);
+                } catch (NumberFormatException e) {
+                    System.err.println("Erro ao converter ID de item: " + e.getMessage());
+                }
             }
         }
 
+        System.out.println("Total de " + itemIds.size() + " IDs de itens encontrados: " + itemIds);
         return itemIds;
     }
 

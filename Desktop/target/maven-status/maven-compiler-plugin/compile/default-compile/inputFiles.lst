@@ -1,4 +1,5 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/AppConfig.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/DialogHelper.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Employee.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/EmployeeView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Ingredient.java
@@ -17,4 +18,5 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/MesasView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/PedidosView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/QRCodesView.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/StageManager.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/TipoMenu.java
