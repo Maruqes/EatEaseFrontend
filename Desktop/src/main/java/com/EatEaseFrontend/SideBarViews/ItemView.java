@@ -8,6 +8,10 @@ import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -17,6 +21,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Popup;
+import javafx.stage.Stage;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
 
@@ -24,6 +31,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -142,7 +150,7 @@ public class ItemView {
         Button addButton = new Button("Adicionar");
         addButton.setGraphic(new FontIcon(MaterialDesign.MDI_PLUS));
         addButton.getStyleClass().add("login-button");
-        addButton.setOnAction(e -> showAddItemDialog());
+        addButton.setOnAction(e -> showAddItemPopup());
 
         // Create a spacer to push the button to the right
         Region spacer = new Region();
@@ -265,7 +273,7 @@ public class ItemView {
         editIcon.setIconColor(Color.BLUE);
         editButton.setGraphic(editIcon);
         editButton.getStyleClass().add("icon-button");
-        editButton.setOnAction(e -> showEditItemDialog(item));
+        editButton.setOnAction(e -> showEditItemPopup(item));
 
         // Delete button
         Button deleteButton = new Button("");
@@ -299,92 +307,60 @@ public class ItemView {
     /**
      * Exibe o diálogo para adicionar um novo item
      */
-    private void showAddItemDialog() {
-        Dialog<Item> dialog = new Dialog<>();
-        dialog.setTitle("Adicionar Item ao Menu");
-        dialog.setHeaderText("Preencha as informações do novo item");
+    private void showAddItemPopup() {
+        // 1) Pega no primaryStage para posicionar o popup ao centro
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Configurar o diálogo para usar o primaryStage como owner e não ser
-        // redimensionável
-        DialogHelper.configureDialog(dialog);
+        // 2) Cria o Popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
 
-        // Configurar o dialog para usar o primaryStage como owner e evitar
-        // redimensionamento
-        StageManager.setupDialog(dialog);
-
-        // Botões do diálogo
-        ButtonType addButtonType = new ButtonType("Adicionar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
-
-        // Criação dos campos de entrada
+        // 3) Campos do formulário
         TextField nameField = new TextField();
         nameField.setPromptText("Nome do item");
 
-        ComboBox<String> tipoPratoComboBox = new ComboBox<>();
-        tipoPratoComboBox.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
-        tipoPratoComboBox.setPromptText("Selecione o tipo de prato");
+        ComboBox<String> tipoPratoCombo = new ComboBox<>();
+        tipoPratoCombo.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
+        tipoPratoCombo.setPromptText("Tipo de prato");
 
         TextField precoField = new TextField();
-        precoField.setPromptText("Preço (exemplo: 12.99)");
+        precoField.setPromptText("Preço (ex.: 12.99)");
+        // valida só números e ponto
+        precoField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*(\\.\\d*)?"))
+                precoField.setText(o);
+        });
 
         TextField stockField = new TextField();
         stockField.setPromptText("Stock atual");
+        stockField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                stockField.setText(n.replaceAll("[^\\d]", ""));
+        });
 
-        CheckBox compostoCheckBox = new CheckBox("Item composto por ingredientes");
+        CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
 
-        // Layout do diálogo - área principal
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-
-        // Adicionar campos ao grid
-        grid.add(new Label("Nome:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Tipo de Prato:"), 0, 1);
-        grid.add(tipoPratoComboBox, 1, 1);
-        grid.add(new Label("Preço:"), 0, 2);
-        grid.add(precoField, 1, 2);
-        grid.add(new Label("Stock:"), 0, 3);
-        grid.add(stockField, 1, 3);
-        grid.add(compostoCheckBox, 0, 4, 2, 1);
-
-        // Área de ingredientes
-        TitledPane ingredientesPane = new TitledPane();
-        ingredientesPane.setText("Ingredientes");
-        ingredientesPane.setExpanded(false);
-        ingredientesPane.setDisable(true);
-
-        VBox ingredientesBox = new VBox(10);
-        ingredientesBox.setPadding(new Insets(10));
-
-        // Tabela de ingredientes selecionados
-        TableView<IngredientRowData> ingredientsTable = new TableView<>();
-        ingredientsTable.setPrefHeight(200);
-
-        TableColumn<IngredientRowData, Integer> idColumn = new TableColumn<>("ID");
-        idColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getId()).asObject());
-        idColumn.setPrefWidth(50);
-
-        TableColumn<IngredientRowData, String> nameColumn = new TableColumn<>("Nome");
-        nameColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getName()));
-        nameColumn.setPrefWidth(150);
-
-        TableColumn<IngredientRowData, Integer> quantityColumn = new TableColumn<>("Quantidade");
-        quantityColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getQuantity())
-                        .asObject());
-        quantityColumn.setPrefWidth(100);
-        quantityColumn.setCellFactory(col -> {
+        // tabela de ingredientes
+        TableView<IngredientRowData> table = new TableView<>();
+        table.setPrefHeight(200);
+        TableColumn<IngredientRowData, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getId()).asObject());
+        idCol.setPrefWidth(40);
+        TableColumn<IngredientRowData, String> nameCol = new TableColumn<>("Nome");
+        nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
+        nameCol.setPrefWidth(120);
+        TableColumn<IngredientRowData, Integer> qtyCol = new TableColumn<>("Qtd");
+        qtyCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getQuantity()).asObject());
+        qtyCol.setCellFactory(col -> {
             return new TableCell<IngredientRowData, Integer>() {
                 private final Spinner<Integer> spinner = new Spinner<>(1, 999, 1);
                 {
                     spinner.setEditable(true);
-                    spinner.valueProperty().addListener((obs, oldValue, newValue) -> {
+                    spinner.valueProperty().addListener((o, ov, nv) -> {
                         if (getTableRow() != null && getTableRow().getItem() != null) {
-                            ((IngredientRowData) getTableRow().getItem()).setQuantity(newValue);
+                            getTableRow().getItem().setQuantity(nv);
                         }
                     });
                 }
@@ -392,246 +368,151 @@ public class ItemView {
                 @Override
                 protected void updateItem(Integer item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (empty) {
+                    if (empty)
                         setGraphic(null);
-                    } else {
+                    else {
                         spinner.getValueFactory().setValue(item);
                         setGraphic(spinner);
                     }
                 }
             };
         });
-
-        TableColumn<IngredientRowData, Void> actionColumn = new TableColumn<>("Ações");
-        actionColumn.setCellFactory(col -> {
+        TableColumn<IngredientRowData, Void> actCol = new TableColumn<>("Ações");
+        actCol.setCellFactory(col -> {
             return new TableCell<IngredientRowData, Void>() {
-                private final Button deleteButton = new Button("");
+                private final Button delBtn = new Button();
                 {
-                    FontIcon deleteIcon = new FontIcon(MaterialDesign.MDI_DELETE);
-                    deleteIcon.setIconColor(Color.RED);
-                    deleteButton.setGraphic(deleteIcon);
-                    deleteButton.getStyleClass().add("icon-button");
-                    deleteButton.setOnAction(e -> {
-                        ingredientsTable.getItems().remove(getTableRow().getIndex());
-                    });
+                    FontIcon icon = new FontIcon(MaterialDesign.MDI_DELETE);
+                    icon.setIconColor(Color.RED);
+                    delBtn.setGraphic(icon);
+                    delBtn.getStyleClass().add("icon-button");
+                    delBtn.setOnAction(e -> table.getItems().remove(getIndex()));
                 }
 
                 @Override
-                protected void updateItem(Void item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty) {
-                        setGraphic(null);
-                    } else {
-                        setGraphic(deleteButton);
-                    }
+                protected void updateItem(Void v, boolean empty) {
+                    super.updateItem(v, empty);
+                    setGraphic(empty ? null : delBtn);
                 }
             };
         });
+        table.getColumns().addAll(idCol, nameCol, qtyCol, actCol);
 
-        ingredientsTable.getColumns().addAll(idColumn, nameColumn, quantityColumn, actionColumn);
-
-        // Adicionar controles para selecionar ingredientes
-        HBox ingredientSelectionBox = new HBox(10);
-        ComboBox<Ingredient> ingredientComboBox = new ComboBox<>();
-        ingredientComboBox.setPrefWidth(250);
-        Button addIngredientButton = new Button("Adicionar");
-        addIngredientButton.setDisable(true);
-
-        // Configurar combobox para exibir nomes de ingredientes
-        ingredientComboBox.setCellFactory(lv -> new ListCell<Ingredient>() {
+        // seleção de ingredientes
+        ComboBox<Ingredient> ingCombo = new ComboBox<>();
+        ingCombo.setCellFactory(lv -> new ListCell<Ingredient>() {
             @Override
-            protected void updateItem(Ingredient item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getNome() + " (ID: " + item.getId() + ")");
-                }
+            protected void updateItem(Ingredient i, boolean empty) {
+                super.updateItem(i, empty);
+                setText((empty || i == null) ? null : i.getNome() + " (ID:" + i.getId() + ")");
             }
         });
-
-        ingredientComboBox.setButtonCell(new ListCell<Ingredient>() {
-            @Override
-            protected void updateItem(Ingredient item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getNome() + " (ID: " + item.getId() + ")");
-                }
+        ingCombo.setButtonCell(ingCombo.getCellFactory().call(null));
+        ingCombo.setPrefWidth(200);
+        Button addIngBtn = new Button("Adicionar");
+        addIngBtn.setDisable(true);
+        ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
+        addIngBtn.setOnAction(e -> {
+            Ingredient sel = ingCombo.getValue();
+            if (sel != null && table.getItems().stream().noneMatch(r -> r.getId() == sel.getId())) {
+                table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
             }
         });
-
-        // Adicionar listener para habilitar o botão quando um ingrediente for
-        // selecionado
-        ingredientComboBox.getSelectionModel().selectedItemProperty().addListener(
-                (obs, oldVal, newVal) -> addIngredientButton.setDisable(newVal == null));
-
-        // Configurar botão para adicionar ingredientes à tabela
-        addIngredientButton.setOnAction(e -> {
-            Ingredient selected = ingredientComboBox.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                // Verificar se já existe na tabela
-                boolean exists = ingredientsTable.getItems().stream()
-                        .anyMatch(item -> item.getId() == selected.getId());
-
-                if (!exists) {
-                    ingredientsTable.getItems().add(
-                            new IngredientRowData(selected.getId(), selected.getNome(), 1));
-                } else {
-                    // Mostrar alerta de ingrediente já adicionado
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("Ingrediente Duplicado");
-                    alert.setHeaderText("Ingrediente já adicionado");
-                    alert.setContentText("Este ingrediente já foi adicionado à lista.");
-                    alert.showAndWait();
-                }
-            }
-        });
-
-        // Botão para carregar ingredientes
-        Button loadIngredientsButton = new Button("Carregar Lista de Ingredientes");
-        loadIngredientsButton.setPrefWidth(200);
-
-        ingredientSelectionBox.getChildren().addAll(ingredientComboBox, addIngredientButton);
-        ingredientesBox.getChildren().addAll(loadIngredientsButton, ingredientSelectionBox, ingredientsTable);
-        ingredientesPane.setContent(ingredientesBox);
-
-        // Carregar lista de ingredientes quando o botão for clicado
-        loadIngredientsButton.setOnAction(e -> {
-            loadIngredientsButton.setDisable(true);
-            loadIngredientsButton.setText("Carregando...");
-
-            // Fazer requisição à API
-            HttpRequest getIngredientsReq = HttpRequest.newBuilder()
+        Button loadBtn = new Button("Carregar Ingredientes");
+        loadBtn.setOnAction(e -> {
+            loadBtn.setDisable(true);
+            loadBtn.setText("Carregando...");
+            HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
-                    .GET()
-                    .build();
-
-            httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
+                    .GET().build();
+            httpClient.sendAsync(req, BodyHandlers.ofString())
                     .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
-
-                            Platform.runLater(() -> {
-                                ingredientComboBox.getItems().clear();
-                                ingredientComboBox.getItems().addAll(ingredients);
-                                loadIngredientsButton.setText("Recarregar Ingredientes");
-                                loadIngredientsButton.setDisable(false);
-                            });
-                        } else {
-                            Platform.runLater(() -> {
-                                loadIngredientsButton.setText("Falha ao Carregar");
-                                loadIngredientsButton.setDisable(false);
-
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Erro");
-                                alert.setHeaderText("Falha ao carregar ingredientes");
-                                alert.setContentText("Status code: " + resp.statusCode());
-                                alert.showAndWait();
-                            });
-                        }
+                        List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                        Platform.runLater(() -> {
+                            ingCombo.getItems().setAll(list);
+                            loadBtn.setText("Recarregar Ingredientes");
+                            loadBtn.setDisable(false);
+                        });
                     })
                     .exceptionally(ex -> {
-                        ex.printStackTrace();
                         Platform.runLater(() -> {
-                            loadIngredientsButton.setText("Falha ao Carregar");
-                            loadIngredientsButton.setDisable(false);
-
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingredientes");
-                            alert.setContentText("Erro: " + ex.getMessage());
-                            alert.showAndWait();
+                            loadBtn.setText("Falha ao Carregar");
+                            loadBtn.setDisable(false);
                         });
                         return null;
                     });
         });
 
-        // Ativar/desativar o painel de ingredientes com base no checkbox
-        compostoCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            ingredientesPane.setDisable(!newVal);
-            ingredientesPane.setExpanded(newVal);
-        });
+        // 4) Botões principais
+        Button submit = new Button("Adicionar");
+        Button cancel = new Button("Cancelar");
+        submit.setDisable(true);
 
-        // Adicionar todos os componentes em um container principal
-        VBox mainContainer = new VBox(20);
-        mainContainer.getChildren().addAll(grid, ingredientesPane);
-        dialog.getDialogPane().setContent(mainContainer);
-
-        // Configurar validação de campos
-        Node addButton = dialog.getDialogPane().lookupButton(addButtonType);
-        addButton.setDisable(true);
-
-        // Validador para verificar se todos os campos obrigatórios estão preenchidos
-        Runnable validateFields = () -> {
-            boolean valid = !nameField.getText().trim().isEmpty() &&
-                    tipoPratoComboBox.getValue() != null &&
-                    !precoField.getText().trim().isEmpty() &&
-                    isNumeric(precoField.getText().trim()) &&
-                    !stockField.getText().trim().isEmpty() &&
-                    isNumeric(stockField.getText().trim()) &&
-                    (!compostoCheckBox.isSelected() ||
-                            (compostoCheckBox.isSelected() && !ingredientsTable.getItems().isEmpty()));
-
-            addButton.setDisable(!valid);
+        // validador geral
+        ChangeListener<Object> validator = (obs, o, n) -> {
+            boolean ok = !nameField.getText().trim().isEmpty()
+                    && tipoPratoCombo.getValue() != null
+                    && !precoField.getText().trim().isEmpty()
+                    && !stockField.getText().trim().isEmpty()
+                    && (!compostoCheck.isSelected() || !table.getItems().isEmpty());
+            submit.setDisable(!ok);
         };
-
-        // Adicionar listeners para todos os campos
-        nameField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        tipoPratoComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        precoField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        stockField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        compostoCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        ingredientsTable.getItems().addListener((javafx.collections.ListChangeListener<IngredientRowData>) change -> {
-            validateFields.run();
+        nameField.textProperty().addListener(validator);
+        tipoPratoCombo.valueProperty().addListener(validator);
+        precoField.textProperty().addListener(validator);
+        stockField.textProperty().addListener(validator);
+        compostoCheck.selectedProperty().addListener((o, ov, nv) -> {
+            validator.changed(null, null, null);
         });
+        table.getItems().addListener((ListChangeListener<IngredientRowData>) c -> validator.changed(null, null, null));
 
-        // Processar o resultado quando o botão Adicionar for clicado
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == addButtonType) {
-                try {
-                    // Validar e converter valores
-                    String nome = nameField.getText().trim();
-                    int tipoPratoId = tipoPratoComboBox.getSelectionModel().getSelectedIndex() + 1;
-                    double preco = Double.parseDouble(precoField.getText().trim().replace(',', '.'));
-                    int stock = Integer.parseInt(stockField.getText().trim());
-                    boolean composto = compostoCheckBox.isSelected();
+        // 5) Layout
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        grid.add(new Label("Nome:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Tipo de Prato:"), 0, 1);
+        grid.add(tipoPratoCombo, 1, 1);
+        grid.add(new Label("Preço:"), 0, 2);
+        grid.add(precoField, 1, 2);
+        grid.add(new Label("Stock:"), 0, 3);
+        grid.add(stockField, 1, 3);
+        grid.add(compostoCheck, 0, 4, 2, 1);
+        HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
+        VBox ingVBox = new VBox(10, ingLoadBox, table);
+        ingVBox.setPadding(new Insets(10));
+        VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, submit, cancel));
+        popup.getContent().add(mainVBox);
 
-                    // Criar a lista de ingredientes
-                    List<Item.ItemIngrediente> ingredientes = new ArrayList<>();
-                    if (composto) {
-                        // Serializar ingredientes
-                        for (IngredientRowData row : ingredientsTable.getItems()) {
-                            Item.ItemIngrediente ingrediente = new Item.ItemIngrediente();
-                            ingrediente.setIngredienteId(row.getId());
-                            ingrediente.setQuantidade(row.getQuantity());
-                            ingredientes.add(ingrediente);
-                        }
-                    }
+        // 6) Mostra o popup centrado
+        popup.show(primary, centerX - 250, centerY - 300);
 
-                    // Criar e enviar o item para a API
-                    createItem(nome, tipoPratoId, preco, composto, stock, ingredientes);
-
-                    return null;
-                } catch (NumberFormatException e) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Erro de Validação");
-                    alert.setHeaderText("Valores Inválidos");
-                    alert.setContentText("Por favor, verifique os campos numéricos (preço e stock).");
-                    alert.showAndWait();
-                    return null;
+        // 7) Ações
+        cancel.setOnAction(e -> popup.hide());
+        submit.setOnAction(e -> {
+            String nome = nameField.getText().trim();
+            int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
+            double preco = Double.parseDouble(precoField.getText());
+            int stock = Integer.parseInt(stockField.getText());
+            boolean composto = compostoCheck.isSelected();
+            List<Item.ItemIngrediente> ingList = new ArrayList<>();
+            if (composto) {
+                for (IngredientRowData row : table.getItems()) {
+                    Item.ItemIngrediente ii = new Item.ItemIngrediente();
+                    ii.setIngredienteId(row.getId());
+                    ii.setQuantidade(row.getQuantity());
+                    ingList.add(ii);
                 }
             }
-            return null;
+            createItem(nome, tipoId, preco, composto, stock, ingList);
+            popup.hide();
         });
-
-        // Definir o tamanho do diálogo
-        dialog.getDialogPane().setPrefWidth(500);
-        dialog.getDialogPane().setPrefHeight(600);
-
-        // Mostrar o diálogo e esperar pelo resultado
-        dialog.showAndWait();
     }
 
     /**
@@ -660,10 +541,11 @@ public class ItemView {
             jsonBuilder.append("\"composto\":").append(composto).append(",");
             jsonBuilder.append("\"stockAtual\":").append(stock);
 
-            // Adicionar ingredientes se o item for composto
-            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
-                jsonBuilder.append(",\"ingredientes\":[");
+            // Adicionar ingredientes (sempre incluir o campo, mesmo que vazio)
+            jsonBuilder.append(",\"ingredientes\":[");
 
+            // Se for composto e tiver ingredientes, adicionar cada um
+            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
                 for (int i = 0; i < ingredientes.size(); i++) {
                     Item.ItemIngrediente ingrediente = ingredientes.get(i);
                     jsonBuilder.append("{");
@@ -675,9 +557,9 @@ public class ItemView {
                         jsonBuilder.append(",");
                     }
                 }
-
-                jsonBuilder.append("]");
             }
+
+            jsonBuilder.append("]");
 
             jsonBuilder.append("}");
             String jsonBody = jsonBuilder.toString();
@@ -803,426 +685,225 @@ public class ItemView {
      * 
      * @param item Item a ser editado
      */
-    private void showEditItemDialog(Item item) {
-        Dialog<Item> dialog = new Dialog<>();
-        dialog.setTitle("Editar Item");
-        dialog.setHeaderText("Editar informações do item: " + item.getNome());
+    private void showEditItemPopup(Item item) {
+        // 1) Pega no primaryStage para posicionar o popup ao centro
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Botões do diálogo
-        ButtonType saveButtonType = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        // 2) Cria o Popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
 
-        // Criação dos campos de entrada com valores pré-preenchidos
+        // 3) Campos do formulário pré-preenchidos
         TextField nameField = new TextField(item.getNome());
+        nameField.setPromptText("Nome do item");
 
-        ComboBox<String> tipoPratoComboBox = new ComboBox<>();
-        tipoPratoComboBox.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
-        tipoPratoComboBox.getSelectionModel().select(item.getTipoPratoId() - 1);
+        ComboBox<String> tipoPratoCombo = new ComboBox<>();
+        tipoPratoCombo.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
+        tipoPratoCombo.getSelectionModel().select(item.getTipoPratoId() - 1);
 
-        TextField precoField = new TextField(String.format("%.2f", item.getPreco()).replace('.', ','));
+        TextField precoField = new TextField(String.format("%.2f", item.getPreco()));
+        precoField.setPromptText("Preço (ex.: 12.99)");
+        precoField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*(\\.\\d*)?")) {
+                precoField.setText(o);
+            }
+        });
 
         TextField stockField = new TextField(String.valueOf(item.getStockAtual()));
+        stockField.setPromptText("Stock atual");
+        stockField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*")) {
+                stockField.setText(n.replaceAll("[^\\d]", ""));
+            }
+        });
 
-        CheckBox compostoCheckBox = new CheckBox("Item composto por ingredientes");
-        compostoCheckBox.setSelected(item.isEComposto());
+        CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
+        compostoCheck.setSelected(item.isEComposto());
 
-        // Layout do diálogo - área principal
+        // 4) Tabela de ingredientes
+        TableView<IngredientRowData> table = new TableView<>();
+        table.setPrefHeight(200);
+        TableColumn<IngredientRowData, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getId()).asObject());
+        idCol.setPrefWidth(40);
+        TableColumn<IngredientRowData, String> nameCol = new TableColumn<>("Nome");
+        nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
+        nameCol.setPrefWidth(120);
+        TableColumn<IngredientRowData, Integer> qtyCol = new TableColumn<>("Qtd");
+        qtyCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getQuantity()).asObject());
+        qtyCol.setPrefWidth(80);
+        qtyCol.setCellFactory(col -> new TableCell<IngredientRowData, Integer>() {
+            private final Spinner<Integer> spinner = new Spinner<>(1, 999, 1);
+            {
+                spinner.setEditable(true);
+                spinner.valueProperty().addListener((o, ov, nv) -> {
+                    if (getTableRow() != null && getTableRow().getItem() != null) {
+                        getTableRow().getItem().setQuantity(nv);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Integer itemValue, boolean empty) {
+                super.updateItem(itemValue, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    spinner.getValueFactory().setValue(itemValue);
+                    setGraphic(spinner);
+                }
+            }
+        });
+        TableColumn<IngredientRowData, Void> actCol = new TableColumn<>("Ações");
+        actCol.setCellFactory(col -> new TableCell<IngredientRowData, Void>() {
+            private final Button delBtn = new Button();
+            {
+                FontIcon icon = new FontIcon(MaterialDesign.MDI_DELETE);
+                icon.setIconColor(Color.RED);
+                delBtn.setGraphic(icon);
+                delBtn.getStyleClass().add("icon-button");
+                delBtn.setOnAction(e -> table.getItems().remove(getIndex()));
+            }
+
+            @Override
+            protected void updateItem(Void v, boolean empty) {
+                super.updateItem(v, empty);
+                setGraphic(empty ? null : delBtn);
+            }
+        });
+        table.getColumns().addAll(idCol, nameCol, qtyCol, actCol);
+
+        // 5) ComboBox para adicionar ingredientes
+        ComboBox<Ingredient> ingCombo = new ComboBox<>();
+        ingCombo.setCellFactory(lv -> new ListCell<Ingredient>() {
+            @Override
+            protected void updateItem(Ingredient i, boolean empty) {
+                super.updateItem(i, empty);
+                setText(empty || i == null ? null : i.getNome() + " (ID:" + i.getId() + ")");
+            }
+        });
+        ingCombo.setButtonCell(ingCombo.getCellFactory().call(null));
+        ingCombo.setPrefWidth(200);
+        Button addIngBtn = new Button("Adicionar");
+        addIngBtn.setDisable(true);
+        ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
+        addIngBtn.setOnAction(e -> {
+            Ingredient sel = ingCombo.getValue();
+            if (sel != null && table.getItems().stream().noneMatch(r -> r.getId() == sel.getId())) {
+                table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
+            }
+        });
+        Button loadBtn = new Button("Carregar Ingredientes");
+        loadBtn.setOnAction(e -> {
+            loadBtn.setDisable(true);
+            loadBtn.setText("Carregando...");
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
+                    .GET().build();
+            httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> {
+                        List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                        Platform.runLater(() -> {
+                            ingCombo.getItems().setAll(list);
+                            // pré-carrega os existentes do item
+                            if (item.getIngredientes() != null) {
+                                table.getItems().clear();
+                                for (Item.ItemIngrediente ii : item.getIngredientes()) {
+                                    String nome = list.stream()
+                                            .filter(x -> x.getId() == ii.getIngredienteId())
+                                            .map(Ingredient::getNome)
+                                            .findFirst()
+                                            .orElse("ID:" + ii.getIngredienteId());
+                                    table.getItems().add(
+                                            new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
+                                }
+                            }
+                            loadBtn.setText("Recarregar Ingredientes");
+                            loadBtn.setDisable(false);
+                        });
+                    })
+                    .exceptionally(ex -> {
+                        Platform.runLater(() -> {
+                            loadBtn.setText("Falha ao Carregar");
+                            loadBtn.setDisable(false);
+                        });
+                        return null;
+                    });
+        });
+
+        // 6) Botões Salvar e Cancelar
+        Button saveBtn = new Button("Salvar");
+        Button cancelBtn = new Button("Cancelar");
+        saveBtn.setDisable(true);
+
+        // 7) Validação geral
+        ChangeListener<Object> validator = (obs, o, n) -> {
+            boolean ok = !nameField.getText().trim().isEmpty()
+                    && tipoPratoCombo.getValue() != null
+                    && !precoField.getText().trim().isEmpty()
+                    && !stockField.getText().trim().isEmpty()
+                    && (!compostoCheck.isSelected() || !table.getItems().isEmpty());
+            saveBtn.setDisable(!ok);
+        };
+        nameField.textProperty().addListener(validator);
+        tipoPratoCombo.valueProperty().addListener(validator);
+        precoField.textProperty().addListener(validator);
+        stockField.textProperty().addListener(validator);
+        compostoCheck.selectedProperty().addListener((o, ov, nv) -> validator.changed(null, null, null));
+        table.getItems().addListener((ListChangeListener<IngredientRowData>) c -> validator.changed(null, null, null));
+
+        // 8) Layout principal
         GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-
-        // Adicionar campos ao grid
+        grid.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
         grid.add(new Label("Nome:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Tipo de Prato:"), 0, 1);
-        grid.add(tipoPratoComboBox, 1, 1);
+        grid.add(tipoPratoCombo, 1, 1);
         grid.add(new Label("Preço:"), 0, 2);
         grid.add(precoField, 1, 2);
         grid.add(new Label("Stock:"), 0, 3);
         grid.add(stockField, 1, 3);
-        grid.add(compostoCheckBox, 0, 4, 2, 1);
+        grid.add(compostoCheck, 0, 4, 2, 1);
 
-        // Área de ingredientes
-        TitledPane ingredientesPane = new TitledPane();
-        ingredientesPane.setText("Ingredientes");
-        ingredientesPane.setExpanded(item.isEComposto());
-        ingredientesPane.setDisable(!item.isEComposto());
+        HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
+        ingLoadBox.setPadding(new Insets(10, 20, 10, 20));
+        VBox ingVBox = new VBox(10, ingLoadBox, table);
 
-        VBox ingredientesBox = new VBox(10);
-        ingredientesBox.setPadding(new Insets(10));
+        VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, saveBtn, cancelBtn));
+        mainVBox.setPadding(new Insets(10));
+        popup.getContent().add(mainVBox);
 
-        // Tabela de ingredientes selecionados
-        TableView<IngredientRowData> ingredientsTable = new TableView<>();
-        ingredientsTable.setPrefHeight(200);
-
-        TableColumn<IngredientRowData, Integer> idColumn = new TableColumn<>("ID");
-        idColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getId()).asObject());
-        idColumn.setPrefWidth(50);
-
-        TableColumn<IngredientRowData, String> nameColumn = new TableColumn<>("Nome");
-        nameColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleStringProperty(cellData.getValue().getName()));
-        nameColumn.setPrefWidth(150);
-
-        TableColumn<IngredientRowData, Integer> quantityColumn = new TableColumn<>("Quantidade");
-        quantityColumn.setCellValueFactory(
-                cellData -> new javafx.beans.property.SimpleIntegerProperty(cellData.getValue().getQuantity())
-                        .asObject());
-        quantityColumn.setPrefWidth(100);
-        quantityColumn.setCellFactory(col -> {
-            return new TableCell<IngredientRowData, Integer>() {
-                private final Spinner<Integer> spinner = new Spinner<>(1, 999, 1);
-                {
-                    spinner.setEditable(true);
-                    spinner.valueProperty().addListener((obs, oldValue, newValue) -> {
-                        if (getTableRow() != null && getTableRow().getItem() != null) {
-                            ((IngredientRowData) getTableRow().getItem()).setQuantity(newValue);
-                        }
-                    });
-                }
-
-                @Override
-                protected void updateItem(Integer item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty) {
-                        setGraphic(null);
-                    } else {
-                        spinner.getValueFactory().setValue(item);
-                        setGraphic(spinner);
-                    }
-                }
-            };
-        });
-
-        TableColumn<IngredientRowData, Void> actionColumn = new TableColumn<>("Ações");
-        actionColumn.setCellFactory(col -> {
-            return new TableCell<IngredientRowData, Void>() {
-                private final Button deleteButton = new Button("");
-                {
-                    FontIcon deleteIcon = new FontIcon(MaterialDesign.MDI_DELETE);
-                    deleteIcon.setIconColor(Color.RED);
-                    deleteButton.setGraphic(deleteIcon);
-                    deleteButton.getStyleClass().add("icon-button");
-                    deleteButton.setOnAction(e -> {
-                        ingredientsTable.getItems().remove(getTableRow().getIndex());
-                    });
-                }
-
-                @Override
-                protected void updateItem(Void item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty) {
-                        setGraphic(null);
-                    } else {
-                        setGraphic(deleteButton);
-                    }
-                }
-            };
-        });
-
-        ingredientsTable.getColumns().addAll(idColumn, nameColumn, quantityColumn, actionColumn);
-
-        // Adicionar controles para selecionar ingredientes
-        HBox ingredientSelectionBox = new HBox(10);
-        ComboBox<Ingredient> ingredientComboBox = new ComboBox<>();
-        ingredientComboBox.setPrefWidth(250);
-        Button addIngredientButton = new Button("Adicionar");
-        addIngredientButton.setDisable(true);
-
-        // Configurar combobox para exibir nomes de ingredientes
-        ingredientComboBox.setCellFactory(lv -> new ListCell<Ingredient>() {
-            @Override
-            protected void updateItem(Ingredient item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getNome() + " (ID: " + item.getId() + ")");
+        // 9) Ações finais
+        cancelBtn.setOnAction(e -> popup.hide());
+        saveBtn.setOnAction(e -> {
+            String nome = nameField.getText().trim();
+            int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
+            double preco = Double.parseDouble(precoField.getText());
+            int stock = Integer.parseInt(stockField.getText());
+            boolean composto = compostoCheck.isSelected();
+            List<Item.ItemIngrediente> ingList = new ArrayList<>();
+            if (composto) {
+                for (IngredientRowData row : table.getItems()) {
+                    Item.ItemIngrediente ii = new Item.ItemIngrediente();
+                    ii.setIngredienteId(row.getId());
+                    ii.setQuantidade(row.getQuantity());
+                    ingList.add(ii);
                 }
             }
+            updateItem(item.getId(), nome, tipoId, preco, composto, stock, ingList);
+            popup.hide();
         });
 
-        ingredientComboBox.setButtonCell(new ListCell<Ingredient>() {
-            @Override
-            protected void updateItem(Ingredient item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(item.getNome() + " (ID: " + item.getId() + ")");
-                }
-            }
-        });
-
-        // Adicionar listener para habilitar o botão quando um ingrediente for
-        // selecionado
-        ingredientComboBox.getSelectionModel().selectedItemProperty().addListener(
-                (obs, oldVal, newVal) -> addIngredientButton.setDisable(newVal == null));
-
-        // Configurar botão para adicionar ingredientes à tabela
-        addIngredientButton.setOnAction(e -> {
-            Ingredient selected = ingredientComboBox.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                // Verificar se já existe na tabela
-                boolean exists = ingredientsTable.getItems().stream()
-                        .anyMatch(row -> row.getId() == selected.getId());
-
-                if (!exists) {
-                    ingredientsTable.getItems().add(
-                            new IngredientRowData(selected.getId(), selected.getNome(), 1));
-                } else {
-                    // Mostrar alerta de ingrediente já adicionado
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("Ingrediente Duplicado");
-                    alert.setHeaderText("Ingrediente já adicionado");
-                    alert.setContentText("Este ingrediente já foi adicionado à lista.");
-                    alert.showAndWait();
-                }
-            }
-        });
-
-        // Botão para carregar ingredientes
-        Button loadIngredientsButton = new Button("Carregar Lista de Ingredientes");
-        loadIngredientsButton.setPrefWidth(200);
-
-        // Configurar o botão para recarregar ingredientes quando clicado
-        loadIngredientsButton.setOnAction(e -> {
-            loadIngredientsButton.setDisable(true);
-            loadIngredientsButton.setText("Carregando...");
-
-            // Fazer requisição à API
-            HttpRequest getIngredientsReq = HttpRequest.newBuilder()
-                    .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
-                    .GET()
-                    .build();
-
-            httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
-
-                            Platform.runLater(() -> {
-                                ingredientComboBox.getItems().clear();
-                                ingredientComboBox.getItems().addAll(ingredients);
-                                loadIngredientsButton.setText("Recarregar Ingredientes");
-                                loadIngredientsButton.setDisable(false);
-                            });
-                        } else {
-                            Platform.runLater(() -> {
-                                loadIngredientsButton.setText("Falha ao Carregar");
-                                loadIngredientsButton.setDisable(false);
-
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Erro");
-                                alert.setHeaderText("Falha ao carregar ingredientes");
-                                alert.setContentText("Status code: " + resp.statusCode());
-                                alert.showAndWait();
-                            });
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        ex.printStackTrace();
-                        Platform.runLater(() -> {
-                            loadIngredientsButton.setText("Falha ao Carregar");
-                            loadIngredientsButton.setDisable(false);
-
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingredientes");
-                            alert.setContentText("Erro: " + ex.getMessage());
-                            alert.showAndWait();
-                        });
-                        return null;
-                    });
-        });
-
-        ingredientSelectionBox.getChildren().addAll(ingredientComboBox, addIngredientButton);
-        ingredientesBox.getChildren().addAll(loadIngredientsButton, ingredientSelectionBox, ingredientsTable);
-        ingredientesPane.setContent(ingredientesBox);
-
-        // Carregar a lista de ingredientes automaticamente quando o diálogo é aberto
-        Platform.runLater(() -> {
-            loadIngredientsButton.setDisable(true);
-            loadIngredientsButton.setText("Carregando...");
-
-            // Fazer requisição à API
-            HttpRequest getIngredientsReq = HttpRequest.newBuilder()
-                    .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
-                    .GET()
-                    .build();
-
-            httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
-                    .thenAccept(resp -> {
-                        if (resp.statusCode() == 200) {
-                            List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
-
-                            Platform.runLater(() -> {
-                                try {
-                                    // Primeiro, preencher o ComboBox com todos os ingredientes disponíveis
-                                    ingredientComboBox.getItems().clear();
-                                    ingredientComboBox.getItems().addAll(ingredients);
-
-                                    // Se o item sendo editado é composto e tem ingredientes, carregá-los na tabela
-                                    if (item.getIngredientes() != null
-                                            && !item.getIngredientes().isEmpty()) {
-                                        System.out.println("Carregando " + item.getIngredientes().size()
-                                                + " ingredientes para o item " + item.getNome());
-
-                                        // Converter os ingredientes do item para IngredientRowData
-                                        List<IngredientRowData> ingredientRows = new ArrayList<>();
-                                        for (Item.ItemIngrediente itemIng : item.getIngredientes()) {
-                                            int ingredientId = itemIng.getIngredienteId();
-                                            // Encontrar o nome do ingrediente
-                                            String nome = ingredients.stream()
-                                                    .filter(ing -> ing.getId() == ingredientId)
-                                                    .map(Ingredient::getNome)
-                                                    .findFirst()
-                                                    .orElse("Desconhecido (ID: " + ingredientId + ")");
-
-                                            System.out.println("Adicionando ingrediente: " + nome + " (ID: "
-                                                    + ingredientId + ") - Quantidade: " + itemIng.getQuantidade());
-
-                                            ingredientRows.add(new IngredientRowData(
-                                                    ingredientId,
-                                                    nome,
-                                                    itemIng.getQuantidade()));
-                                        }
-
-                                        // Limpar e adicionar todos os ingredientes do item à tabela
-                                        ingredientsTable.getItems().clear();
-                                        ingredientsTable.getItems().addAll(ingredientRows);
-                                    } else {
-                                        System.out.println("Item não possui ingredientes");
-                                    }
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                    System.err.println("Erro ao carregar ingredientes: " + e.getMessage());
-                                }
-
-                                loadIngredientsButton.setText("Recarregar Ingredientes");
-                                loadIngredientsButton.setDisable(false);
-                            });
-                        } else {
-                            Platform.runLater(() -> {
-                                loadIngredientsButton.setText("Falha ao Carregar");
-                                loadIngredientsButton.setDisable(false);
-
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Erro");
-                                alert.setHeaderText("Falha ao carregar ingredientes");
-                                alert.setContentText("Status code: " + resp.statusCode());
-                                alert.showAndWait();
-                            });
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        ex.printStackTrace();
-                        Platform.runLater(() -> {
-                            loadIngredientsButton.setText("Falha ao Carregar");
-                            loadIngredientsButton.setDisable(false);
-
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingredientes");
-                            alert.setContentText("Erro: " + ex.getMessage());
-                            alert.showAndWait();
-                        });
-                        return null;
-                    });
-        });
-
-        // Adicionar tudo em um container principal
-        VBox mainContainer = new VBox(20);
-        mainContainer.getChildren().addAll(grid, ingredientesPane);
-        dialog.getDialogPane().setContent(mainContainer);
-
-        // Ativar/desativar o painel de ingredientes com base no checkbox
-        compostoCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            ingredientesPane.setDisable(!newVal);
-            ingredientesPane.setExpanded(newVal);
-        });
-
-        ingredientesPane.setDisable(false);
-        ingredientesPane.setExpanded(true);
-
-        // Configurar validação de campos
-        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.setDisable(false);
-
-        // Validador para verificar se todos os campos obrigatórios estão preenchidos
-        Runnable validateFields = () -> {
-            boolean valid = !nameField.getText().trim().isEmpty() &&
-                    tipoPratoComboBox.getValue() != null &&
-                    !precoField.getText().trim().isEmpty() &&
-                    isNumeric(precoField.getText().trim()) &&
-                    !stockField.getText().trim().isEmpty() &&
-                    isNumeric(stockField.getText().trim()) &&
-                    (!compostoCheckBox.isSelected() ||
-                            (compostoCheckBox.isSelected() && !ingredientsTable.getItems().isEmpty()));
-
-            saveButton.setDisable(!valid);
-        };
-
-        // Adicionar listeners para todos os campos
-        nameField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        tipoPratoComboBox.valueProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        precoField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        stockField.textProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        compostoCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> validateFields.run());
-        ingredientsTable.getItems().addListener((javafx.collections.ListChangeListener<IngredientRowData>) change -> {
-            validateFields.run();
-        });
-
-        // Verificar os campos inicialmente
-        validateFields.run();
-
-        // Processar o resultado quando o botão Salvar for clicado
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                try {
-                    // Validar e converter valores
-                    String nome = nameField.getText().trim();
-                    int tipoPratoId = tipoPratoComboBox.getSelectionModel().getSelectedIndex() + 1;
-                    double preco = Double.parseDouble(precoField.getText().trim().replace(',', '.'));
-                    int stock = Integer.parseInt(stockField.getText().trim());
-                    boolean composto = compostoCheckBox.isSelected();
-
-                    // Criar a lista de ingredientes
-                    List<Item.ItemIngrediente> ingredientes = new ArrayList<>();
-                    if (composto) {
-                        // Serializar ingredientes
-                        for (IngredientRowData row : ingredientsTable.getItems()) {
-                            Item.ItemIngrediente ingrediente = new Item.ItemIngrediente();
-                            ingrediente.setIngredienteId(row.getId());
-                            ingrediente.setQuantidade(row.getQuantity());
-                            ingredientes.add(ingrediente);
-                        }
-                    }
-
-                    // Atualizar o item na API
-                    updateItem(item.getId(), nome, tipoPratoId, preco, composto, stock, ingredientes);
-
-                    return null;
-                } catch (NumberFormatException e) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Erro de Validação");
-                    alert.setHeaderText("Valores Inválidos");
-                    alert.setContentText("Por favor, verifique os campos numéricos (preço e stock).");
-                    alert.showAndWait();
-                    return null;
-                }
-            }
-            return null;
-        });
-
-        // Definir o tamanho do diálogo
-        dialog.getDialogPane().setPrefWidth(500);
-        dialog.getDialogPane().setPrefHeight(600);
-
-        // Mostrar o diálogo e esperar pelo resultado
-        dialog.showAndWait();
+        // 10) Mostra o popup centrado
+        popup.show(primary, centerX - 300, centerY - 350);
     }
 
     /**
@@ -1251,10 +932,11 @@ public class ItemView {
             jsonBuilder.append("\"composto\":").append(composto).append(",");
             jsonBuilder.append("\"stockAtual\":").append(stock);
 
-            // Adicionar ingredientes se o item for composto
-            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
-                jsonBuilder.append(",\"ingredientes\":[");
+            // Adicionar ingredientes (sempre incluir o campo, mesmo que vazio)
+            jsonBuilder.append(",\"ingredientes\":[");
 
+            // Se for composto e tiver ingredientes, adicionar cada um
+            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
                 for (int i = 0; i < ingredientes.size(); i++) {
                     Item.ItemIngrediente ingrediente = ingredientes.get(i);
                     jsonBuilder.append("{");
@@ -1266,9 +948,9 @@ public class ItemView {
                         jsonBuilder.append(",");
                     }
                 }
-
-                jsonBuilder.append("]");
             }
+
+            jsonBuilder.append("]");
 
             jsonBuilder.append("}");
             String jsonBody = jsonBuilder.toString();
@@ -1279,7 +961,7 @@ public class ItemView {
             HttpRequest updateItemReq = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/item/edit?id=" + id)))
                     .header("Content-Type", "application/json")
-                    .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             // Enviar a requisição de forma assíncrona
