@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -161,6 +162,7 @@ public class PedidosView {
         // Verificar se a view está ativa antes de iniciar a atualização
         if (!isViewActive) {
             System.out.println("View de pedidos não está ativa, ignorando atualização automática");
+            stopAutoUpdateTimer(); // Garantir que o timer seja parado se a view não está ativa
             return;
         }
 
@@ -181,10 +183,46 @@ public class PedidosView {
                 })
                 .thenAccept(pedidos -> {
                     if (!isViewActive) {
-                        return; // Se a view não está mais ativa, não atualize a UI
+                        stopAutoUpdateTimer(); // Parar o timer se a view não está ativa
+                        return;
                     }
                     if (!pedidos.isEmpty()) {
-                        Platform.runLater(() -> displayPedidosAsCards(pedidos));
+                        Platform.runLater(() -> {
+                            // Preservar a posição de rolagem atual antes da atualização
+                            double scrollPosition = 0;
+                            for (Node node : contentArea.getChildren()) {
+                                if (node instanceof VBox) {
+                                    VBox mainLayout = (VBox) node;
+                                    for (Node child : mainLayout.getChildren()) {
+                                        if (child instanceof ScrollPane) {
+                                            scrollPosition = ((ScrollPane) child).getVvalue();
+                                            break;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+
+                            // Atualizar os cards sem rolar para o topo
+                            displayPedidosAsCards(pedidos);
+
+                            // Restaurar a posição de rolagem após a atualização
+                            final double finalScrollPos = scrollPosition;
+                            Platform.runLater(() -> {
+                                for (Node node : contentArea.getChildren()) {
+                                    if (node instanceof VBox) {
+                                        VBox mainLayout = (VBox) node;
+                                        for (Node child : mainLayout.getChildren()) {
+                                            if (child instanceof ScrollPane) {
+                                                ((ScrollPane) child).setVvalue(finalScrollPos);
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            });
+                        });
                     }
                 })
                 .exceptionally(e -> {
@@ -233,8 +271,8 @@ public class PedidosView {
             noPedidosText.getStyleClass().add("welcome-text");
             pedidosContainer.getChildren().add(noPedidosText);
         } else {
-            // Ordenar os pedidos por ID
-            pedidos.sort(Comparator.comparing(Pedido::getId));
+            // Ordenar os pedidos por ID em ordem decrescente (mais novos primeiro)
+            pedidos.sort(Comparator.comparing(Pedido::getId).reversed());
 
             // Adicione cada pedido como um card
             for (Pedido pedido : pedidos) {
@@ -560,6 +598,5 @@ public class PedidosView {
         isViewActive = false;
         stopAutoUpdateTimer();
         System.out.println("Limpeza de recursos da view de pedidos");
-
     }
 }

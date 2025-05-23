@@ -235,13 +235,15 @@ public class Main extends Application {
     private void showPlaceholder(String section) {
         System.out.println("Navegou para: " + section);
 
-        // Desativar a atualização automática das views quando sair da tela
+        // Desativar a atualização automática de todas as views quando sair da tela
         if (mesasView != null) {
             mesasView.dispose();
         }
         if (pedidosView != null) {
             pedidosView.dispose();
         }
+        // Adicione outros dispose() aqui se outras views tiverem recursos a serem
+        // liberados
 
         // Clear content area
         contentArea.getChildren().clear();
@@ -256,8 +258,8 @@ public class Main extends Application {
      * Show the employees view with cards for each employee
      */
     private void showEmployeesView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         employeeView.show();
     }
 
@@ -265,8 +267,8 @@ public class Main extends Application {
      * Show the ingredients view with cards for each ingredient
      */
     private void showIngredientsView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         ingredientsView.show();
     }
 
@@ -274,8 +276,8 @@ public class Main extends Application {
      * Show the items view with cards for each menu item
      */
     private void showItemView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         itemView.show();
     }
 
@@ -283,8 +285,8 @@ public class Main extends Application {
      * Show the menu view with cards for each menu
      */
     private void showMenuView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         menuView.show();
     }
 
@@ -292,6 +294,8 @@ public class Main extends Application {
      * Show the mesas view with tables and their status
      */
     private void showMesasView() {
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         mesasView.show();
     }
 
@@ -299,8 +303,8 @@ public class Main extends Application {
      * Show the pedidos view with orders and their details
      */
     private void showPedidosView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         pedidosView.show();
     }
 
@@ -308,24 +312,14 @@ public class Main extends Application {
      * Show the QR Codes view to generate QR codes for tables
      */
     private void showQRCodesView() {
-        // Desativar a atualização automática das mesas quando sair da tela
-        mesasView.dispose();
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
         qrCodesView.show();
     }
 
     private void logout() {
         // Desativar todas as atualizações automáticas antes do logout
-        if (mesasView != null) {
-            mesasView.dispose();
-        }
-
-        if (pedidosView != null) {
-            pedidosView.dispose();
-        }
-
-        if (qrCodesView != null) {
-            qrCodesView.dispose();
-        }
+        disposeAllViews();
 
         HttpRequest loginReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/auth/logout")))
@@ -344,6 +338,27 @@ public class Main extends Application {
 
         cookieManager.getCookieStore().removeAll();
         start(primaryStage);
+    }
+
+    /**
+     * Desativa todas as views para liberar recursos antes de mostrar uma nova view
+     */
+    private void disposeAllViews() {
+        System.out.println("Desativando todas as views ativas");
+
+        if (mesasView != null) {
+            mesasView.dispose();
+        }
+
+        if (pedidosView != null) {
+            pedidosView.dispose();
+        }
+
+        if (qrCodesView != null) {
+            qrCodesView.dispose();
+        }
+
+        // Adicione outras views aqui se elas tiverem um método dispose()
     }
 
     public static void main(String[] args) {
