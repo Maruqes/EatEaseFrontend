@@ -211,3 +211,64 @@
 .table-row-cell:selected {
     -fx-background-color: #bbdefb;
 }
+
+/* Icon button styling */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.icon-button:hover {
+    -fx-background-color: #f0f0f0;
+}
+
+.icon-button:pressed {
+    -fx-background-color: #dadada;
+}
+
+/* Mesa view styles */
+.green-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.green-button:hover {
+    -fx-background-color: #45a049;
+}
+
+.green-button:pressed {
+    -fx-background-color: #388e3c;
+}
+
+.green-button:disabled {
+    -fx-background-color: #c8e6c9;
+    -fx-text-fill: #a5d6a7;
+}
+
+.red-button {
+    -fx-background-color: #F44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.red-button:hover {
+    -fx-background-color: #e53935;
+}
+
+.red-button:pressed {
+    -fx-background-color: #d32f2f;
+}
+
+.red-button:disabled {
+    -fx-background-color: #ffcdd2;
+    -fx-text-fill: #ef9a9a;
+}

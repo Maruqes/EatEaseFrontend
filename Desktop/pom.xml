@@ -34,6 +34,11 @@
             <artifactId>ikonli-materialdesign-pack</artifactId>
             <version>${ikonli.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.19.0</version> <!-- versão estável actual, Maio 2025 -->
+        </dependency>
     </dependencies>
 
     <build>

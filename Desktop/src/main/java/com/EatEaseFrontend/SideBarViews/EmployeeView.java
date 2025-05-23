@@ -12,6 +12,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.materialdesign.MaterialDesign;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -189,8 +191,34 @@ public class EmployeeView {
 
         roleBox.getChildren().add(roleLabel);
 
+        // Create buttons container
+        HBox buttonsBox = new HBox(10);
+        buttonsBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonsBox.setPadding(new Insets(10, 0, 0, 0));
+
+        // Edit button
+        Button editButton = new Button("");
+        editButton.setTooltip(new Tooltip("Editar"));
+        FontIcon editIcon = new FontIcon(MaterialDesign.MDI_PENCIL);
+        editIcon.setIconColor(Color.BLUE);
+        editButton.setGraphic(editIcon);
+        editButton.getStyleClass().add("icon-button");
+        editButton.setOnAction(e -> System.out.println("Em Desenvolvimento"));
+
+        // Delete button
+        Button deleteButton = new Button("");
+        deleteButton.setTooltip(new Tooltip("Excluir"));
+        FontIcon deleteIcon = new FontIcon(MaterialDesign.MDI_DELETE);
+        deleteIcon.setIconColor(Color.RED);
+        deleteButton.setGraphic(deleteIcon);
+        deleteButton.getStyleClass().add("icon-button");
+        deleteButton.setOnAction(e -> System.out.println("Em Desenvolvimento"));
+        
+        // Add buttons to container
+        buttonsBox.getChildren().addAll(editButton, deleteButton);
+
         // Add all elements to card
-        card.getChildren().addAll(nameLabel, usernameLabel, emailLabel, phoneLabel, roleBox);
+        card.getChildren().addAll(nameLabel, usernameLabel, emailLabel, phoneLabel, roleBox, buttonsBox);
 
         return card;
     }

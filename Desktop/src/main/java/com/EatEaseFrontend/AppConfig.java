@@ -13,7 +13,7 @@ public class AppConfig {
     private static final String CONFIG_FILE = "/config.properties";
 
     // Default values in case the config file is not found
-    private static final String DEFAULT_API_BASE_URL = "http://localhost:8080";
+    private static final String DEFAULT_API_BASE_URL = "https://p2.maruqes.com:10513";
 
     static {
         loadConfig();

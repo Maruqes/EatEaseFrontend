@@ -2,6 +2,11 @@ package com.EatEaseFrontend;
 
 import com.EatEaseFrontend.SideBarViews.EmployeeView;
 import com.EatEaseFrontend.SideBarViews.IngredientsView;
+import com.EatEaseFrontend.SideBarViews.ItemView;
+import com.EatEaseFrontend.SideBarViews.MenuView;
+import com.EatEaseFrontend.SideBarViews.MesasView;
+import com.EatEaseFrontend.SideBarViews.PedidosView;
+import com.EatEaseFrontend.SideBarViews.QRCodesView;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -10,8 +15,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -40,6 +43,11 @@ public class Main extends Application {
     // Views
     private EmployeeView employeeView;
     private IngredientsView ingredientsView;
+    private ItemView itemView;
+    private MenuView menuView;
+    private MesasView mesasView;
+    private PedidosView pedidosView;
+    private QRCodesView qrCodesView;
 
     @Override
     public void start(Stage stage) {
@@ -50,12 +58,12 @@ public class Main extends Application {
     }
 
     private void fazerLoginEListarFuncionarios(String username, String password) {
-        String form = "username=" + username + "&password=" + password;
+        String jsonBody = "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}";
 
         HttpRequest loginReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/auth/login")))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
         http.sendAsync(loginReq, HttpResponse.BodyHandlers.ofString())
@@ -115,6 +123,11 @@ public class Main extends Application {
         // Inicializar views
         employeeView = new EmployeeView(contentArea, http);
         ingredientsView = new IngredientsView(contentArea, http);
+        itemView = new ItemView(contentArea, http);
+        menuView = new MenuView(contentArea, http);
+        mesasView = new MesasView(contentArea, http);
+        pedidosView = new PedidosView(contentArea, http);
+        qrCodesView = new QRCodesView(contentArea, http);
 
         // Set scene and show
         Scene dashboardScene = new Scene(root, 1024, 768);
@@ -163,6 +176,7 @@ public class Main extends Application {
         Button itemBtn = createMenuButton("Item", MaterialDesign.MDI_FOOD_VARIANT);
         Button ordersBtn = createMenuButton("Pedidos", MaterialDesign.MDI_RECEIPT);
         Button tablesBtn = createMenuButton("Mesas", MaterialDesign.MDI_TABLE);
+        Button qrCodesBtn = createMenuButton("QR Codes", MaterialDesign.MDI_QRCODE);
         Button workersBtn = createMenuButton("Funcionários", MaterialDesign.MDI_ACCOUNT_MULTIPLE);
         Button reportsBtn = createMenuButton("Relatórios", MaterialDesign.MDI_CHART_BAR);
         Button settingsBtn = createMenuButton("Configurações", MaterialDesign.MDI_SETTINGS);
@@ -170,6 +184,11 @@ public class Main extends Application {
         // Update actions for menu items
         workersBtn.setOnAction(e -> showEmployeesView());
         ingredientesBtn.setOnAction(e -> showIngredientsView());
+        itemBtn.setOnAction(e -> showItemView());
+        menusBtn.setOnAction(e -> showMenuView());
+        tablesBtn.setOnAction(e -> showMesasView());
+        ordersBtn.setOnAction(e -> showPedidosView());
+        qrCodesBtn.setOnAction(e -> showQRCodesView());
 
         // Add menu items to sidebar
         sidebar.getChildren().addAll(
@@ -180,6 +199,7 @@ public class Main extends Application {
                 itemBtn,
                 ordersBtn,
                 tablesBtn,
+                qrCodesBtn,
                 workersBtn,
                 reportsBtn,
                 settingsBtn);
@@ -214,6 +234,15 @@ public class Main extends Application {
 
     private void showPlaceholder(String section) {
         System.out.println("Navegou para: " + section);
+
+        // Desativar a atualização automática das views quando sair da tela
+        if (mesasView != null) {
+            mesasView.dispose();
+        }
+        if (pedidosView != null) {
+            pedidosView.dispose();
+        }
+
         // Clear content area
         contentArea.getChildren().clear();
 
@@ -227,6 +256,8 @@ public class Main extends Application {
      * Show the employees view with cards for each employee
      */
     private void showEmployeesView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
         employeeView.show();
     }
 
@@ -234,10 +265,68 @@ public class Main extends Application {
      * Show the ingredients view with cards for each ingredient
      */
     private void showIngredientsView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
         ingredientsView.show();
     }
 
+    /**
+     * Show the items view with cards for each menu item
+     */
+    private void showItemView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
+        itemView.show();
+    }
+
+    /**
+     * Show the menu view with cards for each menu
+     */
+    private void showMenuView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
+        menuView.show();
+    }
+
+    /**
+     * Show the mesas view with tables and their status
+     */
+    private void showMesasView() {
+        mesasView.show();
+    }
+
+    /**
+     * Show the pedidos view with orders and their details
+     */
+    private void showPedidosView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
+        pedidosView.show();
+    }
+
+    /**
+     * Show the QR Codes view to generate QR codes for tables
+     */
+    private void showQRCodesView() {
+        // Desativar a atualização automática das mesas quando sair da tela
+        mesasView.dispose();
+        qrCodesView.show();
+    }
+
     private void logout() {
+        // Desativar todas as atualizações automáticas antes do logout
+        if (mesasView != null) {
+            mesasView.dispose();
+        }
+
+        if (pedidosView != null) {
+            pedidosView.dispose();
+        }
+
+        if (qrCodesView != null) {
+            qrCodesView.dispose();
+        }
+
         HttpRequest loginReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/auth/logout")))
                 .header("Content-Type", "application/x-www-form-urlencoded")
