@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * View para gerenciar e exibir itens do menu
@@ -177,8 +176,9 @@ public class ItemView {
         VBox card = new VBox(10);
         card.getStyleClass().add("dashboard-card");
         card.setPrefWidth(300);
-        // Aumentamos a altura para acomodar a área maior de exibição de ingredientes
-        card.setPrefHeight(340);
+        // Aumentamos a altura para acomodar os ingredientes que agora são exibidos por
+        // padrão
+        card.setPrefHeight(280);
         card.setPadding(new Insets(15));
 
         // Item name as card title

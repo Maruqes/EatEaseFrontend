@@ -2,7 +2,6 @@ package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Item;
-import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.Pedido;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +26,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 
