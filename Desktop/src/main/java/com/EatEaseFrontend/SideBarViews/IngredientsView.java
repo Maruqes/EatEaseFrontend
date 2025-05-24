@@ -1,7 +1,6 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
-import com.EatEaseFrontend.DialogHelper;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
@@ -10,18 +9,14 @@ import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import javafx.stage.Modality;
 import javafx.stage.Popup;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
@@ -34,7 +29,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * View para gerenciar e exibir ingredientes
@@ -43,6 +38,8 @@ public class IngredientsView {
 
     private final StackPane contentArea;
     private final HttpClient httpClient;
+    private List<Ingredient> allIngredients; // Store all ingredients for filtering
+    private TextField searchField; // Search field reference
 
     // Map to store unit IDs and their corresponding names
     private static final Map<Integer, String> UNIDADE_MAP = new HashMap<>();
@@ -123,6 +120,7 @@ public class IngredientsView {
                     if (resp.statusCode() == 200) {
                         System.out.println("Ingredientes -> " + resp.body());
                         List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
+                        allIngredients = ingredients; // Store all ingredients
 
                         Platform.runLater(() -> {
                             displayIngredientsAsCards(ingredients);
@@ -172,6 +170,23 @@ public class IngredientsView {
         headerLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
         headerBox.getChildren().add(headerLabel);
 
+        // Create search bar
+        HBox searchBox = new HBox(10);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 20, 0));
+
+        searchField = new TextField();
+        searchField.setPromptText("Pesquisar ingredientes...");
+        searchField.setPrefWidth(300);
+        searchField.setMaxWidth(300);
+
+        // Add search functionality
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterIngredients(newValue);
+        });
+
+        searchBox.getChildren().add(searchField);
+
         // Adicionar botão "Adicionar"
         Button addButton = new Button("Adicionar");
         addButton.setGraphic(new FontIcon(MaterialDesign.MDI_PLUS));
@@ -183,7 +198,7 @@ public class IngredientsView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         headerBox.getChildren().addAll(spacer, addButton);
 
-        contentBox.getChildren().add(headerBox);
+        contentBox.getChildren().addAll(headerBox, searchBox);
 
         // Add ingredient cards
         if (ingredients.isEmpty()) {
@@ -200,6 +215,68 @@ public class IngredientsView {
 
         scrollPane.setContent(contentBox);
         contentArea.getChildren().add(scrollPane);
+    }
+
+    /**
+     * Filters the ingredients based on the search query
+     * 
+     * @param searchQuery The text to search for in ingredient names
+     */
+    private void filterIngredients(String searchQuery) {
+        if (allIngredients == null) {
+            return;
+        }
+
+        List<Ingredient> filteredIngredients;
+
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            // Show all ingredients if search is empty
+            filteredIngredients = allIngredients;
+        } else {
+            // Filter ingredients that contain the search query (case insensitive)
+            String lowerCaseQuery = searchQuery.toLowerCase().trim();
+            filteredIngredients = allIngredients.stream()
+                    .filter(ingredient -> ingredient.getNome().toLowerCase().contains(lowerCaseQuery))
+                    .collect(Collectors.toList());
+        }
+
+        // Update the display with filtered ingredients
+        displayFilteredIngredients(filteredIngredients);
+    }
+
+    /**
+     * Displays the filtered ingredients without affecting the search bar
+     * 
+     * @param ingredients List of filtered ingredients to display
+     */
+    private void displayFilteredIngredients(List<Ingredient> ingredients) {
+        // Find the content box and update only the ingredient cards part
+        ScrollPane scrollPane = (ScrollPane) contentArea.getChildren().get(0);
+        VBox contentBox = (VBox) scrollPane.getContent();
+
+        // Remove existing ingredient cards (keep header and search bar)
+        if (contentBox.getChildren().size() > 2) {
+            contentBox.getChildren().remove(2, contentBox.getChildren().size());
+        }
+
+        // Create new FlowPane for ingredient cards
+        FlowPane ingredientCards = new FlowPane();
+        ingredientCards.setHgap(20);
+        ingredientCards.setVgap(20);
+        ingredientCards.setPadding(new Insets(20));
+
+        // Add ingredient cards
+        if (ingredients.isEmpty()) {
+            Label noIngredientsLabel = new Label("Nenhum ingrediente encontrado");
+            noIngredientsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
+            contentBox.getChildren().add(noIngredientsLabel);
+        } else {
+            for (Ingredient ingredient : ingredients) {
+                VBox card = createIngredientCard(ingredient);
+                ingredientCards.getChildren().add(card);
+            }
+            contentBox.getChildren().add(ingredientCards);
+        }
     }
 
     /**
@@ -413,7 +490,13 @@ public class IngredientsView {
                         System.out.println("Ingrediente criado com sucesso: " + resp.body());
 
                         // Recarregar a lista de ingredientes
-                        Platform.runLater(this::show);
+                        Platform.runLater(() -> {
+                            show(); // Reload all ingredients
+                            // Clear search field to show all ingredients
+                            if (searchField != null) {
+                                searchField.clear();
+                            }
+                        });
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
@@ -568,7 +651,13 @@ public class IngredientsView {
                         System.out.println("Ingrediente atualizado com sucesso: " + resp.body());
 
                         // Recarregar a lista de ingredientes
-                        Platform.runLater(this::show);
+                        Platform.runLater(() -> {
+                            show(); // Reload all ingredients
+                            // Clear search field to show all ingredients
+                            if (searchField != null) {
+                                searchField.clear();
+                            }
+                        });
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
@@ -680,7 +769,13 @@ public class IngredientsView {
                         System.out.println("Ingrediente excluído com sucesso: " + resp.body());
 
                         // Recarregar a lista de ingredientes
-                        Platform.runLater(this::show);
+                        Platform.runLater(() -> {
+                            show(); // Reload all ingredients
+                            // Clear search field to show all ingredients
+                            if (searchField != null) {
+                                searchField.clear();
+                            }
+                        });
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {

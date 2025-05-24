@@ -305,6 +305,59 @@ public class PedidosView {
     }
 
     /**
+     * Busca o número da mesa pelo ID
+     * 
+     * @param mesaId ID da mesa
+     * @return Número da mesa ou "N/A" se não encontrado
+     */
+    private String getMesaNumberById(int mesaId) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getMesaNumberById?mesaId=" + mesaId)))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 200) {
+                return resp.body().trim();
+            } else {
+                System.err.println("Erro ao buscar número da mesa " + mesaId + ": " + resp.statusCode());
+                return "N/A";
+            }
+        } catch (Exception e) {
+            System.err.println("Exceção ao buscar número da mesa " + mesaId + ": " + e.getMessage());
+            return "N/A";
+        }
+    }
+
+    /**
+     * Busca o nome do funcionário pelo ID
+     * 
+     * @param funcionarioId ID do funcionário
+     * @return Nome do funcionário ou "N/A" se não encontrado
+     */
+    private String getFuncionarioNameById(int funcionarioId) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(
+                            AppConfig.getApiEndpoint("/auth/getFuncionarioNameById?funcionarioId=" + funcionarioId)))
+                    .GET()
+                    .build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 200) {
+                return resp.body().trim();
+            } else {
+                System.err.println("Erro ao buscar nome do funcionário " + funcionarioId + ": " + resp.statusCode());
+                return "N/A";
+            }
+        } catch (Exception e) {
+            System.err.println("Exceção ao buscar nome do funcionário " + funcionarioId + ": " + e.getMessage());
+            return "N/A";
+        }
+    }
+
+    /**
      * Atualiza o estado de um pedido
      * 
      * @param pedidoId       ID do pedido a atualizar
@@ -387,10 +440,12 @@ public class PedidosView {
 
         // Adicionar informações ao grid
         infoGrid.add(new Label("Mesa:"), 0, 0);
-        infoGrid.add(new Label("#" + pedido.getMesa_id()), 1, 0);
+        String numeroMesa = getMesaNumberById(pedido.getMesa_id());
+        infoGrid.add(new Label(numeroMesa), 1, 0);
 
         infoGrid.add(new Label("Funcionário:"), 0, 1);
-        infoGrid.add(new Label("#" + pedido.getFuncionario_id()), 1, 1);
+        String nomeFuncionario = getFuncionarioNameById(pedido.getFuncionario_id());
+        infoGrid.add(new Label(nomeFuncionario), 1, 1);
 
         // Estado do pedido com badge colorida
         HBox estadoBox = new HBox(10);

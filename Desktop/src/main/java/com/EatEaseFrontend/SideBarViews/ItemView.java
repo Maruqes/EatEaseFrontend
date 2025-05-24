@@ -6,6 +6,8 @@ import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -43,6 +45,8 @@ public class ItemView {
     private final StackPane contentArea;
     private final HttpClient httpClient;
     private final NumberFormat currencyFormatter;
+    private List<Item> allItems; // Store all items for filtering
+    private TextField searchField; // Search field reference
 
     /**
      * Construtor da view de itens
@@ -94,6 +98,7 @@ public class ItemView {
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
+                        allItems = items; // Store all items for filtering
                         List<Item> finalItems = items;
                         Platform.runLater(() -> {
                             displayItemsAsCards(finalItems);
@@ -144,6 +149,23 @@ public class ItemView {
         headerLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
         headerBox.getChildren().add(headerLabel);
 
+        // Create search bar
+        HBox searchBox = new HBox(10);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 20, 0));
+
+        searchField = new TextField();
+        searchField.setPromptText("Pesquisar itens...");
+        searchField.setPrefWidth(300);
+        searchField.setMaxWidth(300);
+
+        // Add search functionality
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterItems(newValue);
+        });
+
+        searchBox.getChildren().add(searchField);
+
         // Adicionar botão "Adicionar"
         Button addButton = new Button("Adicionar");
         addButton.setGraphic(new FontIcon(MaterialDesign.MDI_PLUS));
@@ -155,7 +177,7 @@ public class ItemView {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         headerBox.getChildren().addAll(spacer, addButton);
 
-        contentBox.getChildren().add(headerBox);
+        contentBox.getChildren().addAll(headerBox, searchBox);
 
         // Add item cards
         if (items.isEmpty()) {
@@ -172,6 +194,68 @@ public class ItemView {
 
         scrollPane.setContent(contentBox);
         contentArea.getChildren().add(scrollPane);
+    }
+
+    /**
+     * Filters the items based on the search query
+     * 
+     * @param searchQuery The text to search for in item names
+     */
+    private void filterItems(String searchQuery) {
+        if (allItems == null) {
+            return;
+        }
+
+        List<Item> filteredItems;
+
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            // Show all items if search is empty
+            filteredItems = allItems;
+        } else {
+            // Filter items that contain the search query (case insensitive)
+            String lowerCaseQuery = searchQuery.toLowerCase().trim();
+            filteredItems = allItems.stream()
+                    .filter(item -> item.getNome().toLowerCase().contains(lowerCaseQuery))
+                    .collect(Collectors.toList());
+        }
+
+        // Update the display with filtered items
+        displayFilteredItems(filteredItems);
+    }
+
+    /**
+     * Displays the filtered items without affecting the search bar
+     * 
+     * @param items List of filtered items to display
+     */
+    private void displayFilteredItems(List<Item> items) {
+        // Find the content box and update only the item cards part
+        ScrollPane scrollPane = (ScrollPane) contentArea.getChildren().get(0);
+        VBox contentBox = (VBox) scrollPane.getContent();
+
+        // Remove existing item cards (keep header and search bar)
+        if (contentBox.getChildren().size() > 2) {
+            contentBox.getChildren().remove(2, contentBox.getChildren().size());
+        }
+
+        // Create new FlowPane for item cards
+        FlowPane itemCards = new FlowPane();
+        itemCards.setHgap(20);
+        itemCards.setVgap(20);
+        itemCards.setPadding(new Insets(20));
+
+        // Add item cards
+        if (items.isEmpty()) {
+            Label noItemsLabel = new Label("Nenhum item encontrado");
+            noItemsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
+            contentBox.getChildren().add(noItemsLabel);
+        } else {
+            for (Item item : items) {
+                VBox card = createItemCard(item);
+                itemCards.getChildren().add(card);
+            }
+            contentBox.getChildren().add(itemCards);
+        }
     }
 
     /**
@@ -407,6 +491,15 @@ public class ItemView {
         });
         ingCombo.setButtonCell(ingCombo.getCellFactory().call(null));
         ingCombo.setPrefWidth(200);
+
+        // Campo de busca para filtrar ingredientes
+        TextField searchField = new TextField();
+        searchField.setPromptText("Buscar ingrediente...");
+        searchField.setPrefWidth(150);
+
+        // Lista original de ingredientes para usar com o filtro
+        List<Ingredient> originalList = new ArrayList<>();
+
         Button addIngBtn = new Button("Adicionar");
         addIngBtn.setDisable(true);
         ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
@@ -416,7 +509,23 @@ public class ItemView {
                 table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
             }
         });
-        Button loadBtn = new Button("Recarregar Ingredientes");
+        Button loadBtn = new Button("Recarregar");
+
+        // Campo de busca para filtrar ingredientes
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) {
+                // Se a busca estiver vazia, mostrar todos os ingredientes
+                ingCombo.getItems().setAll(originalList);
+            } else {
+                // Filtrar ingredientes que contêm o texto da busca (ignorando
+                // maiúsculas/minúsculas)
+                String searchLower = newValue.toLowerCase();
+                List<Ingredient> filtered = originalList.stream()
+                        .filter(ing -> ing.getNome().toLowerCase().contains(searchLower))
+                        .collect(Collectors.toList());
+                ingCombo.getItems().setAll(filtered);
+            }
+        });
 
         // Carrega ingredientes automaticamente ao abrir o diálogo
         loadBtn.setDisable(true);
@@ -427,9 +536,14 @@ public class ItemView {
         httpClient.sendAsync(req, BodyHandlers.ofString())
                 .thenAccept(resp -> {
                     List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                    // Ordenar os ingredientes por nome em ordem alfabética
+                    list.sort(Comparator.comparing(Ingredient::getNome));
+
                     Platform.runLater(() -> {
+                        originalList.clear();
+                        originalList.addAll(list); // Salvar lista original para filtro
                         ingCombo.getItems().setAll(list);
-                        loadBtn.setText("Recarregar Ingredientes");
+                        loadBtn.setText("Recarregar");
                         loadBtn.setDisable(false);
                     });
                 })
@@ -451,9 +565,14 @@ public class ItemView {
             httpClient.sendAsync(reqReload, BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                        // Ordenar os ingredientes por nome em ordem alfabética
+                        list.sort(Comparator.comparing(Ingredient::getNome));
+
                         Platform.runLater(() -> {
+                            originalList.clear();
+                            originalList.addAll(list); // Atualizar lista original para filtro
                             ingCombo.getItems().setAll(list);
-                            loadBtn.setText("Recarregar Ingredientes");
+                            loadBtn.setText("Recarregar");
                             loadBtn.setDisable(false);
                         });
                     })
@@ -510,9 +629,21 @@ public class ItemView {
         grid.add(new Label("Stock:"), 0, 3);
         grid.add(stockField, 1, 3);
         grid.add(compostoCheck, 0, 4, 2, 1);
+
+        // Layout para pesquisa e seleção de ingredientes
+        HBox searchBox = new HBox(10, new Label("Buscar:"), searchField);
+        searchBox.setPadding(new Insets(0, 0, 5, 0));
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+
         HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
-        VBox ingVBox = new VBox(10, ingLoadBox, table);
+        ingLoadBox.setAlignment(Pos.CENTER_LEFT);
+
+        VBox ingSelectionBox = new VBox(5, searchBox, ingLoadBox);
+        ingSelectionBox.setPadding(new Insets(5, 0, 5, 0));
+
+        VBox ingVBox = new VBox(10, ingSelectionBox, table);
         ingVBox.setPadding(new Insets(10));
+
         VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, submit, cancel));
         popup.getContent().add(mainVBox);
 
@@ -583,7 +714,6 @@ public class ItemView {
                 }
             }
             jsonBuilder.append("]");
-
             jsonBuilder.append("}");
             String jsonBody = jsonBuilder.toString();
 
@@ -774,6 +904,15 @@ public class ItemView {
         });
         ingCombo.setButtonCell(ingCombo.getCellFactory().call(null));
         ingCombo.setPrefWidth(200);
+
+        // Campo de busca para filtrar ingredientes
+        TextField searchField = new TextField();
+        searchField.setPromptText("Buscar ingrediente...");
+        searchField.setPrefWidth(150);
+
+        // Lista original de ingredientes para usar com o filtro
+        List<Ingredient> originalList = new ArrayList<>();
+
         Button addIngBtn = new Button("Adicionar");
         addIngBtn.setDisable(true);
         ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
@@ -783,7 +922,23 @@ public class ItemView {
                 table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
             }
         });
-        Button loadBtn = new Button("Recarregar Ingredientes");
+        Button loadBtn = new Button("Recarregar");
+
+        // Campo de busca para filtrar ingredientes
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue == null || newValue.isEmpty()) {
+                // Se a busca estiver vazia, mostrar todos os ingredientes
+                ingCombo.getItems().setAll(originalList);
+            } else {
+                // Filtrar ingredientes que contêm o texto da busca (ignorando
+                // maiúsculas/minúsculas)
+                String searchLower = newValue.toLowerCase();
+                List<Ingredient> filtered = originalList.stream()
+                        .filter(ing -> ing.getNome().toLowerCase().contains(searchLower))
+                        .collect(Collectors.toList());
+                ingCombo.getItems().setAll(filtered);
+            }
+        });
 
         // Carrega ingredientes automaticamente ao abrir o diálogo
         loadBtn.setDisable(true);
@@ -794,8 +949,14 @@ public class ItemView {
         httpClient.sendAsync(req, BodyHandlers.ofString())
                 .thenAccept(resp -> {
                     List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                    // Ordenar os ingredientes por nome em ordem alfabética
+                    list.sort(Comparator.comparing(Ingredient::getNome));
+
                     Platform.runLater(() -> {
+                        originalList.clear();
+                        originalList.addAll(list); // Salvar lista original para filtro
                         ingCombo.getItems().setAll(list);
+
                         // pré-carrega os existentes do item
                         if (item.getIngredientes() != null) {
                             table.getItems().clear();
@@ -809,7 +970,7 @@ public class ItemView {
                                         new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
                             }
                         }
-                        loadBtn.setText("Recarregar Ingredientes");
+                        loadBtn.setText("Recarregar");
                         loadBtn.setDisable(false);
                     });
                 })
@@ -831,8 +992,14 @@ public class ItemView {
             httpClient.sendAsync(reqReload, BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                        // Ordenar os ingredientes por nome em ordem alfabética
+                        list.sort(Comparator.comparing(Ingredient::getNome));
+
                         Platform.runLater(() -> {
+                            originalList.clear();
+                            originalList.addAll(list); // Atualizar lista original para filtro
                             ingCombo.getItems().setAll(list);
+
                             // pré-carrega os existentes do item
                             if (item.getIngredientes() != null) {
                                 table.getItems().clear();
@@ -846,7 +1013,7 @@ public class ItemView {
                                             new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
                                 }
                             }
-                            loadBtn.setText("Recarregar Ingredientes");
+                            loadBtn.setText("Recarregar");
                             loadBtn.setDisable(false);
                         });
                     })
@@ -907,9 +1074,19 @@ public class ItemView {
         grid.add(stockField, 1, 3);
         grid.add(compostoCheck, 0, 4, 2, 1);
 
+        // Layout para pesquisa e seleção de ingredientes
+        HBox searchBox = new HBox(10, new Label("Buscar:"), searchField);
+        searchBox.setPadding(new Insets(0, 0, 5, 0));
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+
         HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
-        ingLoadBox.setPadding(new Insets(10, 20, 10, 20));
-        VBox ingVBox = new VBox(10, ingLoadBox, table);
+        ingLoadBox.setAlignment(Pos.CENTER_LEFT);
+
+        VBox ingSelectionBox = new VBox(5, searchBox, ingLoadBox);
+        ingSelectionBox.setPadding(new Insets(5, 0, 5, 0));
+
+        VBox ingVBox = new VBox(10, ingSelectionBox, table);
+        ingVBox.setPadding(new Insets(10));
 
         VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, saveBtn, cancelBtn));
         mainVBox.setPadding(new Insets(10));
@@ -983,7 +1160,6 @@ public class ItemView {
             }
 
             jsonBuilder.append("]");
-
             jsonBuilder.append("}");
             String jsonBody = jsonBuilder.toString();
 
