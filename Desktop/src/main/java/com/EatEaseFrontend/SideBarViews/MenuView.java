@@ -7,12 +7,12 @@ import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.Menu;
 import com.EatEaseFrontend.StageManager;
 import com.EatEaseFrontend.TipoMenu;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -29,7 +29,6 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -97,21 +96,13 @@ public class MenuView {
 
     private void showError(String header, int status) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Erro");
-            alert.setHeaderText(header);
-            alert.setContentText("Status code: " + status);
-            alert.showAndWait();
+            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", header, "Status code: " + status);
         });
     }
 
     private void showError(String header, String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Erro");
-            alert.setHeaderText(header);
-            alert.setContentText("Erro: " + message);
-            alert.showAndWait();
+            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", header, "Erro: " + message);
         });
     }
 
@@ -226,20 +217,39 @@ public class MenuView {
      * @param tiposMenu Lista de tipos de menu disponíveis
      */
     private void showAddMenuDialog(List<TipoMenu> tiposMenu) {
-        // Criar o diálogo
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Adicionar Menu");
-        dialog.setHeaderText("Preencha os detalhes do novo menu");
+        // Get primary stage for positioning
+        javafx.stage.Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Configurar botões
-        ButtonType saveButtonType = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        // Create popup
+        javafx.stage.Popup popup = new javafx.stage.Popup();
+        popup.setAutoHide(false); // Don't close automatically
 
-        // Criar o grid para o formulário
+        // Create content
+        VBox popupContent = new VBox(15);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        popupContent.setPrefWidth(700);
+        popupContent.setPrefHeight(700);
+
+        // Title
+        Label titleLabel = new Label("Adicionar Menu");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+
+        // Header
+        Label headerLabel = new Label("Preencha os detalhes do novo menu");
+        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+
+        // Create form grid
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
+        grid.setPadding(new Insets(10));
 
         // Campo para nome do menu
         TextField nomeField = new TextField();
@@ -273,6 +283,7 @@ public class MenuView {
         TitledPane itemsPane = new TitledPane();
         itemsPane.setText("Selecione os Itens para o Menu");
         itemsPane.setExpanded(false);
+        itemsPane.setPrefHeight(400); // Make the pane larger
 
         VBox itemsContainer = new VBox(10);
         itemsContainer.setPadding(new Insets(10));
@@ -303,20 +314,29 @@ public class MenuView {
         GridPane.setVgrow(itemsPane, Priority.ALWAYS);
         GridPane.setHgrow(itemsPane, Priority.ALWAYS);
 
-        // Configurar o tamanho do diálogo
-        dialog.getDialogPane().setPrefSize(600, 500);
+        // Buttons
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        // Configurar o conteúdo do diálogo
-        dialog.getDialogPane().setContent(grid);
+        Button cancelButton = new Button("Cancelar");
+        cancelButton.setOnAction(e -> popup.hide());
 
-        // Focar no campo de nome ao abrir o diálogo
-        Platform.runLater(() -> nomeField.requestFocus());
-
-        // Validar os campos antes de habilitar o botão de salvar
-        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+        Button saveButton = new Button("Salvar");
+        saveButton.getStyleClass().add("login-button");
         saveButton.setDisable(true);
 
-        // Validar quando os campos mudam
+        buttonBox.getChildren().addAll(cancelButton, saveButton);
+
+        // Add all components to popup content
+        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+
+        popup.getContent().add(popupContent);
+
+        // Focus on name field when opened
+        Platform.runLater(() -> nomeField.requestFocus());
+
+        // Validation
         nomeField.textProperty().addListener((observable, oldValue, newValue) -> {
             saveButton.setDisable(newValue.trim().isEmpty() ||
                     descricaoField.getText().trim().isEmpty() ||
@@ -338,14 +358,17 @@ public class MenuView {
         // Expandir a área de itens quando clicada
         itemsPane.expandedProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue) {
-                // Carregar itens da API quando expandir
-                loadItems(itemsContainer, selectedItemsIds);
+                // Aguardar um pouco antes de carregar os itens para dar tempo do loadMenuItems
+                // completar
+                Platform.runLater(() -> {
+                    // Carregar itens da API quando expandir
+                    loadItems(itemsContainer, selectedItemsIds);
+                });
             }
         });
 
-        // Processar o resultado
-        Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == saveButtonType) {
+        // Save button action
+        saveButton.setOnAction(e -> {
             String nome = nomeField.getText().trim();
             String descricao = descricaoField.getText().trim();
             TipoMenu tipoMenu = tipoMenuComboBox.getValue();
@@ -353,8 +376,12 @@ public class MenuView {
             if (tipoMenu != null) {
                 // Criar o menu com os itens selecionados
                 createMenu(tipoMenu.getId(), nome, descricao, selectedItemsIds);
+                popup.hide();
             }
-        }
+        });
+
+        // Show popup centered
+        popup.show(primary, centerX - 350, centerY - 350);
     }
 
     /**
@@ -392,7 +419,7 @@ public class MenuView {
                                 VBox checkBoxContainer = new VBox(5);
                                 ScrollPane scrollPane = new ScrollPane(checkBoxContainer);
                                 scrollPane.setFitToWidth(true);
-                                scrollPane.setPrefHeight(200);
+                                scrollPane.setPrefHeight(400);
 
                                 for (Item item : items) {
                                     CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
@@ -492,10 +519,8 @@ public class MenuView {
                 .thenAccept(resp -> {
                     if (resp.statusCode() == 200 || resp.statusCode() == 201) {
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Sucesso");
-                            alert.setHeaderText("Menu criado com sucesso!");
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu criado com sucesso!",
+                                    "");
 
                             // Recarregar a view após criar o menu
                             show();
@@ -516,15 +541,66 @@ public class MenuView {
      * @param menu Menu a ser excluído
      */
     private void confirmDeleteMenu(Menu menu) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirmar Exclusão");
-        alert.setHeaderText("Excluir Menu: " + menu.getNome());
-        alert.setContentText("Tem certeza que deseja excluir este menu? Esta ação não pode ser desfeita.");
+        // Get primary stage for positioning
+        javafx.stage.Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        // Create popup
+        javafx.stage.Popup popup = new javafx.stage.Popup();
+        popup.setAutoHide(true);
+
+        // Create content
+        VBox popupContent = new VBox(10);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
+        // Warning icon
+        FontIcon warningIcon = new FontIcon(MaterialDesign.MDI_ALERT);
+        warningIcon.setIconSize(32);
+        warningIcon.setIconColor(Color.ORANGE);
+
+        // Title and message
+        Label titleLabel = new Label("Confirmar Exclusão");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        titleLabel.setTextFill(Color.ORANGE);
+
+        Label messageLabel = new Label("Excluir Menu: " + menu.getNome());
+        messageLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        messageLabel.setWrapText(true);
+        messageLabel.setMaxWidth(300);
+
+        Label detailLabel = new Label("Tem certeza que deseja excluir este menu? Esta ação não pode ser desfeita.");
+        detailLabel.setWrapText(true);
+        detailLabel.setMaxWidth(300);
+
+        // Buttons
+        Button yesButton = new Button("Sim");
+        Button noButton = new Button("Não");
+
+        HBox buttonBox = new HBox(10, yesButton, noButton);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+
+        // Add all elements to the popup content
+        popupContent.getChildren().addAll(warningIcon, titleLabel, messageLabel, detailLabel, buttonBox);
+        popupContent.setAlignment(Pos.CENTER);
+
+        popup.getContent().add(popupContent);
+
+        // Position popup
+        popup.show(primary, centerX - 170, centerY - 120);
+
+        // Button actions
+        noButton.setOnAction(e -> popup.hide());
+        yesButton.setOnAction(e -> {
             deleteMenu(menu.getId());
-        }
+            popup.hide();
+        });
     }
 
     /**
@@ -545,24 +621,15 @@ public class MenuView {
                     Platform.runLater(() -> {
                         if (resp.statusCode() == 200 || resp.statusCode() == 204) {
                             // Sucesso
-                            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                            successAlert.setTitle("Sucesso");
-                            successAlert.setHeaderText("Menu Excluído");
-                            successAlert.setContentText("O menu foi excluído com sucesso!");
-
-                            successAlert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu Excluído",
+                                    "O menu foi excluído com sucesso!");
 
                             // Recarregar a lista de menus
                             show();
                         } else {
                             // Erro
-                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                            errorAlert.setTitle("Erro");
-                            errorAlert.setHeaderText("Falha ao excluir menu");
-                            errorAlert.setContentText(
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
                                     "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
-
-                            errorAlert.showAndWait();
                         }
                     });
                 })
@@ -570,12 +637,8 @@ public class MenuView {
                     ex.printStackTrace();
 
                     Platform.runLater(() -> {
-                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                        errorAlert.setTitle("Erro");
-                        errorAlert.setHeaderText("Falha ao excluir menu");
-                        errorAlert.setContentText("Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
-
-                        errorAlert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
+                                "Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
                     });
 
                     return null;
@@ -589,20 +652,39 @@ public class MenuView {
      * @param tiposMenu Lista de tipos de menu disponíveis
      */
     private void showEditMenuDialog(Menu menu, List<TipoMenu> tiposMenu) {
-        // Criar o diálogo
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Editar Menu");
-        dialog.setHeaderText("Editar detalhes do menu: " + menu.getNome());
+        // Get primary stage for positioning
+        javafx.stage.Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
 
-        // Configurar botões
-        ButtonType saveButtonType = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        // Create popup
+        javafx.stage.Popup popup = new javafx.stage.Popup();
+        popup.setAutoHide(false); // Don't close automatically
 
-        // Criar o grid para o formulário
+        // Create content
+        VBox popupContent = new VBox(15);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        popupContent.setPrefWidth(700);
+        popupContent.setPrefHeight(700);
+
+        // Title
+        Label titleLabel = new Label("Editar Menu");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+
+        // Header
+        Label headerLabel = new Label("Editar detalhes do menu: " + menu.getNome());
+        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+
+        // Create form grid
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
+        grid.setPadding(new Insets(10));
 
         // Campo para nome do menu
         TextField nomeField = new TextField(menu.getNome());
@@ -643,6 +725,7 @@ public class MenuView {
         TitledPane itemsPane = new TitledPane();
         itemsPane.setText("Selecione os Itens para o Menu");
         itemsPane.setExpanded(false);
+        itemsPane.setPrefHeight(400); // Make the pane larger
 
         VBox itemsContainer = new VBox(10);
         itemsContainer.setPadding(new Insets(10));
@@ -660,8 +743,14 @@ public class MenuView {
         // Lista observável de IDs dos itens selecionados
         ObservableList<Integer> selectedItemsIds = FXCollections.observableArrayList();
 
-        // Carregar os IDs dos itens do menu existente
-        loadMenuItems(menu.getId(), selectedItemsIds);
+        // Carregar os IDs dos itens do menu existente primeiro
+        loadMenuItems(menu.getId(), selectedItemsIds, () -> {
+            // Após carregar os itens do menu, expandir automaticamente o painel
+            Platform.runLater(() -> {
+                itemsPane.setExpanded(true);
+                System.out.println("Itens do menu carregados, expandindo painel automaticamente");
+            });
+        });
 
         // Adicionar campos ao grid
         grid.add(new Label("Nome:"), 0, 0);
@@ -676,24 +765,33 @@ public class MenuView {
         GridPane.setVgrow(itemsPane, Priority.ALWAYS);
         GridPane.setHgrow(itemsPane, Priority.ALWAYS);
 
-        // Configurar o tamanho do diálogo
-        dialog.getDialogPane().setPrefSize(600, 500);
+        // Buttons
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        // Configurar o conteúdo do diálogo
-        dialog.getDialogPane().setContent(grid);
+        Button cancelButton = new Button("Cancelar");
+        cancelButton.setOnAction(e -> popup.hide());
 
-        // Focar no campo de nome ao abrir o diálogo e expandir os itens automaticamente
+        Button saveButton = new Button("Salvar");
+        saveButton.getStyleClass().add("login-button");
+        saveButton.setDisable(false); // Não desabilitar inicialmente porque já temos valores válidos
+
+        buttonBox.getChildren().addAll(cancelButton, saveButton);
+
+        // Add all components to popup content
+        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+
+        popup.getContent().add(popupContent);
+
+        // Focus on name field when opened
         Platform.runLater(() -> {
             nomeField.requestFocus();
             // Expandir os itens automaticamente para mostrar os itens selecionados
             itemsPane.setExpanded(true);
         });
 
-        // Validar os campos antes de habilitar o botão de salvar
-        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
-        saveButton.setDisable(false); // Não desabilitar inicialmente porque já temos valores válidos
-
-        // Validar quando os campos mudam
+        // Validation
         nomeField.textProperty().addListener((observable, oldValue, newValue) -> {
             saveButton.setDisable(newValue.trim().isEmpty() ||
                     descricaoField.getText().trim().isEmpty() ||
@@ -720,9 +818,8 @@ public class MenuView {
             }
         });
 
-        // Processar o resultado
-        Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == saveButtonType) {
+        // Save button action
+        saveButton.setOnAction(e -> {
             String nome = nomeField.getText().trim();
             String descricao = descricaoField.getText().trim();
             TipoMenu tipoMenu = tipoMenuComboBox.getValue();
@@ -730,8 +827,12 @@ public class MenuView {
             if (tipoMenu != null) {
                 // Atualizar o menu com os itens selecionados
                 updateMenu(menu.getId(), tipoMenu.getId(), nome, descricao, selectedItemsIds);
+                popup.hide();
             }
-        }
+        });
+
+        // Show popup centered
+        popup.show(primary, centerX - 350, centerY - 350);
     }
 
     /**
@@ -740,8 +841,9 @@ public class MenuView {
      * @param menuId           ID do menu
      * @param selectedItemsIds Lista observável para armazenar os IDs dos itens
      *                         selecionados
+     * @param onComplete       Callback executado quando o carregamento termina
      */
-    private void loadMenuItems(int menuId, ObservableList<Integer> selectedItemsIds) {
+    private void loadMenuItems(int menuId, ObservableList<Integer> selectedItemsIds, Runnable onComplete) {
         System.out.println("Carregando itens do menu ID: " + menuId);
         HttpRequest getItemsReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/menu/getMenuItens?id=" + menuId)))
@@ -770,19 +872,39 @@ public class MenuView {
                                 selectedItemsIds.clear(); // Limpar a lista antes de adicionar
                                 selectedItemsIds.addAll(itemIds); // Usar addAll em vez de setAll
                                 System.out.println("IDs dos itens adicionados à lista: " + selectedItemsIds);
+
+                                // Executar callback quando terminar
+                                if (onComplete != null) {
+                                    onComplete.run();
+                                }
                             });
                         } catch (Exception ex) {
                             ex.printStackTrace();
                             System.err.println("Erro ao carregar itens do menu: " + ex.getMessage());
-                            // Se houver erro, simplesmente não carrega os IDs existentes
+                            // Se houver erro, ainda executar o callback
+                            Platform.runLater(() -> {
+                                if (onComplete != null) {
+                                    onComplete.run();
+                                }
+                            });
                         }
                     } else {
                         System.err.println("Erro ao carregar itens do menu. Status: " + resp.statusCode());
+                        Platform.runLater(() -> {
+                            if (onComplete != null) {
+                                onComplete.run();
+                            }
+                        });
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
                     System.err.println("Exceção ao carregar itens do menu: " + ex.getMessage());
+                    Platform.runLater(() -> {
+                        if (onComplete != null) {
+                            onComplete.run();
+                        }
+                    });
                     return null;
                 });
     }
@@ -817,10 +939,8 @@ public class MenuView {
                 .thenAccept(resp -> {
                     if (resp.statusCode() == 200) {
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Sucesso");
-                            alert.setHeaderText("Menu atualizado com sucesso!");
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
+                                    "Menu atualizado com sucesso!", "");
 
                             // Recarregar a view após atualizar o menu
                             show();

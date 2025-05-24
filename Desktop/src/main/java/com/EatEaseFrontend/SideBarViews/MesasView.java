@@ -3,10 +3,10 @@ package com.EatEaseFrontend.SideBarViews;
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Mesa;
 import com.EatEaseFrontend.JsonParser;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -14,6 +14,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Popup;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
 
@@ -23,7 +24,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -335,15 +335,55 @@ public class MesasView {
      * @param onConfirm Ação a ser executada ao confirmar
      */
     private void showConfirmDialog(String title, String message, Runnable onConfirm) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
+        // Create popup
+        Popup popup = new Popup();
+        popup.setAutoHide(false);
 
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        // Create main container
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(20));
+        container.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        container.setPrefWidth(400);
+        container.setAlignment(Pos.CENTER);
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        titleLabel.setAlignment(Pos.CENTER);
+
+        // Message
+        Label messageLabel = new Label(message);
+        messageLabel.setWrapText(true);
+        messageLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        messageLabel.setAlignment(Pos.CENTER);
+
+        // Buttons
+        Button confirmButton = new Button("Confirmar");
+        confirmButton.getStyleClass().add("login-button");
+        confirmButton.setOnAction(e -> {
+            popup.hide();
             onConfirm.run();
-        }
+        });
+
+        Button cancelButton = new Button("Cancelar");
+        cancelButton.getStyleClass().add("login-button");
+        cancelButton.setOnAction(e -> popup.hide());
+
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.getChildren().addAll(confirmButton, cancelButton);
+
+        container.getChildren().addAll(titleLabel, messageLabel, buttonBox);
+        popup.getContent().add(container);
+
+        // Show popup centered
+        double centerX = contentArea.getScene().getWindow().getX() + contentArea.getScene().getWindow().getWidth() / 2;
+        double centerY = contentArea.getScene().getWindow().getY() + contentArea.getScene().getWindow().getHeight() / 2;
+        popup.show(contentArea.getScene().getWindow(), centerX - 200, centerY - 100);
     }
 
     /**
@@ -425,31 +465,39 @@ public class MesasView {
      * @param alertType Tipo do alerta
      */
     private void showAlert(String message, Alert.AlertType alertType) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(alertType == Alert.AlertType.ERROR ? "Erro" : "Sucesso");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        String title = alertType == Alert.AlertType.ERROR ? "Erro" : "Sucesso";
+        PopUp.showPopupDialog(alertType, title, "", message);
     }
 
     /**
      * Exibe o diálogo para adicionar uma nova mesa
      */
     private void showAddMesaDialog() {
-        // Create the dialog
-        Dialog<Integer> dialog = new Dialog<>();
-        dialog.setTitle("Adicionar Nova Mesa");
-        dialog.setHeaderText(null);
+        // Create popup
+        Popup popup = new Popup();
+        popup.setAutoHide(false);
 
-        // Set the button types
-        ButtonType saveButtonType = new ButtonType("Salvar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+        // Create main container
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(20));
+        container.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        container.setPrefWidth(400);
+        container.setAlignment(Pos.CENTER);
 
-        // Create the form content
+        // Title
+        Label titleLabel = new Label("Adicionar Nova Mesa");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        titleLabel.setAlignment(Pos.CENTER);
+
+        // Form content
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
+        grid.setAlignment(Pos.CENTER);
 
         // Add the numero field
         TextField numeroField = new TextField();
@@ -457,9 +505,14 @@ public class MesasView {
         grid.add(new Label("Número:"), 0, 0);
         grid.add(numeroField, 1, 0);
 
-        // Enable/disable save button based on input validity
-        Node saveButton = dialog.getDialogPane().lookupButton(saveButtonType);
+        // Buttons
+        Button saveButton = new Button("Salvar");
+        saveButton.getStyleClass().add("login-button");
         saveButton.setDisable(true);
+
+        Button cancelButton = new Button("Cancelar");
+        cancelButton.getStyleClass().add("login-button");
+        cancelButton.setOnAction(e -> popup.hide());
 
         // Validate input - only numbers allowed
         numeroField.textProperty().addListener((observable, oldValue, newValue) -> {
@@ -475,27 +528,30 @@ public class MesasView {
             saveButton.setDisable(!isValid);
         });
 
-        dialog.getDialogPane().setContent(grid);
+        saveButton.setOnAction(e -> {
+            try {
+                int numero = Integer.parseInt(numeroField.getText());
+                popup.hide();
+                createMesa(numero);
+            } catch (NumberFormatException ex) {
+                // Should not happen due to validation
+            }
+        });
+
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.getChildren().addAll(saveButton, cancelButton);
+
+        container.getChildren().addAll(titleLabel, grid, buttonBox);
+        popup.getContent().add(container);
+
+        // Show popup centered
+        double centerX = contentArea.getScene().getWindow().getX() + contentArea.getScene().getWindow().getWidth() / 2;
+        double centerY = contentArea.getScene().getWindow().getY() + contentArea.getScene().getWindow().getHeight() / 2;
+        popup.show(contentArea.getScene().getWindow(), centerX - 200, centerY - 100);
 
         // Request focus on the numero field
         Platform.runLater(numeroField::requestFocus);
-
-        // Convert the result
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == saveButtonType) {
-                try {
-                    return Integer.parseInt(numeroField.getText());
-                } catch (NumberFormatException e) {
-                    return null;
-                }
-            }
-            return null;
-        });
-
-        // Show dialog and handle result
-        Optional<Integer> result = dialog.showAndWait();
-
-        result.ifPresent(this::createMesa);
     }
 
     /**

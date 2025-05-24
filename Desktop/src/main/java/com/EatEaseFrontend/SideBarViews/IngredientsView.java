@@ -5,6 +5,7 @@ import com.EatEaseFrontend.DialogHelper;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
@@ -118,89 +119,29 @@ public class IngredientsView {
                 .build();
 
         httpClient.sendAsync(getIngredientsReq, HttpResponse.BodyHandlers.ofString())
-            .thenAccept(resp -> {
-                if (resp.statusCode() == 200) {
-                System.out.println("Ingredientes -> " + resp.body());
-                List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
+                .thenAccept(resp -> {
+                    if (resp.statusCode() == 200) {
+                        System.out.println("Ingredientes -> " + resp.body());
+                        List<Ingredient> ingredients = JsonParser.parseIngredients(resp.body());
 
-                Platform.runLater(() -> {
-                    displayIngredientsAsCards(ingredients);
+                        Platform.runLater(() -> {
+                            displayIngredientsAsCards(ingredients);
+                        });
+                    } else {
+                        Platform.runLater(() -> {
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
+                                    "Status code: " + resp.statusCode());
+                        });
+                    }
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> {
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
+                                "Erro: " + ex.getMessage());
+                    });
+                    return null;
                 });
-                } else {
-                Platform.runLater(() -> {
-                    Popup errorPopup = new Popup();
-                    errorPopup.setAutoHide(true);
-
-                    VBox popupContent = new VBox(10);
-                    popupContent.setPadding(new Insets(15));
-                    popupContent.setStyle(
-                        "-fx-background-color: #ffebee;" + // light red background
-                            "-fx-border-color: #ef5350;" + // red border
-                            "-fx-border-width: 1;" +
-                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                    Label titleLabel = new Label("Erro");
-                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                    titleLabel.setTextFill(Color.RED);
-
-                    Label headerLabel = new Label("Falha ao carregar ingredientes");
-                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                    Label contentLabel = new Label("Status code: " + resp.statusCode());
-                    contentLabel.setWrapText(true);
-                    contentLabel.setMaxWidth(300);
-
-                    Button closeButton = new Button("Fechar");
-                    closeButton.setOnAction(evt -> errorPopup.hide());
-
-                    popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                    errorPopup.getContent().add(popupContent);
-
-                    Stage primaryStage = StageManager.getPrimaryStage();
-                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                    errorPopup.show(primaryStage, centerX, centerY);
-                });
-                }
-            })
-            .exceptionally(ex -> {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                Popup errorPopup = new Popup();
-                errorPopup.setAutoHide(true);
-
-                VBox popupContent = new VBox(10);
-                popupContent.setPadding(new Insets(15));
-                popupContent.setStyle(
-                    "-fx-background-color: #ffebee;" + // light red background
-                        "-fx-border-color: #ef5350;" + // red border
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                Label titleLabel = new Label("Erro");
-                titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                titleLabel.setTextFill(Color.RED);
-
-                Label headerLabel = new Label("Falha ao carregar ingredientes");
-                headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                Label contentLabel = new Label("Erro: " + ex.getMessage());
-                contentLabel.setWrapText(true);
-                contentLabel.setMaxWidth(300);
-
-                Button closeButton = new Button("Fechar");
-                closeButton.setOnAction(evt -> errorPopup.hide());
-
-                popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                errorPopup.getContent().add(popupContent);
-
-                Stage primaryStage = StageManager.getPrimaryStage();
-                double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                errorPopup.show(primaryStage, centerX, centerY);
-                });
-                return null;
-            });
     }
 
     /**
@@ -476,52 +417,16 @@ public class IngredientsView {
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
-                            Popup popup = new Popup();
-                            Label label = new Label("Ingrediente adicionado!");
-                            label.setStyle("-fx-background-color: lightgreen; -fx-padding: 10;");
-                            popup.getContent().add(label);
-                            popup.setAutoHide(true);
-                            popup.show(StageManager.getPrimaryStage(), 100, 100);
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Ingrediente adicionado!",
+                                    "O ingrediente foi criado com sucesso.");
                         });
                     } else {
                         System.err.println("Erro ao criar ingrediente: " + resp.statusCode() + " - " + resp.body());
 
                         // Mostrar mensagem de erro
                         Platform.runLater(() -> {
-                            Popup errorPopup = new Popup();
-                            errorPopup.setAutoHide(true);
-
-                            VBox popupContent = new VBox(10);
-                            popupContent.setPadding(new Insets(15));
-                            popupContent.setStyle(
-                                    "-fx-background-color: #ffebee;" + // light red background
-                                            "-fx-border-color: #ef5350;" + // red border
-                                            "-fx-border-width: 1;" +
-                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                            Label titleLabel = new Label("Erro");
-                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                            titleLabel.setTextFill(Color.RED);
-
-                            Label headerLabel = new Label("Falha ao adicionar ingrediente");
-                            headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                            Label contentLabel = new Label(
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao adicionar ingrediente",
                                     "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                            contentLabel.setWrapText(true);
-                            contentLabel.setMaxWidth(300);
-
-                            Button closeButton = new Button("Fechar");
-                            closeButton.setOnAction(evt -> errorPopup.hide());
-
-                            popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                            errorPopup.getContent().add(popupContent);
-
-                            Stage primaryStage = StageManager.getPrimaryStage();
-                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                            errorPopup.show(primaryStage, centerX, centerY);
-
                         });
                     }
                 })
@@ -530,38 +435,8 @@ public class IngredientsView {
 
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
-                        Popup errorPopup = new Popup();
-                        errorPopup.setAutoHide(true);
-
-                        VBox popupContent = new VBox(10);
-                        popupContent.setPadding(new Insets(15));
-                        popupContent.setStyle(
-                                "-fx-background-color: #ffebee;" + // light red background
-                                        "-fx-border-color: #ef5350;" + // red border
-                                        "-fx-border-width: 1;" +
-                                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                        Label titleLabel = new Label("Erro");
-                        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                        titleLabel.setTextFill(Color.RED);
-
-                        Label headerLabel = new Label("Falha ao adicionar ingrediente");
-                        headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                        Label contentLabel = new Label("Erro: " + ex.getMessage());
-                        contentLabel.setWrapText(true);
-                        contentLabel.setMaxWidth(300);
-
-                        Button closeButton = new Button("Fechar");
-                        closeButton.setOnAction(evt -> errorPopup.hide());
-
-                        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                        errorPopup.getContent().add(popupContent);
-
-                        Stage primaryStage = StageManager.getPrimaryStage();
-                        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                        errorPopup.show(primaryStage, centerX, centerY);
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao adicionar ingrediente",
+                                "Erro: " + ex.getMessage());
                     });
                     return null;
                 });
@@ -697,74 +572,16 @@ public class IngredientsView {
 
                         // Mostrar mensagem de sucesso
                         Platform.runLater(() -> {
-                            Popup successPopup = new Popup();
-                            successPopup.setAutoHide(true);
-
-                            VBox popupContent = new VBox(10);
-                            popupContent.setPadding(new Insets(15));
-                            popupContent.setStyle(
-                                    "-fx-background-color: #e8f5e9;" + // light green background
-                                            "-fx-border-color: #66bb6a;" + // green border
-                                            "-fx-border-width: 1;" +
-                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                            Label titleLabel = new Label("Sucesso");
-                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                            titleLabel.setTextFill(Color.GREEN);
-
-                            Label messageLabel = new Label("O ingrediente foi atualizado com sucesso.");
-                            messageLabel.setWrapText(true);
-                            messageLabel.setMaxWidth(300);
-
-                            Button closeButton = new Button("Fechar");
-                            closeButton.setOnAction(evt -> successPopup.hide());
-
-                            popupContent.getChildren().addAll(titleLabel, messageLabel, closeButton);
-                            successPopup.getContent().add(popupContent);
-
-                            Stage primaryStage = StageManager.getPrimaryStage();
-                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                            successPopup.show(primaryStage, centerX, centerY);
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Ingrediente atualizado!",
+                                    "O ingrediente foi atualizado com sucesso.");
                         });
                     } else {
                         System.err.println("Erro ao atualizar ingrediente: " + resp.statusCode() + " - " + resp.body());
 
                         // Mostrar mensagem de erro
                         Platform.runLater(() -> {
-                            Popup errorPopup = new Popup();
-                            errorPopup.setAutoHide(true);
-
-                            VBox popupContent = new VBox(10);
-                            popupContent.setPadding(new Insets(15));
-                            popupContent.setStyle(
-                                    "-fx-background-color: #ffebee;" + // light red background
-                                            "-fx-border-color: #ef5350;" + // red border
-                                            "-fx-border-width: 1;" +
-                                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                            Label titleLabel = new Label("Erro");
-                            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                            titleLabel.setTextFill(Color.RED);
-
-                            Label headerLabel = new Label("Falha ao atualizar ingrediente");
-                            headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                            Label contentLabel = new Label(
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar ingrediente",
                                     "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                            contentLabel.setWrapText(true);
-                            contentLabel.setMaxWidth(300);
-
-                            Button closeButton = new Button("Fechar");
-                            closeButton.setOnAction(evt -> errorPopup.hide());
-
-                            popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                            errorPopup.getContent().add(popupContent);
-
-                            Stage primaryStage = StageManager.getPrimaryStage();
-                            double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                            double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                            errorPopup.show(primaryStage, centerX, centerY);
                         });
                     }
                 })
@@ -773,38 +590,8 @@ public class IngredientsView {
 
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
-                        Popup errorPopup = new Popup();
-                        errorPopup.setAutoHide(true);
-
-                        VBox popupContent = new VBox(10);
-                        popupContent.setPadding(new Insets(15));
-                        popupContent.setStyle(
-                                "-fx-background-color: #ffebee;" + // light red background
-                                        "-fx-border-color: #ef5350;" + // red border
-                                        "-fx-border-width: 1;" +
-                                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                        Label titleLabel = new Label("Erro");
-                        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                        titleLabel.setTextFill(Color.RED);
-
-                        Label headerLabel = new Label("Falha ao atualizar ingrediente");
-                        headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                        Label contentLabel = new Label("Erro: " + ex.getMessage());
-                        contentLabel.setWrapText(true);
-                        contentLabel.setMaxWidth(300);
-
-                        Button closeButton = new Button("Fechar");
-                        closeButton.setOnAction(evt -> errorPopup.hide());
-
-                        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                        errorPopup.getContent().add(popupContent);
-
-                        Stage primaryStage = StageManager.getPrimaryStage();
-                        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                        errorPopup.show(primaryStage, centerX, centerY);
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar ingrediente",
+                                "Erro: " + ex.getMessage());
                     });
                     return null;
                 });
@@ -888,128 +675,37 @@ public class IngredientsView {
 
         // Enviar a requisição de forma assíncrona
         httpClient.sendAsync(deleteIngredientReq, HttpResponse.BodyHandlers.ofString())
-            .thenAccept(resp -> {
-                if (resp.statusCode() == 200 || resp.statusCode() == 204) {
-                System.out.println("Ingrediente excluído com sucesso: " + resp.body());
+                .thenAccept(resp -> {
+                    if (resp.statusCode() == 200 || resp.statusCode() == 204) {
+                        System.out.println("Ingrediente excluído com sucesso: " + resp.body());
 
-                // Recarregar a lista de ingredientes
-                Platform.runLater(this::show);
+                        // Recarregar a lista de ingredientes
+                        Platform.runLater(this::show);
 
-                // Mostrar mensagem de sucesso
-                Platform.runLater(() -> {
-                    Popup successPopup = new Popup();
-                    successPopup.setAutoHide(true);
+                        // Mostrar mensagem de sucesso
+                        Platform.runLater(() -> {
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Ingrediente excluído",
+                                    "O ingrediente foi excluído com sucesso.");
+                        });
+                    } else {
+                        System.err.println("Erro ao excluir ingrediente: " + resp.statusCode() + " - " + resp.body());
 
-                    VBox popupContent = new VBox(10);
-                    popupContent.setPadding(new Insets(15));
-                    popupContent.setStyle(
-                        "-fx-background-color: #e8f5e9;" + // light green background
-                            "-fx-border-color: #66bb6a;" + // green border
-                            "-fx-border-width: 1;" +
-                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+                        // Mostrar mensagem de erro
+                        Platform.runLater(() -> {
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir ingrediente",
+                                    "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                        });
+                    }
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
 
-                    Label titleLabel = new Label("Sucesso");
-                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                    titleLabel.setTextFill(Color.GREEN);
-
-                    Label headerLabel = new Label("Ingrediente excluído");
-                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                    Label messageLabel = new Label("O ingrediente foi excluído com sucesso.");
-                    messageLabel.setWrapText(true);
-                    messageLabel.setMaxWidth(300);
-
-                    Button closeButton = new Button("Fechar");
-                    closeButton.setOnAction(evt -> successPopup.hide());
-
-                    popupContent.getChildren().addAll(titleLabel, headerLabel, messageLabel, closeButton);
-                    successPopup.getContent().add(popupContent);
-
-                    Stage primaryStage = StageManager.getPrimaryStage();
-                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                    successPopup.show(primaryStage, centerX, centerY);
+                    // Mostrar mensagem de erro
+                    Platform.runLater(() -> {
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir ingrediente",
+                                "Erro: " + ex.getMessage());
+                    });
+                    return null;
                 });
-                } else {
-                System.err.println("Erro ao excluir ingrediente: " + resp.statusCode() + " - " + resp.body());
-
-                // Mostrar mensagem de erro
-                Platform.runLater(() -> {
-                    Popup errorPopup = new Popup();
-                    errorPopup.setAutoHide(true);
-
-                    VBox popupContent = new VBox(10);
-                    popupContent.setPadding(new Insets(15));
-                    popupContent.setStyle(
-                        "-fx-background-color: #ffebee;" + // light red background
-                            "-fx-border-color: #ef5350;" + // red border
-                            "-fx-border-width: 1;" +
-                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                    Label titleLabel = new Label("Erro");
-                    titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                    titleLabel.setTextFill(Color.RED);
-
-                    Label headerLabel = new Label("Falha ao excluir ingrediente");
-                    headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                    Label contentLabel = new Label(
-                        "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
-                    contentLabel.setWrapText(true);
-                    contentLabel.setMaxWidth(300);
-
-                    Button closeButton = new Button("Fechar");
-                    closeButton.setOnAction(evt -> errorPopup.hide());
-
-                    popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                    errorPopup.getContent().add(popupContent);
-
-                    Stage primaryStage = StageManager.getPrimaryStage();
-                    double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                    double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                    errorPopup.show(primaryStage, centerX, centerY);
-                });
-                }
-            })
-            .exceptionally(ex -> {
-                ex.printStackTrace();
-
-                // Mostrar mensagem de erro
-                Platform.runLater(() -> {
-                Popup errorPopup = new Popup();
-                errorPopup.setAutoHide(true);
-
-                VBox popupContent = new VBox(10);
-                popupContent.setPadding(new Insets(15));
-                popupContent.setStyle(
-                    "-fx-background-color: #ffebee;" + // light red background
-                        "-fx-border-color: #ef5350;" + // red border
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
-
-                Label titleLabel = new Label("Erro");
-                titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-                titleLabel.setTextFill(Color.RED);
-
-                Label headerLabel = new Label("Falha ao excluir ingrediente");
-                headerLabel.setFont(Font.font("System", FontWeight.MEDIUM, 14));
-
-                Label contentLabel = new Label("Erro: " + ex.getMessage());
-                contentLabel.setWrapText(true);
-                contentLabel.setMaxWidth(300);
-
-                Button closeButton = new Button("Fechar");
-                closeButton.setOnAction(evt -> errorPopup.hide());
-
-                popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, closeButton);
-                errorPopup.getContent().add(popupContent);
-
-                Stage primaryStage = StageManager.getPrimaryStage();
-                double centerX = primaryStage.getX() + primaryStage.getWidth() / 2 - 150;
-                double centerY = primaryStage.getY() + primaryStage.getHeight() / 2 - 100;
-                errorPopup.show(primaryStage, centerX, centerY);
-                });
-                return null;
-            });
     }
 }

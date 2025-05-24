@@ -1,12 +1,12 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
-import com.EatEaseFrontend.DialogHelper;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -36,7 +36,6 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 /**
  * View para gerenciar e exibir itens do menu
@@ -97,22 +96,16 @@ public class ItemView {
 
                     } else {
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar itens");
-                            alert.setContentText("Status code: " + resp.statusCode());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar itens",
+                                    "Status code: " + resp.statusCode());
                         });
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar itens");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar itens",
+                                "Erro: " + ex.getMessage());
                     });
                     return null;
                 });
@@ -558,7 +551,6 @@ public class ItemView {
                     }
                 }
             }
-
             jsonBuilder.append("]");
 
             jsonBuilder.append("}");
@@ -580,24 +572,15 @@ public class ItemView {
                         Platform.runLater(() -> {
                             if (resp.statusCode() == 200 || resp.statusCode() == 201) {
                                 // Sucesso
-                                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                                successAlert.setTitle("Sucesso");
-                                successAlert.setHeaderText("Item Criado");
-                                successAlert.setContentText("O item foi criado com sucesso!");
-
-                                successAlert.showAndWait();
+                                PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Item Criado",
+                                        "O item foi criado com sucesso!");
 
                                 // Recarregar a lista de itens
                                 show();
                             } else {
                                 // Erro
-                                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                                errorAlert.setTitle("Erro");
-                                errorAlert.setHeaderText("Falha ao criar item");
-                                errorAlert.setContentText(
+                                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
                                         "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
-
-                                errorAlert.showAndWait();
                             }
                         });
                     })
@@ -605,12 +588,8 @@ public class ItemView {
                         ex.printStackTrace();
 
                         Platform.runLater(() -> {
-                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                            errorAlert.setTitle("Erro");
-                            errorAlert.setHeaderText("Falha ao criar item");
-                            errorAlert.setContentText("Ocorreu um erro ao tentar enviar os dados: " + ex.getMessage());
-
-                            errorAlert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
+                                    "Ocorreu um erro ao tentar enviar os dados: " + ex.getMessage());
                         });
 
                         return null;
@@ -620,12 +599,8 @@ public class ItemView {
             e.printStackTrace();
 
             Platform.runLater(() -> {
-                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                errorAlert.setTitle("Erro");
-                errorAlert.setHeaderText("Falha ao criar item");
-                errorAlert.setContentText("Ocorreu um erro ao processar os dados: " + e.getMessage());
-
-                errorAlert.showAndWait();
+                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
+                        "Ocorreu um erro ao processar os dados: " + e.getMessage());
             });
         }
     }
@@ -658,25 +633,6 @@ public class ItemView {
 
         public void setQuantity(int quantity) {
             this.quantity = quantity;
-        }
-    }
-
-    /**
-     * Verifica se uma string é numérica
-     * 
-     * @param str String a ser verificada
-     * @return true se a string for numérica, false caso contrário
-     */
-    private boolean isNumeric(String str) {
-        if (str == null || str.isEmpty()) {
-            return false;
-        }
-        str = str.replace(',', '.');
-        try {
-            Double.parseDouble(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
         }
     }
 
@@ -802,7 +758,7 @@ public class ItemView {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
                     .GET().build();
-            httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+            httpClient.sendAsync(req, BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         List<Ingredient> list = JsonParser.parseIngredients(resp.body());
                         Platform.runLater(() -> {
@@ -971,24 +927,15 @@ public class ItemView {
                         Platform.runLater(() -> {
                             if (resp.statusCode() == 200) {
                                 // Sucesso
-                                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                                successAlert.setTitle("Sucesso");
-                                successAlert.setHeaderText("Item Atualizado");
-                                successAlert.setContentText("O item foi atualizado com sucesso!");
-
-                                successAlert.showAndWait();
+                                PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Item Atualizado",
+                                        "O item foi atualizado com sucesso!");
 
                                 // Recarregar a lista de itens
                                 show();
                             } else {
                                 // Erro
-                                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                                errorAlert.setTitle("Erro");
-                                errorAlert.setHeaderText("Falha ao atualizar item");
-                                errorAlert.setContentText(
+                                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar item",
                                         "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
-
-                                errorAlert.showAndWait();
                             }
                         });
                     })
@@ -996,12 +943,8 @@ public class ItemView {
                         ex.printStackTrace();
 
                         Platform.runLater(() -> {
-                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                            errorAlert.setTitle("Erro");
-                            errorAlert.setHeaderText("Falha ao atualizar item");
-                            errorAlert.setContentText("Ocorreu um erro ao tentar enviar os dados: " + ex.getMessage());
-
-                            errorAlert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar item",
+                                    "Ocorreu um erro ao tentar enviar os dados: " + ex.getMessage());
                         });
 
                         return null;
@@ -1011,12 +954,8 @@ public class ItemView {
             e.printStackTrace();
 
             Platform.runLater(() -> {
-                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                errorAlert.setTitle("Erro");
-                errorAlert.setHeaderText("Falha ao atualizar item");
-                errorAlert.setContentText("Ocorreu um erro ao processar os dados: " + e.getMessage());
-
-                errorAlert.showAndWait();
+                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar item",
+                        "Ocorreu um erro ao processar os dados: " + e.getMessage());
             });
         }
     }
@@ -1027,15 +966,9 @@ public class ItemView {
      * @param item Item a ser excluído
      */
     private void confirmDeleteItem(Item item) {
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmAlert.setTitle("Confirmar Exclusão");
-        confirmAlert.setHeaderText("Excluir Item");
-        confirmAlert.setContentText("Tem certeza que deseja excluir o item \"" + item.getNome() + "\"?");
-
-        Optional<ButtonType> result = confirmAlert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            deleteItem(item.getId());
-        }
+        showConfirmationPopup("Confirmar Exclusão", "Excluir Item",
+                "Tem certeza que deseja excluir o item \"" + item.getNome() + "\"?",
+                () -> deleteItem(item.getId()));
     }
 
     /**
@@ -1059,24 +992,15 @@ public class ItemView {
                     Platform.runLater(() -> {
                         if (resp.statusCode() == 200 || resp.statusCode() == 204) {
                             // Sucesso
-                            Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                            successAlert.setTitle("Sucesso");
-                            successAlert.setHeaderText("Item Excluído");
-                            successAlert.setContentText("O item foi excluído com sucesso!");
-
-                            successAlert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Item Excluído",
+                                    "O item foi excluído com sucesso!");
 
                             // Recarregar a lista de itens
                             show();
                         } else {
                             // Erro
-                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                            errorAlert.setTitle("Erro");
-                            errorAlert.setHeaderText("Falha ao excluir item");
-                            errorAlert.setContentText(
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir item",
                                     "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
-
-                            errorAlert.showAndWait();
                         }
                     });
                 })
@@ -1084,12 +1008,8 @@ public class ItemView {
                     ex.printStackTrace();
 
                     Platform.runLater(() -> {
-                        Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-                        errorAlert.setTitle("Erro");
-                        errorAlert.setHeaderText("Falha ao excluir item");
-                        errorAlert.setContentText("Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
-
-                        errorAlert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir item",
+                                "Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
                     });
 
                     return null;
@@ -1103,20 +1023,13 @@ public class ItemView {
      */
     private void showItemIngredients(Item item) {
         if (!item.isEComposto()) {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Informação");
-            alert.setHeaderText("Item Simples");
-            alert.setContentText("Este item não é composto, portanto não possui ingredientes associados.");
-            alert.showAndWait();
+            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Informação", "Item Simples",
+                    "Este item não é composto, portanto não possui ingredientes associados.");
             return;
         }
 
         if (item.getIngredientes() == null || item.getIngredientes().isEmpty()) {
             // Show dialog with raw JSON for debugging purposes
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Problema de Formato");
-            alert.setHeaderText("Problemas ao Processar Ingredientes");
-
             TextArea textArea = new TextArea();
             textArea.setText("Este item deveria ter ingredientes, mas nenhum foi encontrado.\n\n" +
                     "JSON Original: " + item.getIngredientes() + "\n\n" +
@@ -1125,9 +1038,8 @@ public class ItemView {
             textArea.setWrapText(true);
             textArea.setPrefHeight(200);
 
-            alert.getDialogPane().setExpandableContent(textArea);
-            alert.getDialogPane().setExpanded(true);
-            alert.showAndWait();
+            showCustomContentPopup(Alert.AlertType.WARNING, "Problema de Formato",
+                    "Problemas ao Processar Ingredientes", textArea);
             return;
         }
 
@@ -1262,29 +1174,21 @@ public class ItemView {
 
                         // Atualizar diálogo com as informações
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                            alert.setTitle("Ingredientes Completos");
-                            alert.setHeaderText("Ingredientes de " + item.getNome());
-
                             TextArea textArea = new TextArea(info.toString());
                             textArea.setEditable(false);
                             textArea.setWrapText(true);
-
-                            alert.getDialogPane().setContent(textArea);
-                            alert.getDialogPane().setPrefWidth(400);
-                            alert.getDialogPane().setPrefHeight(300);
+                            textArea.setPrefWidth(400);
+                            textArea.setPrefHeight(300);
 
                             parentDialog.setHeaderText("Ingredientes de " + item.getNome());
-                            alert.showAndWait();
+                            showCustomContentPopup(Alert.AlertType.INFORMATION, "Ingredientes Completos",
+                                    "Ingredientes de " + item.getNome(), textArea);
                         });
                     } else {
                         Platform.runLater(() -> {
                             parentDialog.setHeaderText("Ingredientes de " + item.getNome());
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingredientes");
-                            alert.setContentText("Status code: " + resp.statusCode());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
+                                    "Status code: " + resp.statusCode());
                         });
                     }
                 })
@@ -1292,11 +1196,8 @@ public class ItemView {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
                         parentDialog.setHeaderText("Ingredientes de " + item.getNome());
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar ingredientes");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
+                                "Erro: " + ex.getMessage());
                     });
                     return null;
                 });
@@ -1308,22 +1209,29 @@ public class ItemView {
      * @param ingredientId ID do ingrediente
      */
     private void fetchAndShowIngredientDetails(int ingredientId) {
-        // Mostrar indicador de carregamento
-        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
-        loadingAlert.setTitle("Carregando");
-        loadingAlert.setHeaderText("Carregando detalhes do ingrediente...");
-        loadingAlert.setContentText("Aguarde enquanto carregamos as informações...");
+        // Show loading popup
+        Stage primaryStage = StageManager.getPrimaryStage();
+        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2;
+        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2;
 
-        // Criar ProgressIndicator para feedback visual
+        Popup loadingPopup = new Popup();
+        VBox loadingContent = new VBox(10);
+        loadingContent.setPadding(new Insets(20));
+        loadingContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        loadingContent.setAlignment(Pos.CENTER);
+
         ProgressIndicator progress = new ProgressIndicator();
-        loadingAlert.getDialogPane().setGraphic(progress);
+        Label loadingLabel = new Label("Carregando detalhes do ingrediente...");
+        loadingContent.getChildren().addAll(progress, loadingLabel);
+        loadingPopup.getContent().add(loadingContent);
 
-        // Mostrar alerta sem botões (não-modal)
-        loadingAlert.getButtonTypes().clear();
-
-        // Mostrar e fechar após um breve intervalo para dar tempo para carregar
+        // Show loading popup
         Platform.runLater(() -> {
-            loadingAlert.show();
+            loadingPopup.show(primaryStage, centerX - 100, centerY - 50);
 
             // Fazer requisição à API para obter o ingrediente
             HttpRequest getIngredientReq = HttpRequest.newBuilder()
@@ -1333,7 +1241,7 @@ public class ItemView {
 
             httpClient.sendAsync(getIngredientReq, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(resp -> {
-                        loadingAlert.close();
+                        loadingPopup.hide();
 
                         if (resp.statusCode() == 200) {
                             try {
@@ -1360,32 +1268,24 @@ public class ItemView {
                             } catch (Exception e) {
                                 e.printStackTrace();
                                 Platform.runLater(() -> {
-                                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                                    alert.setTitle("Erro");
-                                    alert.setHeaderText("Erro ao processar dados do ingrediente");
-                                    alert.setContentText("Ocorreu um erro ao processar os dados. " + e.getMessage());
-                                    alert.showAndWait();
+                                    PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro",
+                                            "Erro ao processar dados do ingrediente",
+                                            "Ocorreu um erro ao processar os dados. " + e.getMessage());
                                 });
                             }
                         } else {
                             Platform.runLater(() -> {
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Erro");
-                                alert.setHeaderText("Falha ao carregar ingrediente");
-                                alert.setContentText("Status code: " + resp.statusCode());
-                                alert.showAndWait();
+                                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingrediente",
+                                        "Status code: " + resp.statusCode());
                             });
                         }
                     })
                     .exceptionally(ex -> {
-                        loadingAlert.close();
+                        loadingPopup.hide();
                         ex.printStackTrace();
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar ingrediente");
-                            alert.setContentText("Erro: " + ex.getMessage());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingrediente",
+                                    "Erro: " + ex.getMessage());
                         });
                         return null;
                     });
@@ -1398,10 +1298,6 @@ public class ItemView {
      * @param ingredient O ingrediente a ser exibido
      */
     private void showIngredientDetails(Ingredient ingredient) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Detalhes do Ingrediente");
-        alert.setHeaderText(ingredient.getNome());
-
         // Criar grid para os detalhes
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -1424,8 +1320,8 @@ public class ItemView {
         grid.add(new Label("Unidade:"), 0, 4);
         grid.add(new Label(ingredient.getUnidadeName()), 1, 4);
 
-        alert.getDialogPane().setContent(grid);
-        alert.showAndWait();
+        showCustomContentPopup(Alert.AlertType.INFORMATION, "Detalhes do Ingrediente",
+                ingredient.getNome(), grid);
     }
 
     /**
@@ -1534,5 +1430,131 @@ public class ItemView {
                     });
                     return null;
                 });
+    }
+
+    /**
+     * Creates and shows a confirmation popup dialog
+     * 
+     * @param title     The title of the dialog
+     * @param header    The header text of the dialog
+     * @param content   The content text of the dialog
+     * @param onConfirm The action to execute when user confirms
+     */
+    private void showConfirmationPopup(String title, String header, String content, Runnable onConfirm) {
+        Stage primaryStage = StageManager.getPrimaryStage();
+        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2;
+        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2;
+
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
+
+        // Create content
+        VBox popupContent = new VBox(10);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        titleLabel.setTextFill(Color.RED);
+
+        // Header
+        Label headerLabel = new Label(header);
+        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        headerLabel.setWrapText(true);
+
+        // Content
+        Label contentLabel = new Label(content);
+        contentLabel.setWrapText(true);
+        contentLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+
+        // Buttons
+        Button confirmButton = new Button("Confirmar");
+        confirmButton.setOnAction(e -> {
+            popup.hide();
+            onConfirm.run();
+        });
+
+        Button cancelButton = new Button("Cancelar");
+        cancelButton.setOnAction(e -> popup.hide());
+
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.getChildren().addAll(confirmButton, cancelButton);
+
+        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, buttonBox);
+        popup.getContent().add(popupContent);
+
+        // Show popup centered
+        popup.show(primaryStage, centerX - 175, centerY - 100);
+    }
+
+    /**
+     * Creates and shows a popup dialog with custom content
+     * 
+     * @param type          The type of alert (affects title color)
+     * @param title         The title of the dialog
+     * @param header        The header text of the dialog
+     * @param customContent The custom content node to display
+     */
+    private void showCustomContentPopup(Alert.AlertType type, String title, String header, Node customContent) {
+        Stage primaryStage = StageManager.getPrimaryStage();
+        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2;
+        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2;
+
+        Popup popup = new Popup();
+        popup.setAutoHide(true);
+
+        // Create the popup content
+        VBox popupContent = new VBox(15);
+        popupContent.setPadding(new Insets(20));
+        popupContent.setStyle(
+                "-fx-background-color: white; " +
+                        "-fx-border-color: #cccccc; " +
+                        "-fx-border-width: 1; " +
+                        "-fx-border-radius: 5; " +
+                        "-fx-background-radius: 5; " +
+                        "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 0);");
+        popupContent.setMinWidth(400);
+        popupContent.setMaxWidth(600);
+
+        // Title
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+
+        // Set title color based on type
+        Color titleColor = Color.BLACK;
+        if (type == Alert.AlertType.ERROR) {
+            titleColor = Color.RED;
+        } else if (type == Alert.AlertType.WARNING) {
+            titleColor = Color.ORANGE;
+        } else if (type == Alert.AlertType.INFORMATION) {
+            titleColor = Color.BLUE;
+        }
+        titleLabel.setTextFill(titleColor);
+
+        // Header
+        Label headerLabel = new Label(header);
+        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        headerLabel.setWrapText(true);
+
+        // OK Button
+        Button okButton = new Button("OK");
+        okButton.getStyleClass().add("login-button");
+        okButton.setOnAction(e -> popup.hide());
+
+        HBox buttonBox = new HBox();
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.getChildren().add(okButton);
+
+        popupContent.getChildren().addAll(titleLabel, headerLabel, customContent, buttonBox);
+        popup.getContent().add(popupContent);
+
+        // Show popup centered
+        popup.show(primaryStage, centerX - 200, centerY - 150);
     }
 }
