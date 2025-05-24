@@ -24,6 +24,7 @@ public class Item {
     /** String bruta vinda do back-end, útil para debug. */
     private transient String ingredientesJson;
 
+    @JsonProperty("eComposto")
     private boolean eComposto;
 
     private int stockAtual;
@@ -95,10 +96,12 @@ public class Item {
     }
 
     public boolean isEComposto() {
+        System.out.println("[DEBUG] Getting eComposto for " + nome + ": " + eComposto);
         return eComposto;
     }
 
     public void setEComposto(boolean flag) {
+        System.out.println("[DEBUG] Setting eComposto for " + nome + " to: " + flag);
         this.eComposto = flag;
     } // <-- OBRIGATÓRIO
 

@@ -1,7 +1,3 @@
 MOVIMENTOS STOCK
-
-TUDO O Q FOR ALERTS E Dialog TEM DE VIRAR POPUPS
-o certinho do composto por ingredientes nao fica certinho(ver na db ou se é front)
-
-
-TUDO O QUE FOR EDITAR DEVE ESTAR SYNCRONIZADO COM O BACKEND
+problema no estado dos pedidos, FAZER BACK DE CANCELAR PEDIDO
+ingredientes a remover
