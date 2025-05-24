@@ -1,4 +1,6 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/AppConfig.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/AsyncOperationManager.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Cargo.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/DialogHelper.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Employee.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/EmployeeView.java
@@ -6,6 +8,7 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Item.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/ItemJsonLoader.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/JsonParser.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/LoadingStateManager.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/LoginPage.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Main.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Menu.java

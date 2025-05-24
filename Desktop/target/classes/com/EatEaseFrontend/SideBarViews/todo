@@ -1,8 +1,7 @@
-eleminar mesas
-ao abrir editar ja vir com o que estava selecionado -> menu item
-ingredientes dtirar id de tipo e meter nome editar
-
+MOVIMENTOS STOCK
 
 TUDO O Q FOR ALERTS E Dialog TEM DE VIRAR POPUPS
 o certinho do composto por ingredientes nao fica certinho(ver na db ou se é front)
-editar menus nao seleciona previamente o q estava antigo
+
+
+TUDO O QUE FOR EDITAR DEVE ESTAR SYNCRONIZADO COM O BACKEND

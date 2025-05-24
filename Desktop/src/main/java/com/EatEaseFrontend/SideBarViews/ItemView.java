@@ -6,12 +6,10 @@ import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.ItemJsonLoader;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
-import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.collections.ListChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -86,6 +84,13 @@ public class ItemView {
                         List<Item> items = new ArrayList<>();
                         try {
                             items = ItemJsonLoader.parseItems(resp.body());
+                            // Debug: print each item and its composition status
+                            for (Item item : items) {
+                                System.out.println("DEBUG: Loaded item - " + item.getNome() +
+                                        " | isEComposto: " + item.isEComposto() +
+                                        " | ingredients count: "
+                                        + (item.getIngredientes() != null ? item.getIngredientes().size() : 0));
+                            }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -411,14 +416,39 @@ public class ItemView {
                 table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
             }
         });
-        Button loadBtn = new Button("Carregar Ingredientes");
+        Button loadBtn = new Button("Recarregar Ingredientes");
+
+        // Carrega ingredientes automaticamente ao abrir o diálogo
+        loadBtn.setDisable(true);
+        loadBtn.setText("Carregando...");
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
+                .GET().build();
+        httpClient.sendAsync(req, BodyHandlers.ofString())
+                .thenAccept(resp -> {
+                    List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                    Platform.runLater(() -> {
+                        ingCombo.getItems().setAll(list);
+                        loadBtn.setText("Recarregar Ingredientes");
+                        loadBtn.setDisable(false);
+                    });
+                })
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> {
+                        loadBtn.setText("Falha ao Carregar");
+                        loadBtn.setDisable(false);
+                    });
+                    return null;
+                });
+
+        // Ação do botão para recarregar quando necessário
         loadBtn.setOnAction(e -> {
             loadBtn.setDisable(true);
             loadBtn.setText("Carregando...");
-            HttpRequest req = HttpRequest.newBuilder()
+            HttpRequest reqReload = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
                     .GET().build();
-            httpClient.sendAsync(req, BodyHandlers.ofString())
+            httpClient.sendAsync(reqReload, BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         List<Ingredient> list = JsonParser.parseIngredients(resp.body());
                         Platform.runLater(() -> {
@@ -443,21 +473,24 @@ public class ItemView {
 
         // validador geral
         ChangeListener<Object> validator = (obs, o, n) -> {
-            boolean ok = !nameField.getText().trim().isEmpty()
-                    && tipoPratoCombo.getValue() != null
-                    && !precoField.getText().trim().isEmpty()
-                    && !stockField.getText().trim().isEmpty()
-                    && (!compostoCheck.isSelected() || !table.getItems().isEmpty());
+            boolean nameOk = !nameField.getText().trim().isEmpty();
+            boolean tipoOk = tipoPratoCombo.getValue() != null;
+            boolean precoOk = !precoField.getText().trim().isEmpty();
+            boolean stockOk = !stockField.getText().trim().isEmpty();
+            boolean ok = nameOk && tipoOk && precoOk && stockOk;
+
+            System.out.println("DEBUG ADD - Nome: " + nameOk + " (" + nameField.getText() + "), " +
+                    "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
+                    "Preço: " + precoOk + " (" + precoField.getText() + "), " +
+                    "Stock: " + stockOk + " (" + stockField.getText() + "), " +
+                    "Final: " + ok);
+
             submit.setDisable(!ok);
         };
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
         stockField.textProperty().addListener(validator);
-        compostoCheck.selectedProperty().addListener((o, ov, nv) -> {
-            validator.changed(null, null, null);
-        });
-        table.getItems().addListener((ListChangeListener<IngredientRowData>) c -> validator.changed(null, null, null));
 
         // 5) Layout
         GridPane grid = new GridPane();
@@ -495,13 +528,11 @@ public class ItemView {
             int stock = Integer.parseInt(stockField.getText());
             boolean composto = compostoCheck.isSelected();
             List<Item.ItemIngrediente> ingList = new ArrayList<>();
-            if (composto) {
-                for (IngredientRowData row : table.getItems()) {
-                    Item.ItemIngrediente ii = new Item.ItemIngrediente();
-                    ii.setIngredienteId(row.getId());
-                    ii.setQuantidade(row.getQuantity());
-                    ingList.add(ii);
-                }
+            for (IngredientRowData row : table.getItems()) {
+                Item.ItemIngrediente ii = new Item.ItemIngrediente();
+                ii.setIngredienteId(row.getId());
+                ii.setQuantidade(row.getQuantity());
+                ingList.add(ii);
             }
             createItem(nome, tipoId, preco, composto, stock, ingList);
             popup.hide();
@@ -538,7 +569,7 @@ public class ItemView {
             jsonBuilder.append(",\"ingredientes\":[");
 
             // Se for composto e tiver ingredientes, adicionar cada um
-            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
+            if (ingredientes != null && !ingredientes.isEmpty()) {
                 for (int i = 0; i < ingredientes.size(); i++) {
                     Item.ItemIngrediente ingrediente = ingredientes.get(i);
                     jsonBuilder.append("{");
@@ -676,6 +707,7 @@ public class ItemView {
         });
 
         CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
+        System.out.println("DEBUG: Item " + item.getNome() + " - isEComposto: " + item.isEComposto());
         compostoCheck.setSelected(item.isEComposto());
 
         // 4) Tabela de ingredientes
@@ -751,14 +783,52 @@ public class ItemView {
                 table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
             }
         });
-        Button loadBtn = new Button("Carregar Ingredientes");
+        Button loadBtn = new Button("Recarregar Ingredientes");
+
+        // Carrega ingredientes automaticamente ao abrir o diálogo
+        loadBtn.setDisable(true);
+        loadBtn.setText("Carregando...");
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
+                .GET().build();
+        httpClient.sendAsync(req, BodyHandlers.ofString())
+                .thenAccept(resp -> {
+                    List<Ingredient> list = JsonParser.parseIngredients(resp.body());
+                    Platform.runLater(() -> {
+                        ingCombo.getItems().setAll(list);
+                        // pré-carrega os existentes do item
+                        if (item.getIngredientes() != null) {
+                            table.getItems().clear();
+                            for (Item.ItemIngrediente ii : item.getIngredientes()) {
+                                String nome = list.stream()
+                                        .filter(x -> x.getId() == ii.getIngredienteId())
+                                        .map(Ingredient::getNome)
+                                        .findFirst()
+                                        .orElse("ID:" + ii.getIngredienteId());
+                                table.getItems().add(
+                                        new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
+                            }
+                        }
+                        loadBtn.setText("Recarregar Ingredientes");
+                        loadBtn.setDisable(false);
+                    });
+                })
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> {
+                        loadBtn.setText("Falha ao Carregar");
+                        loadBtn.setDisable(false);
+                    });
+                    return null;
+                });
+
+        // Ação do botão para recarregar quando necessário
         loadBtn.setOnAction(e -> {
             loadBtn.setDisable(true);
             loadBtn.setText("Carregando...");
-            HttpRequest req = HttpRequest.newBuilder()
+            HttpRequest reqReload = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/getAll")))
                     .GET().build();
-            httpClient.sendAsync(req, BodyHandlers.ofString())
+            httpClient.sendAsync(reqReload, BodyHandlers.ofString())
                     .thenAccept(resp -> {
                         List<Ingredient> list = JsonParser.parseIngredients(resp.body());
                         Platform.runLater(() -> {
@@ -796,19 +866,27 @@ public class ItemView {
 
         // 7) Validação geral
         ChangeListener<Object> validator = (obs, o, n) -> {
-            boolean ok = !nameField.getText().trim().isEmpty()
-                    && tipoPratoCombo.getValue() != null
-                    && !precoField.getText().trim().isEmpty()
-                    && !stockField.getText().trim().isEmpty()
-                    && (!compostoCheck.isSelected() || !table.getItems().isEmpty());
+            boolean nameOk = !nameField.getText().trim().isEmpty();
+            boolean tipoOk = tipoPratoCombo.getValue() != null;
+            boolean precoOk = !precoField.getText().trim().isEmpty();
+            boolean stockOk = !stockField.getText().trim().isEmpty();
+            boolean ok = nameOk && tipoOk && precoOk && stockOk;
+
+            System.out.println("DEBUG EDIT - Nome: " + nameOk + " (" + nameField.getText() + "), " +
+                    "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
+                    "Preço: " + precoOk + " (" + precoField.getText() + "), " +
+                    "Stock: " + stockOk + " (" + stockField.getText() + "), " +
+                    "Final: " + ok);
+
             saveBtn.setDisable(!ok);
         };
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
         stockField.textProperty().addListener(validator);
-        compostoCheck.selectedProperty().addListener((o, ov, nv) -> validator.changed(null, null, null));
-        table.getItems().addListener((ListChangeListener<IngredientRowData>) c -> validator.changed(null, null, null));
+
+        // Chama o validador uma vez para avaliar o estado inicial
+        validator.changed(null, null, null);
 
         // 8) Layout principal
         GridPane grid = new GridPane();
@@ -846,13 +924,11 @@ public class ItemView {
             int stock = Integer.parseInt(stockField.getText());
             boolean composto = compostoCheck.isSelected();
             List<Item.ItemIngrediente> ingList = new ArrayList<>();
-            if (composto) {
-                for (IngredientRowData row : table.getItems()) {
-                    Item.ItemIngrediente ii = new Item.ItemIngrediente();
-                    ii.setIngredienteId(row.getId());
-                    ii.setQuantidade(row.getQuantity());
-                    ingList.add(ii);
-                }
+            for (IngredientRowData row : table.getItems()) {
+                Item.ItemIngrediente ii = new Item.ItemIngrediente();
+                ii.setIngredienteId(row.getId());
+                ii.setQuantidade(row.getQuantity());
+                ingList.add(ii);
             }
             updateItem(item.getId(), nome, tipoId, preco, composto, stock, ingList);
             popup.hide();
@@ -892,7 +968,7 @@ public class ItemView {
             jsonBuilder.append(",\"ingredientes\":[");
 
             // Se for composto e tiver ingredientes, adicionar cada um
-            if (composto && ingredientes != null && !ingredientes.isEmpty()) {
+            if (ingredientes != null && !ingredientes.isEmpty()) {
                 for (int i = 0; i < ingredientes.size(); i++) {
                     Item.ItemIngrediente ingrediente = ingredientes.get(i);
                     jsonBuilder.append("{");

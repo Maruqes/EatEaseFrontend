@@ -86,18 +86,8 @@ public class Employee {
     }
 
     public String getCargoName() {
-        switch (cargoId) {
-            case 1:
-                return "Funcionário";
-            case 2:
-                return "Administrador";
-            case 3:
-                return "Gerente";
-            case 4:
-                return "Outro";
-            default:
-                return "Desconhecido";
-        }
+        Cargo cargo = Cargo.getById(cargoId);
+        return cargo != null ? cargo.getDisplayName() : "Desconhecido";
     }
 
     @Override

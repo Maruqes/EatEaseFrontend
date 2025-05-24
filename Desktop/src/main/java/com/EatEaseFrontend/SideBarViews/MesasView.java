@@ -1,6 +1,8 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
+import com.EatEaseFrontend.AsyncOperationManager;
+import com.EatEaseFrontend.LoadingStateManager;
 import com.EatEaseFrontend.Mesa;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.SideBarViews.PopUp;
@@ -26,6 +28,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * View para gerenciar e exibir mesas do restaurante
@@ -34,6 +37,9 @@ public class MesasView {
 
     private final StackPane contentArea;
     private final HttpClient httpClient;
+    private final AsyncOperationManager asyncManager;
+    private final LoadingStateManager loadingManager;
+    private final AtomicBoolean isTimerOperationRunning = new AtomicBoolean(false);
 
     // Temporizador para atualizações automáticas
     private Timer autoUpdateTimer;
@@ -51,6 +57,8 @@ public class MesasView {
     public MesasView(StackPane contentArea, HttpClient httpClient) {
         this.contentArea = contentArea;
         this.httpClient = httpClient;
+        this.asyncManager = new AsyncOperationManager();
+        this.loadingManager = new LoadingStateManager();
     }
 
     /**
@@ -79,46 +87,86 @@ public class MesasView {
     }
 
     /**
-     * Carrega as mesas do servidor
+     * Carrega as mesas do servidor (CORRIGIDO)
      */
     private void loadMesas() {
+        System.out.println("[MESAS] Iniciando carregamento de mesas...");
+        
+        // Verificar se é uma operação do timer para evitar conflitos
+        boolean isTimerOperation = !Platform.isFxApplicationThread();
+        String operationId = isTimerOperation ? "autoLoadMesas" : "manualLoadMesas";
+        
+        // Para operações do timer, usar controle atômico
+        if (isTimerOperation) {
+            if (!isTimerOperationRunning.compareAndSet(false, true)) {
+                System.out.println("[MESAS] Operação automática já em execução, ignorando...");
+                return;
+            }
+        }
+
+        // Criar requisição
         HttpRequest getMesasReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getAll")))
                 .GET()
                 .build();
 
-        httpClient.sendAsync(getMesasReq, HttpResponse.BodyHandlers.ofString())
-                .thenApply(response -> {
-                    System.out.println("Response status: " + response.statusCode());
-                    System.out.println("Response body: " + response.body());
-                    if (response.statusCode() == 200) {
-                        return JsonParser.parseMesas(response.body());
-                    } else {
-                        throw new RuntimeException("Failed to load mesas: " + response.statusCode());
+        // Usar AsyncOperationManager para controlar a operação
+        asyncManager.executeSimpleOperation(
+                () -> {
+                    try {
+                        System.out.println("[MESAS] Enviando requisição síncrona para carregar mesas...");
+                        HttpResponse<String> response = httpClient.send(getMesasReq, HttpResponse.BodyHandlers.ofString());
+                        
+                        System.out.println("[MESAS] Response status: " + response.statusCode());
+                        if (response.statusCode() == 200) {
+                            System.out.println("[MESAS] Mesas recebidas com sucesso");
+                            return JsonParser.parseMesas(response.body());
+                        } else {
+                            System.err.println("[MESAS] Erro HTTP ao carregar mesas. Status: " + response.statusCode());
+                            throw new RuntimeException("Failed to load mesas: " + response.statusCode());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[MESAS] Exceção ao carregar mesas: " + e.getMessage());
+                        throw new RuntimeException(e);
+                    } finally {
+                        // Reset do flag para operações do timer
+                        if (isTimerOperation) {
+                            isTimerOperationRunning.set(false);
+                        }
                     }
-                })
-                .thenAccept(mesas -> {
-                    Platform.runLater(() -> displayMesasAsGrid(mesas));
-                })
-                .exceptionally(e -> {
-                    Platform.runLater(() -> {
-                        contentArea.getChildren().clear();
-                        Text errorText = new Text("Erro ao carregar mesas: " + e.getMessage());
-                        errorText.setFill(Color.RED);
-                        contentArea.getChildren().add(errorText);
-                    });
-                    e.printStackTrace();
-                    return null;
-                });
+                },
+                () -> {
+                    // onComplete - executado na UI thread
+                    System.out.println("[MESAS] Carregamento completo, atualizando UI");
+                }
+        ).thenAccept(mesas -> {
+            if (mesas != null) {
+                Platform.runLater(() -> displayMesasAsGrid(mesas));
+            }
+        }).exceptionally(e -> {
+            System.err.println("[MESAS] Erro no carregamento assíncrono: " + e.getMessage());
+            Platform.runLater(() -> {
+                if (!isTimerOperation) { // Só mostrar erro para operações manuais
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Erro");
+                    alert.setHeaderText("Falha ao carregar mesas");
+                    alert.setContentText("Erro: " + e.getMessage());
+                    alert.showAndWait();
+                }
+            });
+            return null;
+        });
     }
 
     /**
-     * Inicia o temporizador para atualização automática das mesas
+     * Inicia o temporizador para atualização automática das mesas (CORRIGIDO)
      */
     private void startAutoUpdateTimer() {
         // Cancelar qualquer temporizador existente
         stopAutoUpdateTimer();
 
+        System.out.println("[MESAS] Iniciando timer de atualização automática (intervalo: " + updateIntervalSeconds + "s)");
+        
         // Criar um novo temporizador
         autoUpdateTimer = new Timer();
         autoUpdateTimer.scheduleAtFixedRate(new TimerTask() {
@@ -126,8 +174,12 @@ public class MesasView {
             public void run() {
                 // Verificar se a view ainda está ativa antes de atualizar
                 if (isViewActive) {
+                    System.out.println("[MESAS] Executando atualização automática...");
                     // Carregar as mesas silenciosamente (sem mostrar indicador de carregamento)
                     silentlyUpdateMesas();
+                } else {
+                    System.out.println("[MESAS] View inativa, cancelando timer...");
+                    this.cancel();
                 }
             }
         }, updateIntervalSeconds * 1000, updateIntervalSeconds * 1000);

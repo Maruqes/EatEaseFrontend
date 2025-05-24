@@ -24,7 +24,6 @@ public class Item {
     /** String bruta vinda do back-end, útil para debug. */
     private transient String ingredientesJson;
 
-    @JsonAlias({ "eComposto", "eCpmposto" }) // aceita as duas grafias
     private boolean eComposto;
 
     private int stockAtual;

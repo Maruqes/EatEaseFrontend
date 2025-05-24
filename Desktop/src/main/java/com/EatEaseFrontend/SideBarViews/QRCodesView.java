@@ -1,12 +1,13 @@
 package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
+import com.EatEaseFrontend.AsyncOperationManager;
+import com.EatEaseFrontend.LoadingStateManager;
 import com.EatEaseFrontend.Mesa;
 import com.EatEaseFrontend.JsonParser;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -30,6 +31,8 @@ public class QRCodesView {
 
     private final StackPane contentArea;
     private final HttpClient httpClient;
+    private final AsyncOperationManager asyncManager;
+    private final LoadingStateManager loadingManager;
     private List<Mesa> mesas;
 
     /**
@@ -41,6 +44,8 @@ public class QRCodesView {
     public QRCodesView(StackPane contentArea, HttpClient httpClient) {
         this.contentArea = contentArea;
         this.httpClient = httpClient;
+        this.asyncManager = new AsyncOperationManager();
+        this.loadingManager = new LoadingStateManager();
     }
 
     /**
@@ -63,45 +68,62 @@ public class QRCodesView {
     }
 
     /**
-     * Carrega a lista de mesas do servidor
+     * Carrega a lista de mesas do servidor (CORRIGIDO)
      */
     private void loadMesas() {
+        System.out.println("[QRCODES] Iniciando carregamento de mesas...");
+        
+        if (!loadingManager.startLoading("loadMesas")) {
+            System.out.println("[QRCODES] Carregamento de mesas já em execução");
+            return;
+        }
+
+        // Criar requisição
         HttpRequest getMesasReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getAll")))
                 .GET()
                 .build();
 
-        httpClient.sendAsync(getMesasReq, HttpResponse.BodyHandlers.ofString())
-                .thenApply(response -> {
-                    if (response.statusCode() == 200) {
-                        System.out.println("Mesas recebidas para QR Codes");
-                        return JsonParser.parseMesas(response.body());
-                    } else {
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar mesas");
-                            alert.setContentText("Erro: Código " + response.statusCode());
-                            alert.showAndWait();
-                        });
-                        return List.<Mesa>of();
+        // Usar AsyncOperationManager para controlar a operação
+        asyncManager.executeOperation(
+                () -> {
+                    try {
+                        System.out.println("[QRCODES] Enviando requisição síncrona para carregar mesas...");
+                        HttpResponse<String> response = httpClient.send(getMesasReq, HttpResponse.BodyHandlers.ofString());
+                        
+                        if (response.statusCode() == 200) {
+                            System.out.println("[QRCODES] Mesas recebidas com sucesso");
+                            return JsonParser.parseMesas(response.body());
+                        } else {
+                            System.err.println("[QRCODES] Erro HTTP ao carregar mesas. Status: " + response.statusCode());
+                            throw new RuntimeException("Erro HTTP: " + response.statusCode());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[QRCODES] Exceção ao carregar mesas: " + e.getMessage());
+                        throw new RuntimeException(e);
                     }
-                })
-                .thenAccept(mesasCarregadas -> {
-                    this.mesas = mesasCarregadas;
-                    Platform.runLater(this::displayQRCodeInterface);
-                })
-                .exceptionally(e -> {
-                    e.printStackTrace();
-                    Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar mesas");
-                        alert.setContentText("Erro: " + e.getMessage());
-                        alert.showAndWait();
-                    });
-                    return null;
-                });
+                },
+                () -> {
+                    // onSuccess - executado na UI thread
+                    System.out.println("[QRCODES] Mesas carregadas com sucesso, atualizando UI");
+                    this.displayQRCodeInterface();
+                    loadingManager.stopLoading("loadMesas");
+                },
+                () -> {
+                    // onError - executado na UI thread
+                    System.err.println("[QRCODES] Erro ao carregar mesas");
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Erro");
+                    alert.setHeaderText("Falha ao carregar mesas");
+                    alert.setContentText("Não foi possível carregar a lista de mesas. Tente novamente.");
+                    alert.showAndWait();
+                    loadingManager.stopLoading("loadMesas");
+                }
+        ).thenAccept(mesasCarregadas -> {
+            if (mesasCarregadas != null) {
+                this.mesas = mesasCarregadas;
+            }
+        });
     }
 
     /**
@@ -174,12 +196,12 @@ public class QRCodesView {
 
         qrCodeContainer.getChildren().addAll(qrTitle, qrImageView, mesaInfoLabel);
 
-        // Adicionar ação ao botão para gerar QR
+        // Adicionar ação ao botão para gerar QR (CORRIGIDO)
         generateButton.setOnAction(e -> {
             int selectedIndex = mesaComboBox.getSelectionModel().getSelectedIndex();
             if (selectedIndex >= 0 && selectedIndex < mesas.size()) {
                 Mesa selectedMesa = mesas.get(selectedIndex);
-                generateQRCode(selectedMesa.getId(), qrImageView, mesaInfoLabel);
+                generateQRCode(selectedMesa.getId(), qrImageView, mesaInfoLabel, generateButton);
             }
         });
 
@@ -204,128 +226,102 @@ public class QRCodesView {
     }
 
     /**
-     * Gera e exibe o QR Code para uma mesa específica
+     * Gera e exibe o QR Code para uma mesa específica (CORRIGIDO)
      * 
      * @param mesaId    ID da mesa
      * @param imageView ImageView onde exibir o QR Code
      * @param infoLabel Label para exibir informações da mesa
+     * @param button    Botão a ser desabilitado durante a operação
      */
-    private void generateQRCode(int mesaId, ImageView imageView, Label infoLabel) {
+    private void generateQRCode(int mesaId, ImageView imageView, Label infoLabel, Button button) {
+        System.out.println("[QRCODES] Iniciando geração de QR Code para mesa ID: " + mesaId);
+        
+        String operationId = "generateQR_" + mesaId;
+        if (!loadingManager.startLoading(operationId, button)) {
+            System.out.println("[QRCODES] Geração de QR Code já em execução para mesa: " + mesaId);
+            return;
+        }
+
         // Atualizar o status
         infoLabel.setText("Gerando QR Code para Mesa #" + mesaId + "...");
-
-        // Criar e mostrar um indicador de progresso sobreposto à imagem
-        ProgressIndicator progressIndicator = new ProgressIndicator();
-        progressIndicator.setPrefSize(50, 50);
 
         // Limpar imagem atual
         imageView.setImage(null);
 
-        // Encontrar o parent de imageView
-        Parent parent = imageView.getParent();
-        if (parent instanceof Pane parentPane) {
-            // Adicionar o indicador de progresso diretamente ao parent
-            progressIndicator.setTranslateX(imageView.getLayoutBounds().getWidth() / 2 - 25);
-            progressIndicator.setTranslateY(imageView.getLayoutBounds().getHeight() / 2 - 25);
-
-            // Se o indicador já existe, remova-o primeiro
-            parentPane.getChildren().removeIf(node -> node instanceof ProgressIndicator);
-            parentPane.getChildren().add(progressIndicator);
-        }
-
-        // Fazer requisição para gerar QR Code
+        // Criar requisição
         HttpRequest getQRRequest = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/qr/generateQR?mesaID=" + mesaId)))
                 .GET()
                 .build();
 
-        httpClient.sendAsync(getQRRequest, HttpResponse.BodyHandlers.ofByteArray())
-                .thenApply(response -> {
-                    if (response.statusCode() == 200) {
-                        return response.body();
-                    } else {
-                        Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao gerar QR Code");
-                            alert.setContentText("Erro: Código " + response.statusCode());
-                            alert.showAndWait();
-
-                            // Remover o indicador de progresso
-                            if (parent instanceof Pane parentPane) {
-                                parentPane.getChildren().removeIf(node -> node instanceof ProgressIndicator);
-                            }
-
-                            infoLabel.setText("Erro ao gerar QR Code para Mesa #" + mesaId);
-                        });
-                        return null;
+        // Usar AsyncOperationManager para controlar a operação
+        asyncManager.executeOperation(
+                () -> {
+                    try {
+                        System.out.println("[QRCODES] Enviando requisição síncrona para gerar QR Code...");
+                        HttpResponse<byte[]> response = httpClient.send(getQRRequest, HttpResponse.BodyHandlers.ofByteArray());
+                        
+                        if (response.statusCode() == 200) {
+                            System.out.println("[QRCODES] QR Code gerado com sucesso");
+                            return response.body();
+                        } else {
+                            System.err.println("[QRCODES] Erro HTTP ao gerar QR Code. Status: " + response.statusCode());
+                            throw new RuntimeException("Erro HTTP: " + response.statusCode());
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[QRCODES] Exceção ao gerar QR Code: " + e.getMessage());
+                        throw new RuntimeException(e);
                     }
-                })
-                .thenAccept(bytes -> {
-                    if (bytes != null) {
-                        Platform.runLater(() -> {
-                            try {
-                                // Criar imagem a partir dos bytes retornados
-                                ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-                                // Atualizar a imagem
+                },
+                () -> {
+                    // onSuccess - executado na UI thread
+                    System.out.println("[QRCODES] QR Code processado com sucesso");
+                    loadingManager.stopLoading(operationId);
+                },
+                () -> {
+                    // onError - executado na UI thread
+                    System.err.println("[QRCODES] Erro ao gerar QR Code");
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Erro");
+                    alert.setHeaderText("Falha ao gerar QR Code");
+                    alert.setContentText("Não foi possível gerar o QR Code. Tente novamente.");
+                    alert.showAndWait();
+                    infoLabel.setText("Erro ao gerar QR Code para Mesa #" + mesaId);
+                    loadingManager.stopLoading(operationId);
+                }
+        ).thenAccept(bytes -> {
+            if (bytes != null) {
+                Platform.runLater(() -> {
+                    try {
+                        // Criar imagem a partir dos bytes retornados
+                        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+                        double w = imageView.getFitWidth();
+                        double h = imageView.getFitHeight();
+                        Image qrImage = new Image(bis, w, h, true, false);
 
-                                double w = imageView.getFitWidth();
-                                double h = imageView.getFitHeight();
-                                Image qrImage = new Image(bis, w, h, true, false);
+                        imageView.setImage(qrImage);
+                        imageView.setSmooth(false);
+                        imageView.setCache(false);
 
-                                imageView.setImage(qrImage);
-                                imageView.setSmooth(false);
-                                imageView.setCache(false);
-
-                                imageView.setImage(qrImage);
-
-                                // Remover o indicador de progresso
-                                if (parent instanceof Pane) {
-                                    ((Pane) parent).getChildren().remove(progressIndicator);
-                                }
-
-                                // Atualizar label com informações da mesa
-                                Mesa mesaSelecionada = findMesaById(mesaId);
-                                if (mesaSelecionada != null) {
-                                    infoLabel.setText("QR Code para Mesa #" + mesaSelecionada.getNumero());
-                                } else {
-                                    infoLabel.setText("QR Code para Mesa ID: " + mesaId);
-                                }
-                            } catch (Exception e) {
-                                Alert alert = new Alert(Alert.AlertType.ERROR);
-                                alert.setTitle("Erro");
-                                alert.setHeaderText("Falha ao processar imagem do QR Code");
-                                alert.setContentText("Erro: " + e.getMessage());
-                                alert.showAndWait();
-
-                                // Remover o indicador de progresso
-                                if (parent instanceof Pane) {
-                                    ((Pane) parent).getChildren().remove(progressIndicator);
-                                }
-
-                                infoLabel.setText("Erro ao processar QR Code");
-                            }
-                        });
-                    }
-                })
-                .exceptionally(e -> {
-                    e.printStackTrace();
-                    Platform.runLater(() -> {
+                        // Atualizar label com informações da mesa
+                        Mesa mesaSelecionada = findMesaById(mesaId);
+                        if (mesaSelecionada != null) {
+                            infoLabel.setText("QR Code para Mesa #" + mesaSelecionada.getNumero());
+                        } else {
+                            infoLabel.setText("QR Code para Mesa ID: " + mesaId);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[QRCODES] Erro ao processar imagem: " + e.getMessage());
                         Alert alert = new Alert(Alert.AlertType.ERROR);
                         alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao gerar QR Code");
+                        alert.setHeaderText("Falha ao processar imagem do QR Code");
                         alert.setContentText("Erro: " + e.getMessage());
                         alert.showAndWait();
-
-                        // Remover o indicador de progresso
-                        if (parent instanceof Pane) {
-                            ((Pane) parent).getChildren().remove(progressIndicator);
-                        }
-
-                        infoLabel.setText("Erro ao gerar QR Code para Mesa #" + mesaId);
-                    });
-                    return null;
+                        infoLabel.setText("Erro ao processar QR Code");
+                    }
                 });
+            }
+        });
     }
 
     /**

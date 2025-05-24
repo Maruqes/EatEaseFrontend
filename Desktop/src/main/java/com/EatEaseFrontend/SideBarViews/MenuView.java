@@ -7,7 +7,6 @@ import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.Menu;
 import com.EatEaseFrontend.StageManager;
 import com.EatEaseFrontend.TipoMenu;
-import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -45,10 +44,10 @@ public class MenuView {
     }
 
     /**
-     * Carrega e exibe a lista de menus
+     * Carrega e exibe a lista de menus (SÍNCRONO)
      */
     public void show() {
-        System.out.println("Carregando lista de menus...");
+        System.out.println("[MENU] Iniciando carregamento SÍNCRONO de menus...");
 
         contentArea.getChildren().clear();
         ProgressIndicator progress = new ProgressIndicator();
@@ -67,31 +66,41 @@ public class MenuView {
                 .GET()
                 .build();
 
-        httpClient.sendAsync(reqMenus, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(respMenus -> {
-                    if (respMenus.statusCode() == 200) {
-                        List<Menu> menus = JsonParser.parseMenus(respMenus.body());
-                        httpClient.sendAsync(reqTipos, HttpResponse.BodyHandlers.ofString())
-                                .thenAccept(respTipos -> {
-                                    if (respTipos.statusCode() == 200) {
-                                        List<TipoMenu> tipos = JsonParser.parseTipoMenus(respTipos.body());
-                                        Platform.runLater(() -> displayMenusAsCards(menus, tipos));
-                                    } else {
-                                        showError("Falha ao carregar tipos de menu", respTipos.statusCode());
-                                    }
-                                })
-                                .exceptionally(ex -> {
-                                    showError("Falha ao carregar tipos de menu", ex.getMessage());
-                                    return null;
-                                });
-                    } else {
-                        showError("Falha ao carregar menus", respMenus.statusCode());
-                    }
-                })
-                .exceptionally(ex -> {
-                    showError("Falha ao carregar menus", ex.getMessage());
-                    return null;
-                });
+        try {
+            // Requisições SÍNCRONAS - aguarda resposta antes de continuar
+            System.out.println("[MENU] Fazendo requisição síncrona para carregar menus...");
+            HttpResponse<String> respMenus = httpClient.send(reqMenus, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("[MENU] Resposta de menus recebida - Status: " + respMenus.statusCode());
+            if (respMenus.statusCode() == 200) {
+                List<Menu> menus = JsonParser.parseMenus(respMenus.body());
+                System.out.println("[MENU] Menus parseados com sucesso. Total: " + menus.size());
+
+                System.out.println("[MENU] Fazendo requisição síncrona para carregar tipos de menu...");
+                HttpResponse<String> respTipos = httpClient.send(reqTipos, HttpResponse.BodyHandlers.ofString());
+
+                System.out.println("[MENU] Resposta de tipos recebida - Status: " + respTipos.statusCode());
+                if (respTipos.statusCode() == 200) {
+                    List<TipoMenu> tipos = JsonParser.parseTipoMenus(respTipos.body());
+                    System.out.println("[MENU] Tipos de menu parseados com sucesso. Total: " + tipos.size());
+
+                    Platform.runLater(() -> {
+                        System.out.println("[MENU] Atualizando UI com dados carregados sincronamente");
+                        displayMenusAsCards(menus, tipos);
+                    });
+                } else {
+                    System.err.println("[MENU] Erro HTTP ao carregar tipos de menu. Status: " + respTipos.statusCode());
+                    showError("Falha ao carregar tipos de menu", respTipos.statusCode());
+                }
+            } else {
+                System.err.println("[MENU] Erro HTTP ao carregar menus. Status: " + respMenus.statusCode());
+                showError("Falha ao carregar menus", respMenus.statusCode());
+            }
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA no show(): " + ex.getMessage());
+            ex.printStackTrace();
+            showError("Falha ao carregar menus", ex.getMessage());
+        }
     }
 
     private void showError(String header, int status) {
@@ -385,113 +394,133 @@ public class MenuView {
     }
 
     /**
-     * Carrega os itens disponíveis da API e exibe para seleção
+     * Carrega os itens disponíveis da API e exibe para seleção (SÍNCRONO)
      * 
      * @param container        Container onde os itens serão exibidos
      * @param selectedItemsIds Lista observável para armazenar os IDs dos itens
      *                         selecionados
      */
     private void loadItems(VBox container, ObservableList<Integer> selectedItemsIds) {
+        System.out.println("[MENU] Iniciando carregamento SÍNCRONO de itens disponíveis...");
+        System.out.println("[MENU] IDs já selecionados: " + selectedItemsIds);
+
         HttpRequest getItemsReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/item/getAll")))
                 .GET()
                 .build();
 
-        httpClient.sendAsync(getItemsReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200) {
-                        try {
-                            List<Item> items = ItemJsonLoader.parseItems(resp.body());
+        try {
+            // Requisição SÍNCRONA - aguarda resposta antes de continuar
+            HttpResponse<String> resp = httpClient.send(getItemsReq, HttpResponse.BodyHandlers.ofString());
 
-                            Platform.runLater(() -> {
-                                container.getChildren().clear();
+            System.out.println("[MENU] Resposta SÍNCRONA da API para itens - Status: " + resp.statusCode());
+            if (resp.statusCode() == 200) {
+                try {
+                    System.out.println("[MENU] Resposta do servidor: " + resp.body());
+                    List<Item> items = ItemJsonLoader.parseItems(resp.body());
+                    System.out.println("[MENU] Itens parseados com sucesso. Total: " + items.size());
 
-                                if (items.isEmpty()) {
-                                    Label noItems = new Label("Nenhum item disponível");
-                                    container.getChildren().add(noItems);
-                                    return;
-                                }
+                    Platform.runLater(() -> {
+                        container.getChildren().clear();
 
-                                Label headerLabel = new Label("Selecione os itens para incluir no menu:");
-                                headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
-
-                                // Criar lista de checkboxes para os itens
-                                VBox checkBoxContainer = new VBox(5);
-                                ScrollPane scrollPane = new ScrollPane(checkBoxContainer);
-                                scrollPane.setFitToWidth(true);
-                                scrollPane.setPrefHeight(400);
-
-                                for (Item item : items) {
-                                    CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
-                                            item.getTipoPratoName() + " (€" + item.getPreco() + ")");
-                                    cb.setUserData(item.getId());
-
-                                    // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
-                                    if (selectedItemsIds.contains(item.getId())) {
-                                        cb.setSelected(true);
-                                        System.out.println(
-                                                "Item pré-selecionado: " + item.getId() + " - " + item.getNome());
-                                    }
-
-                                    // Quando o checkbox é marcado/desmarcado, atualize a lista de IDs selecionados
-                                    cb.selectedProperty().addListener((obs, oldVal, newVal) -> {
-                                        int itemId = (int) cb.getUserData();
-                                        if (newVal) {
-                                            if (!selectedItemsIds.contains(itemId)) {
-                                                selectedItemsIds.add(itemId);
-                                                System.out.println("Item selecionado: " + itemId);
-                                            }
-                                        } else {
-                                            selectedItemsIds.remove(Integer.valueOf(itemId));
-                                            System.out.println("Item removido: " + itemId);
-                                        }
-                                    });
-
-                                    checkBoxContainer.getChildren().add(cb);
-                                }
-
-                                // Display selected count
-                                Label selectionLabel = new Label(selectedItemsIds.size() + " item(s) selecionado(s)");
-
-                                // Update selection counter when list changes
-                                selectedItemsIds.addListener(
-                                        (javafx.collections.ListChangeListener.Change<? extends Integer> c) -> {
-                                            selectionLabel.setText(selectedItemsIds.size() + " item(s) selecionado(s)");
-                                        });
-
-                                // Layout
-                                container.getChildren().addAll(headerLabel, scrollPane, selectionLabel);
-                            });
-                        } catch (Exception ex) {
-                            Platform.runLater(() -> {
-                                container.getChildren().clear();
-                                Label errorLabel = new Label("Erro ao carregar itens: " + ex.getMessage());
-                                errorLabel.setTextFill(javafx.scene.paint.Color.RED);
-                                container.getChildren().add(errorLabel);
-                            });
+                        if (items.isEmpty()) {
+                            Label noItems = new Label("Nenhum item disponível");
+                            container.getChildren().add(noItems);
+                            System.out.println("[MENU] Nenhum item disponível");
+                            return;
                         }
-                    } else {
-                        Platform.runLater(() -> {
-                            container.getChildren().clear();
-                            Label errorLabel = new Label("Erro ao carregar itens. Status: " + resp.statusCode());
-                            errorLabel.setTextFill(javafx.scene.paint.Color.RED);
-                            container.getChildren().add(errorLabel);
-                        });
-                    }
-                })
-                .exceptionally(ex -> {
+
+                        Label headerLabel = new Label("Selecione os itens para incluir no menu:");
+                        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+                        // Criar lista de checkboxes para os itens
+                        VBox checkBoxContainer = new VBox(5);
+                        ScrollPane scrollPane = new ScrollPane(checkBoxContainer);
+                        scrollPane.setFitToWidth(true);
+                        scrollPane.setPrefHeight(400);
+
+                        for (Item item : items) {
+                            CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
+                                    item.getTipoPratoName() + " (€" + item.getPreco() + ")");
+                            cb.setUserData(item.getId());
+
+                            // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
+                            boolean isPreSelected = selectedItemsIds.contains(item.getId());
+                            cb.setSelected(isPreSelected);
+                            System.out.println("[MENU] Item " + item.getNome() + " (ID: " + item.getId()
+                                    + ") - Pré-selecionado: " + isPreSelected);
+
+                            // Quando o checkbox é marcado/desmarcado, atualize a lista de IDs selecionados
+                            cb.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                                int itemId = (int) cb.getUserData();
+                                System.out.println("[MENU] Mudança de seleção - Item ID: " + itemId
+                                        + " - Novo estado: " + newVal);
+                                if (newVal) {
+                                    if (!selectedItemsIds.contains(itemId)) {
+                                        selectedItemsIds.add(itemId);
+                                        System.out
+                                                .println("[MENU] Item adicionado à seleção. IDs selecionados: "
+                                                        + selectedItemsIds);
+                                    }
+                                } else {
+                                    selectedItemsIds.remove(Integer.valueOf(itemId));
+                                    System.out.println("[MENU] Item removido da seleção. IDs selecionados: "
+                                            + selectedItemsIds);
+                                }
+                            });
+
+                            checkBoxContainer.getChildren().add(cb);
+                        }
+
+                        // Display selected count
+                        Label selectionLabel = new Label(selectedItemsIds.size() + " item(s) selecionado(s)");
+
+                        // Update selection counter when list changes
+                        selectedItemsIds.addListener(
+                                (javafx.collections.ListChangeListener.Change<? extends Integer> c) -> {
+                                    selectionLabel.setText(selectedItemsIds.size() + " item(s) selecionado(s)");
+                                    System.out.println("[MENU] Contador atualizado: " + selectedItemsIds.size()
+                                            + " item(s) selecionado(s)");
+                                });
+
+                        // Layout
+                        container.getChildren().addAll(headerLabel, scrollPane, selectionLabel);
+                        System.out.println("[MENU] Interface de seleção de itens criada com sucesso");
+                    });
+                } catch (Exception ex) {
+                    System.err.println("[MENU] Erro ao processar resposta dos itens: " + ex.getMessage());
+                    ex.printStackTrace();
                     Platform.runLater(() -> {
                         container.getChildren().clear();
                         Label errorLabel = new Label("Erro ao carregar itens: " + ex.getMessage());
                         errorLabel.setTextFill(javafx.scene.paint.Color.RED);
                         container.getChildren().add(errorLabel);
                     });
-                    return null;
+                }
+            } else {
+                System.err.println("[MENU] Erro HTTP ao carregar itens. Status: " + resp.statusCode()
+                        + ", Body: " + resp.body());
+                Platform.runLater(() -> {
+                    container.getChildren().clear();
+                    Label errorLabel = new Label("Erro ao carregar itens. Status: " + resp.statusCode());
+                    errorLabel.setTextFill(javafx.scene.paint.Color.RED);
+                    container.getChildren().add(errorLabel);
                 });
+            }
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA ao carregar itens: " + ex.getMessage());
+            ex.printStackTrace();
+            Platform.runLater(() -> {
+                container.getChildren().clear();
+                Label errorLabel = new Label("Erro ao carregar itens: " + ex.getMessage());
+                errorLabel.setTextFill(javafx.scene.paint.Color.RED);
+                container.getChildren().add(errorLabel);
+            });
+        }
     }
 
     /**
-     * Envia uma requisição para a API para criar um novo menu
+     * Envia uma requisição para a API para criar um novo menu (SÍNCRONO)
      *
      * @param tipoMenuId ID do tipo de menu
      * @param nome       Nome do menu
@@ -499,13 +528,28 @@ public class MenuView {
      * @param itemsIds   Lista observável de IDs dos itens do menu
      */
     private void createMenu(int tipoMenuId, String nome, String descricao, ObservableList<Integer> itemsIds) {
-        // Construir o JSON para o corpo da requisição
+        System.out.println("[MENU] Criando novo menu:");
+        System.out.println("[MENU] - Tipo de Menu ID: " + tipoMenuId);
+        System.out.println("[MENU] - Nome: " + nome);
+        System.out.println("[MENU] - Descrição: " + descricao);
+        System.out.println("[MENU] - IDs dos itens: " + itemsIds);
+
+        // Construir o JSON para o corpo da requisição com formatação mais robusta
+        StringBuilder itemsArray = new StringBuilder("[");
+        for (int i = 0; i < itemsIds.size(); i++) {
+            if (i > 0) itemsArray.append(", ");
+            itemsArray.append(itemsIds.get(i));
+        }
+        itemsArray.append("]");
+
         String jsonBody = String.format(
                 "{\"tipoMenuId\": %d, \"nome\": \"%s\", \"descricao\": \"%s\", \"itemsIds\": %s}",
                 tipoMenuId,
-                nome,
-                descricao,
-                itemsIds.isEmpty() ? "[]" : itemsIds.toString());
+                nome.replace("\"", "\\\""), // Escape quotes in name
+                descricao.replace("\"", "\\\""), // Escape quotes in description
+                itemsArray.toString());
+
+        System.out.println("[MENU] JSON a ser enviado: " + jsonBody);
 
         // Criar a requisição HTTP
         HttpRequest createMenuReq = HttpRequest.newBuilder()
@@ -514,25 +558,32 @@ public class MenuView {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        // Enviar a requisição
-        httpClient.sendAsync(createMenuReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200 || resp.statusCode() == 201) {
-                        Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu criado com sucesso!",
-                                    "");
+        System.out.println("[MENU] Enviando requisição para: " + AppConfig.getApiEndpoint("/menu/create"));
 
-                            // Recarregar a view após criar o menu
-                            show();
-                        });
-                    } else {
-                        showError("Falha ao criar menu", resp.statusCode());
-                    }
-                })
-                .exceptionally(ex -> {
-                    showError("Falha ao criar menu", ex.getMessage());
-                    return null;
+        try {
+            // Requisição SÍNCRONA - aguarda resposta antes de continuar
+            HttpResponse<String> resp = httpClient.send(createMenuReq, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("[MENU] Resposta SÍNCRONA da criação do menu - Status: " + resp.statusCode());
+            System.out.println("[MENU] Resposta SÍNCRONA da criação do menu - Body: " + resp.body());
+            if (resp.statusCode() == 200 || resp.statusCode() == 201) {
+                Platform.runLater(() -> {
+                    System.out.println("[MENU] Menu criado com sucesso!");
+                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu criado com sucesso!",
+                            "");
+
+                    // Recarregar a view após criar o menu
+                    show();
                 });
+            } else {
+                System.err.println("[MENU] Falha ao criar menu. Status: " + resp.statusCode());
+                showError("Falha ao criar menu", resp.statusCode());
+            }
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA ao criar menu: " + ex.getMessage());
+            ex.printStackTrace();
+            showError("Falha ao criar menu", ex.getMessage());
+        }
     }
 
     /**
@@ -604,45 +655,49 @@ public class MenuView {
     }
 
     /**
-     * Exclui um menu
+     * Exclui um menu (SÍNCRONO)
      * 
      * @param id ID do menu a ser excluído
      */
     private void deleteMenu(int id) {
+        System.out.println("[MENU] Iniciando exclusão SÍNCRONA do menu ID: " + id);
+
         // Criar a requisição HTTP
         HttpRequest deleteMenuReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/menu/delete?id=" + id)))
                 .DELETE()
                 .build();
 
-        // Enviar a requisição de forma assíncrona
-        httpClient.sendAsync(deleteMenuReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    Platform.runLater(() -> {
-                        if (resp.statusCode() == 200 || resp.statusCode() == 204) {
-                            // Sucesso
-                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu Excluído",
-                                    "O menu foi excluído com sucesso!");
+        try {
+            // Requisição SÍNCRONA - aguarda resposta antes de continuar
+            HttpResponse<String> resp = httpClient.send(deleteMenuReq, HttpResponse.BodyHandlers.ofString());
 
-                            // Recarregar a lista de menus
-                            show();
-                        } else {
-                            // Erro
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
-                                    "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
-                        }
-                    });
-                })
-                .exceptionally(ex -> {
-                    ex.printStackTrace();
+            System.out.println("[MENU] Resposta SÍNCRONA da exclusão - Status: " + resp.statusCode());
+            Platform.runLater(() -> {
+                if (resp.statusCode() == 200 || resp.statusCode() == 204) {
+                    // Sucesso
+                    System.out.println("[MENU] Menu excluído com sucesso!");
+                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu Excluído",
+                            "O menu foi excluído com sucesso!");
 
-                    Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
-                                "Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
-                    });
+                    // Recarregar a lista de menus
+                    show();
+                } else {
+                    // Erro
+                    System.err.println("[MENU] Falha ao excluir menu. Status: " + resp.statusCode());
+                    PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
+                            "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
+                }
+            });
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA ao excluir menu: " + ex.getMessage());
+            ex.printStackTrace();
 
-                    return null;
-                });
+            Platform.runLater(() -> {
+                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
+                        "Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
+            });
+        }
     }
 
     /**
@@ -744,11 +799,12 @@ public class MenuView {
         ObservableList<Integer> selectedItemsIds = FXCollections.observableArrayList();
 
         // Carregar os IDs dos itens do menu existente primeiro
+        System.out.println("[MENU] Iniciando carregamento dos itens do menu para edição. Menu ID: " + menu.getId());
         loadMenuItems(menu.getId(), selectedItemsIds, () -> {
-            // Após carregar os itens do menu, expandir automaticamente o painel
+            // Apenas log após carregar os itens, sem expandir automaticamente
             Platform.runLater(() -> {
-                itemsPane.setExpanded(true);
-                System.out.println("Itens do menu carregados, expandindo painel automaticamente");
+                System.out.println("[MENU] Callback executado, itens carregados");
+                System.out.println("[MENU] IDs carregados no callback: " + selectedItemsIds);
             });
         });
 
@@ -788,7 +844,6 @@ public class MenuView {
         Platform.runLater(() -> {
             nomeField.requestFocus();
             // Expandir os itens automaticamente para mostrar os itens selecionados
-            itemsPane.setExpanded(true);
         });
 
         // Validation
@@ -813,8 +868,12 @@ public class MenuView {
         // Expandir a área de itens quando clicada
         itemsPane.expandedProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue) {
-                // Carregar itens da API quando expandir
-                loadItems(itemsContainer, selectedItemsIds);
+                // Aguardar um pouco antes de carregar os itens para dar tempo do loadMenuItems
+                // completar
+                Platform.runLater(() -> {
+                    // Carregar itens da API quando expandir
+                    loadItems(itemsContainer, selectedItemsIds);
+                });
             }
         });
 
@@ -833,10 +892,19 @@ public class MenuView {
 
         // Show popup centered
         popup.show(primary, centerX - 350, centerY - 350);
+        new Thread(() -> {
+            try {
+                Thread.sleep(200);
+                Platform.runLater(() -> itemsPane.setExpanded(true));
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                System.err.println("Thread interrompida: " + ex.getMessage());
+            }
+        }).start();
     }
 
     /**
-     * Carrega os IDs dos itens de um menu existente
+     * Carrega os IDs dos itens de um menu existente (SÍNCRONO)
      * 
      * @param menuId           ID do menu
      * @param selectedItemsIds Lista observável para armazenar os IDs dos itens
@@ -844,73 +912,87 @@ public class MenuView {
      * @param onComplete       Callback executado quando o carregamento termina
      */
     private void loadMenuItems(int menuId, ObservableList<Integer> selectedItemsIds, Runnable onComplete) {
-        System.out.println("Carregando itens do menu ID: " + menuId);
+        System.out.println("[MENU] Iniciando carregamento SÍNCRONO dos itens do menu ID: " + menuId);
+        System.out.println("[MENU] Lista de IDs atual antes do carregamento: " + selectedItemsIds);
+
         HttpRequest getItemsReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/menu/getMenuItens?id=" + menuId)))
                 .GET()
                 .build();
 
-        httpClient.sendAsync(getItemsReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200) {
-                        try {
-                            System.out.println("Resposta recebida: " + resp.body());
-                            List<Integer> itemIds = new ArrayList<Integer>();
+        try {
+            // Requisição SÍNCRONA - aguarda resposta antes de continuar
+            HttpResponse<String> resp = httpClient.send(getItemsReq, HttpResponse.BodyHandlers.ofString());
 
-                            List<Item> items = new ArrayList<>();
-                            try {
-                                items = ItemJsonLoader.parseItems(resp.body());
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                            for (Item item : items) {
-                                itemIds.add(item.getId());
-                            }
-
-                            System.out.println("IDs dos itens obtidos: " + itemIds);
-                            Platform.runLater(() -> {
-                                selectedItemsIds.clear(); // Limpar a lista antes de adicionar
-                                selectedItemsIds.addAll(itemIds); // Usar addAll em vez de setAll
-                                System.out.println("IDs dos itens adicionados à lista: " + selectedItemsIds);
-
-                                // Executar callback quando terminar
-                                if (onComplete != null) {
-                                    onComplete.run();
-                                }
-                            });
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            System.err.println("Erro ao carregar itens do menu: " + ex.getMessage());
-                            // Se houver erro, ainda executar o callback
-                            Platform.runLater(() -> {
-                                if (onComplete != null) {
-                                    onComplete.run();
-                                }
-                            });
-                        }
-                    } else {
-                        System.err.println("Erro ao carregar itens do menu. Status: " + resp.statusCode());
-                        Platform.runLater(() -> {
-                            if (onComplete != null) {
-                                onComplete.run();
-                            }
-                        });
+            System.out.println("[MENU] Resposta SÍNCRONA do loadMenuItems - Status: " + resp.statusCode());
+            if (resp.statusCode() == 200) {
+                try {
+                    System.out.println("[MENU] Resposta recebida do loadMenuItems: " + resp.body());
+                    List<Integer> itemIds = new ArrayList<Integer>();
+                    List<Item> items = new ArrayList<>();
+                    try {
+                        items = ItemJsonLoader.parseItems(resp.body());
+                        System.out.println("[MENU] Itens parseados no loadMenuItems. Total: " + items.size());
+                    } catch (Exception e) {
+                        System.err.println("[MENU] Erro ao parsear itens no loadMenuItems: " + e.getMessage());
+                        e.printStackTrace();
                     }
-                })
-                .exceptionally(ex -> {
+                    for (Item item : items) {
+                        itemIds.add(item.getId());
+                        System.out.println(
+                                "[MENU] Item adicionado à lista: " + item.getId() + " - " + item.getNome());
+                    }
+
+                    System.out.println("[MENU] IDs dos itens obtidos: " + itemIds);
+                    Platform.runLater(() -> {
+                        selectedItemsIds.clear(); // Limpar a lista antes de adicionar
+                        selectedItemsIds.addAll(itemIds); // Usar addAll em vez de setAll
+                        System.out.println(
+                                "[MENU] IDs dos itens adicionados à lista observável: " + selectedItemsIds);
+
+                        // Executar callback quando terminar
+                        if (onComplete != null) {
+                            System.out.println("[MENU] Executando callback onComplete");
+                            onComplete.run();
+                        } else {
+                            System.out.println("[MENU] Callback onComplete é null");
+                        }
+                    });
+                } catch (Exception ex) {
+                    System.err.println("[MENU] Erro ao carregar itens do menu: " + ex.getMessage());
                     ex.printStackTrace();
-                    System.err.println("Exceção ao carregar itens do menu: " + ex.getMessage());
+                    // Se houver erro, ainda executar o callback
                     Platform.runLater(() -> {
                         if (onComplete != null) {
+                            System.out.println("[MENU] Executando callback onComplete após erro");
                             onComplete.run();
                         }
                     });
-                    return null;
+                }
+            } else {
+                System.err.println("[MENU] Erro HTTP no loadMenuItems. Status: " + resp.statusCode()
+                        + ", Body: " + resp.body());
+                Platform.runLater(() -> {
+                    if (onComplete != null) {
+                        System.out.println("[MENU] Executando callback onComplete após erro HTTP");
+                        onComplete.run();
+                    }
                 });
+            }
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA no loadMenuItems: " + ex.getMessage());
+            ex.printStackTrace();
+            Platform.runLater(() -> {
+                if (onComplete != null) {
+                    System.out.println("[MENU] Executando callback onComplete após exceção");
+                    onComplete.run();
+                }
+            });
+        }
     }
 
     /**
-     * Atualiza um menu existente
+     * Atualiza um menu existente (SÍNCRONO)
      * 
      * @param id         ID do menu a ser atualizado
      * @param tipoMenuId ID do tipo de menu
@@ -919,6 +1001,13 @@ public class MenuView {
      * @param itemsIds   Lista de IDs dos itens do menu
      */
     private void updateMenu(int id, int tipoMenuId, String nome, String descricao, ObservableList<Integer> itemsIds) {
+        System.out.println("[MENU] Atualizando menu:");
+        System.out.println("[MENU] - ID do menu: " + id);
+        System.out.println("[MENU] - Tipo de Menu ID: " + tipoMenuId);
+        System.out.println("[MENU] - Nome: " + nome);
+        System.out.println("[MENU] - Descrição: " + descricao);
+        System.out.println("[MENU] - IDs dos itens: " + itemsIds);
+
         // Construir o JSON para o corpo da requisição
         String jsonBody = String.format(
                 "{\"tipoMenuId\": %d, \"nome\": \"%s\", \"descricao\": \"%s\", \"itemsIds\": %s}",
@@ -927,6 +1016,8 @@ public class MenuView {
                 descricao,
                 itemsIds.isEmpty() ? "[]" : itemsIds.toString());
 
+        System.out.println("[MENU] JSON a ser enviado para atualização: " + jsonBody);
+
         // Criar a requisição HTTP
         HttpRequest updateMenuReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/menu/update?id=" + id)))
@@ -934,24 +1025,32 @@ public class MenuView {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        // Enviar a requisição
-        httpClient.sendAsync(updateMenuReq, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> {
-                    if (resp.statusCode() == 200) {
-                        Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
-                                    "Menu atualizado com sucesso!", "");
+        System.out.println(
+                "[MENU] Enviando requisição de atualização para: " + AppConfig.getApiEndpoint("/menu/update?id=" + id));
 
-                            // Recarregar a view após atualizar o menu
-                            show();
-                        });
-                    } else {
-                        showError("Falha ao atualizar menu", resp.statusCode());
-                    }
-                })
-                .exceptionally(ex -> {
-                    showError("Falha ao atualizar menu", ex.getMessage());
-                    return null;
+        try {
+            // Requisição SÍNCRONA - aguarda resposta antes de continuar
+            HttpResponse<String> resp = httpClient.send(updateMenuReq, HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("[MENU] Resposta SÍNCRONA da atualização do menu - Status: " + resp.statusCode());
+            System.out.println("[MENU] Resposta SÍNCRONA da atualização do menu - Body: " + resp.body());
+            if (resp.statusCode() == 200) {
+                Platform.runLater(() -> {
+                    System.out.println("[MENU] Menu atualizado com sucesso!");
+                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
+                            "Menu atualizado com sucesso!", "");
+
+                    // Recarregar a view após atualizar o menu
+                    show();
                 });
+            } else {
+                System.err.println("[MENU] Falha ao atualizar menu. Status: " + resp.statusCode());
+                showError("Falha ao atualizar menu", resp.statusCode());
+            }
+        } catch (Exception ex) {
+            System.err.println("[MENU] Exceção SÍNCRONA ao atualizar menu: " + ex.getMessage());
+            ex.printStackTrace();
+            showError("Falha ao atualizar menu", ex.getMessage());
+        }
     }
 }
