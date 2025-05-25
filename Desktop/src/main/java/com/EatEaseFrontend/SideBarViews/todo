@@ -1,7 +1,2 @@
-MOVIMENTOS STOCK
-
-
-
 numero de stock de ingredientes tem de ser automatico
-
-ado adicionar itens ao menu dizer o tipo de quantidade de unidade
+se nao houver ingredientes ja da erro mas o item nao deve sequer ser enviado para o frontend

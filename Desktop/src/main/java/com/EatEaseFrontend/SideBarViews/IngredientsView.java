@@ -333,6 +333,34 @@ public class IngredientsView {
         // Unit information
         Label unitLabel = new Label("Unidade: " + getUnidadeName(ingredient.getUnidade_id()));
 
+        // Stock control buttons
+        HBox stockControlBox = new HBox(5);
+        stockControlBox.setAlignment(Pos.CENTER_LEFT);
+        stockControlBox.setPadding(new Insets(5, 0, 0, 0));
+
+        // Decrease stock button
+        Button decreaseButton = new Button("");
+        decreaseButton.setTooltip(new Tooltip("Remover Stock"));
+        FontIcon decreaseIcon = new FontIcon(MaterialDesign.MDI_MINUS);
+        decreaseIcon.setIconColor(Color.RED);
+        decreaseButton.setGraphic(decreaseIcon);
+        decreaseButton.getStyleClass().add("icon-button");
+        decreaseButton.setOnAction(e -> showStockMovementPopup(ingredient, false));
+
+        // Increase stock button
+        Button increaseButton = new Button("");
+        increaseButton.setTooltip(new Tooltip("Adicionar Stock"));
+        FontIcon increaseIcon = new FontIcon(MaterialDesign.MDI_PLUS);
+        increaseIcon.setIconColor(Color.GREEN);
+        increaseButton.setGraphic(increaseIcon);
+        increaseButton.getStyleClass().add("icon-button");
+        increaseButton.setOnAction(e -> showStockMovementPopup(ingredient, true));
+
+        Label stockControlLabel = new Label("Controle de Stock:");
+        stockControlLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+
+        stockControlBox.getChildren().addAll(stockControlLabel, decreaseButton, increaseButton);
+
         // Add action buttons
         HBox buttonsBox = new HBox(10);
         buttonsBox.setAlignment(Pos.CENTER_RIGHT);
@@ -359,7 +387,7 @@ public class IngredientsView {
         buttonsBox.getChildren().addAll(editButton, deleteButton);
 
         // Add all elements to card
-        card.getChildren().addAll(nameLabel, idLabel, stockBox, stockMinLabel, unitLabel, buttonsBox);
+        card.getChildren().addAll(nameLabel, idLabel, stockBox, stockMinLabel, unitLabel, stockControlBox, buttonsBox);
 
         return card;
     }
@@ -798,6 +826,162 @@ public class IngredientsView {
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
                         PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir ingrediente",
+                                "Erro: " + ex.getMessage());
+                    });
+                    return null;
+                });
+    }
+
+    /**
+     * Exibe o popup para movimentação de stock (adicionar ou remover)
+     * 
+     * @param ingredient Ingrediente para movimentar o stock
+     * @param isIncrease true para adicionar, false para remover
+     */
+    private void showStockMovementPopup(Ingredient ingredient, boolean isIncrease) {
+        // 1) Pega no primaryStage para posicionar a popup ao centro
+        Stage primary = StageManager.getPrimaryStage();
+        double centerX = primary.getX() + primary.getWidth() / 2;
+        double centerY = primary.getY() + primary.getHeight() / 2;
+
+        // 2) Cria a Popup
+        Popup popup = new Popup();
+        popup.setAutoHide(true); // fecha ao clicar fora
+
+        // 3) Campos do formulário
+        TextField quantityField = new TextField();
+        quantityField.setPromptText("Quantidade");
+        quantityField.textProperty().addListener((obs, o, n) -> {
+            if (!n.matches("\\d*"))
+                quantityField.setText(n.replaceAll("[^\\d]", ""));
+        });
+
+        // 4) Botões e validação
+        String actionText = isIncrease ? "Adicionar" : "Remover";
+        String titleText = isIncrease ? "Adicionar Stock" : "Remover Stock";
+
+        Button actionBtn = new Button(actionText);
+        Button cancelBtn = new Button("Cancelar");
+        actionBtn.setDisable(true);
+
+        ChangeListener<String> valida = (obs, o, n) -> {
+            try {
+                boolean ok = !quantityField.getText().trim().isEmpty() &&
+                        Integer.parseInt(quantityField.getText()) > 0;
+                actionBtn.setDisable(!ok);
+            } catch (NumberFormatException e) {
+                actionBtn.setDisable(true);
+            }
+        };
+        quantityField.textProperty().addListener(valida);
+
+        // 5) Layout no GridPane
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
+        grid.setVgap(10);
+        grid.setHgap(10);
+        grid.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #ccc;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+
+        // Title
+        Label titleLabel = new Label(titleText);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        grid.add(titleLabel, 0, 0, 2, 1);
+
+        // Ingredient info
+        Label ingredientLabel = new Label("Ingrediente: " + ingredient.getNome());
+        grid.add(ingredientLabel, 0, 1, 2, 1);
+
+        Label currentStockLabel = new Label(
+                "Stock atual: " + ingredient.getStock() + " " + getUnidadeName(ingredient.getUnidade_id()));
+        grid.add(currentStockLabel, 0, 2, 2, 1);
+
+        grid.add(new Label("Quantidade:"), 0, 3);
+        grid.add(quantityField, 1, 3);
+
+        HBox buttons = new HBox(10, actionBtn, cancelBtn);
+        grid.add(buttons, 1, 4);
+
+        // 6) Adiciona o grid à popup
+        popup.getContent().add(grid);
+
+        // 7) Mostra a popup centrada
+        popup.show(primary, centerX - 200, centerY - 150);
+
+        // 8) Ações dos botões
+        cancelBtn.setOnAction(e -> popup.hide());
+        actionBtn.setOnAction(e -> {
+            int quantity = Integer.parseInt(quantityField.getText());
+            // Se for remover, a quantidade deve ser negativa
+            if (!isIncrease) {
+                quantity = -quantity;
+            }
+            moveStock(ingredient.getId(), quantity);
+            popup.hide();
+        });
+    }
+
+    /**
+     * Envia uma requisição para a API para movimentar o stock de um ingrediente
+     * 
+     * @param ingredientId ID do ingrediente
+     * @param quantidade   Quantidade a ser movimentada (positiva para adicionar,
+     *                     negativa para remover)
+     */
+    private void moveStock(int ingredientId, int quantidade) {
+        // Criar JSON para a requisição
+        String jsonBody = String.format("{\"quantidade\":%d}", quantidade);
+
+        System.out.println("Enviando requisição para movimentar stock: " + jsonBody);
+
+        // Criar a requisição HTTP
+        HttpRequest moveStockReq = HttpRequest.newBuilder()
+                .uri(URI.create(
+                        AppConfig.getApiEndpoint("/movimentosIngredientes/movStock?id_ingrediente=" + ingredientId)))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        // Enviar a requisição de forma assíncrona
+        httpClient.sendAsync(moveStockReq, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(resp -> {
+                    if (resp.statusCode() == 200 || resp.statusCode() == 201) {
+                        System.out.println("Stock movimentado com sucesso: " + resp.body());
+
+                        // Recarregar a lista de ingredientes
+                        Platform.runLater(() -> {
+                            show(); // Reload all ingredients
+                            // Clear search field to show all ingredients
+                            if (searchField != null) {
+                                searchField.clear();
+                            }
+                        });
+
+                        // Mostrar mensagem de sucesso
+                        Platform.runLater(() -> {
+                            String message = quantidade > 0 ? "Stock adicionado com sucesso!"
+                                    : "Stock removido com sucesso!";
+                            PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Stock atualizado", message);
+                        });
+                    } else {
+                        System.err.println("Erro ao movimentar stock: " + resp.statusCode() + " - " + resp.body());
+
+                        // Mostrar mensagem de erro
+                        Platform.runLater(() -> {
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao movimentar stock",
+                                    "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                        });
+                    }
+                })
+                .exceptionally(ex -> {
+                    ex.printStackTrace();
+
+                    // Mostrar mensagem de erro
+                    Platform.runLater(() -> {
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao movimentar stock",
                                 "Erro: " + ex.getMessage());
                     });
                     return null;
