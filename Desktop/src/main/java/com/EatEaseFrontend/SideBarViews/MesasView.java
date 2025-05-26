@@ -152,10 +152,17 @@ public class MesasView {
                     System.out.println("[MESAS] Carregamento completo, atualizando UI");
                 }).thenAccept(mesas -> {
                     if (mesas != null) {
-                        // Load positions from server first, then display mesas
-                        loadMesaPositionsFromServer(mesas, () -> {
-                            Platform.runLater(() -> displayMesasAsGrid(mesas));
-                        });
+                        // Para operações manuais (show()), carregar posições e exibir
+                        // Para operações do timer, só atualizar estados
+                        if (!isTimerOperation) {
+                            // Load positions from server first, then display mesas
+                            loadMesaPositionsFromServer(mesas, () -> {
+                                Platform.runLater(() -> displayMesasAsGrid(mesas));
+                            });
+                        } else {
+                            // Para timer, só atualizar estados (sem recarregar posições)
+                            Platform.runLater(() -> updateMesaStatesOnly(mesas));
+                        }
                     }
                 }).exceptionally(e -> {
                     System.err.println("[MESAS] Erro no carregamento assíncrono: " + e.getMessage());
@@ -212,10 +219,10 @@ public class MesasView {
 
     /**
      * Atualiza as mesas silenciosamente (sem mostrar indicador de carregamento)
-     * Inclui atualização das posições do servidor
+     * Atualiza os estados E as posições das mesas durante o intervalo automático
      */
     private void silentlyUpdateMesas() {
-        System.out.println("Realizando atualização automática das mesas (incluindo posições)...");
+        System.out.println("Realizando atualização automática das mesas (estados e posições)...");
         HttpRequest getMesasReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getAll")))
                 .GET()
@@ -232,11 +239,9 @@ public class MesasView {
                 .thenAccept(mesas -> {
                     // Só atualizar a UI se a view estiver ativa
                     if (isViewActive) {
-                        System.out.println("Carregando posições atualizadas do servidor...");
-                        // Primeiro carregar as posições do servidor, depois atualizar apenas os estados
+                        System.out.println("Carregando posições e atualizando estados das mesas automaticamente...");
+                        // Carregar posições do servidor e depois atualizar estados
                         loadMesaPositionsFromServer(mesas, () -> {
-                            System.out.println(
-                                    "Atualizando apenas estados das mesas vindos do servidor (preservando posições)");
                             Platform.runLater(() -> updateMesaStatesOnly(mesas));
                         });
                     }
@@ -416,9 +421,18 @@ public class MesasView {
                             statusText.setText(updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada");
                         }
 
+                        // CORREÇÃO: Atualizar também os botões baseados no novo estado
+                        HBox buttonContainer = (HBox) layout.getChildren().get(1);
+                        Button liberarButton = (Button) buttonContainer.getChildren().get(0);
+                        Button ocuparButton = (Button) buttonContainer.getChildren().get(1);
+
+                        // Atualizar estado dos botões conforme o estado da mesa
+                        liberarButton.setDisable(updatedMesa.isEstadoLivre());
+                        ocuparButton.setDisable(!updatedMesa.isEstadoLivre());
+
                         System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
                                 (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada") +
-                                " (posição preservada)");
+                                " (posição preservada, botões atualizados)");
                     } else {
                         // Mesa não existe mais no servidor, remover da UI
                         currentMesasGrid.getChildren().remove(mesaBox);
