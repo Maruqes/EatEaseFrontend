@@ -57,7 +57,7 @@ public class MesasView {
     // Temporizador para atualizações automáticas
     private Timer autoUpdateTimer;
     // Intervalo de atualização em segundos (facilmente ajustável)
-    private static final int UPDATE_INTERVAL_SECONDS = 10; // Configuração global do intervalo de atualização
+    private static final int UPDATE_INTERVAL_SECONDS = 5; // Configuração global do intervalo de atualização
     // Flag para controlar se a view está ativa
     private boolean isViewActive = false;
 
