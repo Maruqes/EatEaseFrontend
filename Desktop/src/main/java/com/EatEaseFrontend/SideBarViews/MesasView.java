@@ -430,9 +430,31 @@ public class MesasView {
                         liberarButton.setDisable(updatedMesa.isEstadoLivre());
                         ocuparButton.setDisable(!updatedMesa.isEstadoLivre());
 
+                        // NOVA CORREÇÃO: Atualizar posição da mesa se houver nova posição do servidor
+                        Double[] updatedPosition = mesaPositions.get(updatedMesa.getId());
+                        if (updatedPosition != null && isRelativePosition(updatedPosition)) {
+                            Double[] absolutePos = convertToAbsolutePosition(updatedPosition[0], updatedPosition[1]);
+                            double newX = absolutePos[0];
+                            double newY = absolutePos[1];
+
+                            // Verificar se a posição mudou significativamente antes de atualizar
+                            double currentX = mesaBox.getLayoutX();
+                            double currentY = mesaBox.getLayoutY();
+                            double threshold = 5.0; // pixels
+
+                            if (Math.abs(newX - currentX) > threshold || Math.abs(newY - currentY) > threshold) {
+                                mesaBox.setLayoutX(newX);
+                                mesaBox.setLayoutY(newY);
+                                System.out.println("Mesa " + mesaNumber + " - Posição atualizada: (" +
+                                        String.format("%.2f", currentX) + ", " + String.format("%.2f", currentY) +
+                                        ") -> (" + String.format("%.2f", newX) + ", " + String.format("%.2f", newY)
+                                        + ")");
+                            }
+                        }
+
                         System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
                                 (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada") +
-                                " (posição preservada, botões atualizados)");
+                                " (posição e botões atualizados)");
                     } else {
                         // Mesa não existe mais no servidor, remover da UI
                         currentMesasGrid.getChildren().remove(mesaBox);
