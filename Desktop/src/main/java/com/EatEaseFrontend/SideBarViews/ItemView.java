@@ -34,6 +34,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -47,6 +48,30 @@ public class ItemView {
     private final NumberFormat currencyFormatter;
     private List<Item> allItems; // Store all items for filtering
     private TextField searchField; // Search field reference
+
+    // Map to store unit IDs and their corresponding names (same as IngredientsView)
+    private static final List<String> UNIDADE_NAMES = Arrays.asList(
+            "Selecione uma unidade", // placeholder for index 0
+            "Quilos",
+            "Gramas",
+            "Litros",
+            "Mililitros",
+            "Unidades",
+            "Doses",
+            "Caixas");
+
+    /**
+     * Get the name of the unit from its ID
+     * 
+     * @param unidadeId ID of the unit
+     * @return Name of the unit or "Desconhecido" if not found
+     */
+    private String getUnidadeName(int unidadeId) {
+        if (unidadeId >= 1 && unidadeId < UNIDADE_NAMES.size()) {
+            return UNIDADE_NAMES.get(unidadeId);
+        }
+        return "Desconhecido";
+    }
 
     /**
      * Construtor da view de itens
@@ -294,6 +319,7 @@ public class ItemView {
         stockIndicator.setPrefWidth(15);
         stockIndicator.setPrefHeight(15);
 
+        // STOCK COLOR
         // Set color based on stock level (assume below 5 is critical)
         Color indicatorColor;
         if (item.getStockAtual() <= 5) {
@@ -415,13 +441,6 @@ public class ItemView {
                 precoField.setText(o);
         });
 
-        TextField stockField = new TextField();
-        stockField.setPromptText("Stock atual");
-        stockField.textProperty().addListener((obs, o, n) -> {
-            if (!n.matches("\\d*"))
-                stockField.setText(n.replaceAll("[^\\d]", ""));
-        });
-
         CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
 
         // tabela de ingredientes
@@ -433,6 +452,9 @@ public class ItemView {
         TableColumn<IngredientRowData, String> nameCol = new TableColumn<>("Nome");
         nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
         nameCol.setPrefWidth(120);
+        TableColumn<IngredientRowData, String> medidaCol = new TableColumn<>("Medida");
+        medidaCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getUnitName()));
+        medidaCol.setPrefWidth(80);
         TableColumn<IngredientRowData, Integer> qtyCol = new TableColumn<>("Qtd");
         qtyCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getQuantity()).asObject());
         qtyCol.setCellFactory(col -> {
@@ -478,7 +500,7 @@ public class ItemView {
                 }
             };
         });
-        table.getColumns().addAll(idCol, nameCol, qtyCol, actCol);
+        table.getColumns().addAll(idCol, nameCol, medidaCol, qtyCol, actCol);
 
         // seleção de ingredientes
         ComboBox<Ingredient> ingCombo = new ComboBox<>();
@@ -506,7 +528,8 @@ public class ItemView {
         addIngBtn.setOnAction(e -> {
             Ingredient sel = ingCombo.getValue();
             if (sel != null && table.getItems().stream().noneMatch(r -> r.getId() == sel.getId())) {
-                table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
+                table.getItems()
+                        .add(new IngredientRowData(sel.getId(), sel.getNome(), getUnidadeName(sel.getUnidade_id()), 1));
             }
         });
         Button loadBtn = new Button("Recarregar");
@@ -595,13 +618,11 @@ public class ItemView {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             boolean tipoOk = tipoPratoCombo.getValue() != null;
             boolean precoOk = !precoField.getText().trim().isEmpty();
-            boolean stockOk = !stockField.getText().trim().isEmpty();
-            boolean ok = nameOk && tipoOk && precoOk && stockOk;
+            boolean ok = nameOk && tipoOk && precoOk;
 
             System.out.println("DEBUG ADD - Nome: " + nameOk + " (" + nameField.getText() + "), " +
                     "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
                     "Preço: " + precoOk + " (" + precoField.getText() + "), " +
-                    "Stock: " + stockOk + " (" + stockField.getText() + "), " +
                     "Final: " + ok);
 
             submit.setDisable(!ok);
@@ -609,7 +630,6 @@ public class ItemView {
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
-        stockField.textProperty().addListener(validator);
 
         // 5) Layout
         GridPane grid = new GridPane();
@@ -626,8 +646,6 @@ public class ItemView {
         grid.add(tipoPratoCombo, 1, 1);
         grid.add(new Label("Preço:"), 0, 2);
         grid.add(precoField, 1, 2);
-        grid.add(new Label("Stock:"), 0, 3);
-        grid.add(stockField, 1, 3);
         grid.add(compostoCheck, 0, 4, 2, 1);
 
         // Layout para pesquisa e seleção de ingredientes
@@ -656,7 +674,6 @@ public class ItemView {
             String nome = nameField.getText().trim();
             int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
             double preco = Double.parseDouble(precoField.getText());
-            int stock = Integer.parseInt(stockField.getText());
             boolean composto = compostoCheck.isSelected();
             List<Item.ItemIngrediente> ingList = new ArrayList<>();
             for (IngredientRowData row : table.getItems()) {
@@ -665,7 +682,7 @@ public class ItemView {
                 ii.setQuantidade(row.getQuantity());
                 ingList.add(ii);
             }
-            createItem(nome, tipoId, preco, composto, stock, ingList);
+            createItem(nome, tipoId, preco, composto, ingList);
             popup.hide();
         });
     }
@@ -682,7 +699,7 @@ public class ItemView {
      *                     compostos)
      */
     private void createItem(String nome, int tipoPratoId, double preco, boolean composto,
-            int stock, List<Item.ItemIngrediente> ingredientes) {
+            List<Item.ItemIngrediente> ingredientes) {
         // Mostrar indicador de progresso
 
         try {
@@ -694,10 +711,8 @@ public class ItemView {
             jsonBuilder.append("\"preco\":").append(preco).append(",");
             // Corrigido para usar "composto" ao invés de "eComposto"
             jsonBuilder.append("\"composto\":").append(composto).append(",");
-            jsonBuilder.append("\"stockAtual\":").append(stock);
-
             // Adicionar ingredientes (sempre incluir o campo, mesmo que vazio)
-            jsonBuilder.append(",\"ingredientes\":[");
+            jsonBuilder.append("\"ingredientes\":[");
 
             // Se for composto e tiver ingredientes, adicionar cada um
             if (ingredientes != null && !ingredientes.isEmpty()) {
@@ -772,11 +787,13 @@ public class ItemView {
     private static class IngredientRowData {
         private final int id;
         private final String name;
+        private final String unitName;
         private int quantity;
 
-        public IngredientRowData(int id, String name, int quantity) {
+        public IngredientRowData(int id, String name, String unitName, int quantity) {
             this.id = id;
             this.name = name;
+            this.unitName = unitName;
             this.quantity = quantity;
         }
 
@@ -786,6 +803,10 @@ public class ItemView {
 
         public String getName() {
             return name;
+        }
+
+        public String getUnitName() {
+            return unitName;
         }
 
         public int getQuantity() {
@@ -828,14 +849,6 @@ public class ItemView {
             }
         });
 
-        TextField stockField = new TextField(String.valueOf(item.getStockAtual()));
-        stockField.setPromptText("Stock atual");
-        stockField.textProperty().addListener((obs, o, n) -> {
-            if (!n.matches("\\d*")) {
-                stockField.setText(n.replaceAll("[^\\d]", ""));
-            }
-        });
-
         CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
         System.out.println("DEBUG: Item " + item.getNome() + " - isEComposto: " + item.isEComposto());
         compostoCheck.setSelected(item.isEComposto());
@@ -849,6 +862,9 @@ public class ItemView {
         TableColumn<IngredientRowData, String> nameCol = new TableColumn<>("Nome");
         nameCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getName()));
         nameCol.setPrefWidth(120);
+        TableColumn<IngredientRowData, String> medidaCol = new TableColumn<>("Medida");
+        medidaCol.setCellValueFactory(cd -> new SimpleStringProperty(cd.getValue().getUnitName()));
+        medidaCol.setPrefWidth(80);
         TableColumn<IngredientRowData, Integer> qtyCol = new TableColumn<>("Qtd");
         qtyCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getQuantity()).asObject());
         qtyCol.setPrefWidth(80);
@@ -891,7 +907,7 @@ public class ItemView {
                 setGraphic(empty ? null : delBtn);
             }
         });
-        table.getColumns().addAll(idCol, nameCol, qtyCol, actCol);
+        table.getColumns().addAll(idCol, nameCol, medidaCol, qtyCol, actCol);
 
         // 5) ComboBox para adicionar ingredientes
         ComboBox<Ingredient> ingCombo = new ComboBox<>();
@@ -919,7 +935,8 @@ public class ItemView {
         addIngBtn.setOnAction(e -> {
             Ingredient sel = ingCombo.getValue();
             if (sel != null && table.getItems().stream().noneMatch(r -> r.getId() == sel.getId())) {
-                table.getItems().add(new IngredientRowData(sel.getId(), sel.getNome(), 1));
+                table.getItems()
+                        .add(new IngredientRowData(sel.getId(), sel.getNome(), getUnidadeName(sel.getUnidade_id()), 1));
             }
         });
         Button loadBtn = new Button("Recarregar");
@@ -961,13 +978,17 @@ public class ItemView {
                         if (item.getIngredientes() != null) {
                             table.getItems().clear();
                             for (Item.ItemIngrediente ii : item.getIngredientes()) {
-                                String nome = list.stream()
+                                Ingredient ing = list.stream()
                                         .filter(x -> x.getId() == ii.getIngredienteId())
-                                        .map(Ingredient::getNome)
                                         .findFirst()
-                                        .orElse("ID:" + ii.getIngredienteId());
+                                        .orElse(null);
+
+                                String nome = ing != null ? ing.getNome() : "ID:" + ii.getIngredienteId();
+                                String unitName = ing != null ? getUnidadeName(ing.getUnidade_id()) : "Desconhecido";
+
                                 table.getItems().add(
-                                        new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
+                                        new IngredientRowData(ii.getIngredienteId(), nome, unitName,
+                                                ii.getQuantidade()));
                             }
                         }
                         loadBtn.setText("Recarregar");
@@ -1004,13 +1025,18 @@ public class ItemView {
                             if (item.getIngredientes() != null) {
                                 table.getItems().clear();
                                 for (Item.ItemIngrediente ii : item.getIngredientes()) {
-                                    String nome = list.stream()
+                                    Ingredient ing = list.stream()
                                             .filter(x -> x.getId() == ii.getIngredienteId())
-                                            .map(Ingredient::getNome)
                                             .findFirst()
-                                            .orElse("ID:" + ii.getIngredienteId());
+                                            .orElse(null);
+
+                                    String nome = ing != null ? ing.getNome() : "ID:" + ii.getIngredienteId();
+                                    String unitName = ing != null ? getUnidadeName(ing.getUnidade_id())
+                                            : "Desconhecido";
+
                                     table.getItems().add(
-                                            new IngredientRowData(ii.getIngredienteId(), nome, ii.getQuantidade()));
+                                            new IngredientRowData(ii.getIngredienteId(), nome, unitName,
+                                                    ii.getQuantidade()));
                                 }
                             }
                             loadBtn.setText("Recarregar");
@@ -1036,13 +1062,10 @@ public class ItemView {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             boolean tipoOk = tipoPratoCombo.getValue() != null;
             boolean precoOk = !precoField.getText().trim().isEmpty();
-            boolean stockOk = !stockField.getText().trim().isEmpty();
-            boolean ok = nameOk && tipoOk && precoOk && stockOk;
-
+            boolean ok = nameOk && tipoOk && precoOk;
             System.out.println("DEBUG EDIT - Nome: " + nameOk + " (" + nameField.getText() + "), " +
                     "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
                     "Preço: " + precoOk + " (" + precoField.getText() + "), " +
-                    "Stock: " + stockOk + " (" + stockField.getText() + "), " +
                     "Final: " + ok);
 
             saveBtn.setDisable(!ok);
@@ -1050,7 +1073,6 @@ public class ItemView {
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
-        stockField.textProperty().addListener(validator);
 
         // Chama o validador uma vez para avaliar o estado inicial
         validator.changed(null, null, null);
@@ -1070,8 +1092,6 @@ public class ItemView {
         grid.add(tipoPratoCombo, 1, 1);
         grid.add(new Label("Preço:"), 0, 2);
         grid.add(precoField, 1, 2);
-        grid.add(new Label("Stock:"), 0, 3);
-        grid.add(stockField, 1, 3);
         grid.add(compostoCheck, 0, 4, 2, 1);
 
         // Layout para pesquisa e seleção de ingredientes
@@ -1098,7 +1118,6 @@ public class ItemView {
             String nome = nameField.getText().trim();
             int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
             double preco = Double.parseDouble(precoField.getText());
-            int stock = Integer.parseInt(stockField.getText());
             boolean composto = compostoCheck.isSelected();
             List<Item.ItemIngrediente> ingList = new ArrayList<>();
             for (IngredientRowData row : table.getItems()) {
@@ -1107,7 +1126,7 @@ public class ItemView {
                 ii.setQuantidade(row.getQuantity());
                 ingList.add(ii);
             }
-            updateItem(item.getId(), nome, tipoId, preco, composto, stock, ingList);
+            updateItem(item.getId(), nome, tipoId, preco, composto, ingList);
             popup.hide();
         });
 
@@ -1123,12 +1142,11 @@ public class ItemView {
      * @param tipoPratoId  ID do tipo de prato
      * @param preco        Preço do item
      * @param composto     Indica se o item é composto de ingredientes
-     * @param stock        Quantidade em stock
      * @param ingredientes Lista de ingredientes do item (apenas para itens
      *                     compostos)
      */
     private void updateItem(int id, String nome, int tipoPratoId, double preco, boolean composto,
-            int stock, List<Item.ItemIngrediente> ingredientes) {
+            List<Item.ItemIngrediente> ingredientes) {
         try {
             // Construir o JSON do item
             StringBuilder jsonBuilder = new StringBuilder();
@@ -1139,10 +1157,8 @@ public class ItemView {
             jsonBuilder.append("\"tipoPratoId\":").append(tipoPratoId).append(",");
             jsonBuilder.append("\"preco\":").append(preco).append(",");
             jsonBuilder.append("\"composto\":").append(composto).append(",");
-            jsonBuilder.append("\"stockAtual\":").append(stock);
-
             // Adicionar ingredientes (sempre incluir o campo, mesmo que vazio)
-            jsonBuilder.append(",\"ingredientes\":[");
+            jsonBuilder.append("\"ingredientes\":[");
 
             // Se for composto e tiver ingredientes, adicionar cada um
             if (ingredientes != null && !ingredientes.isEmpty()) {
