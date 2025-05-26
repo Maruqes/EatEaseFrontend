@@ -2,10 +2,11 @@ package com.EatEaseFrontend.SideBarViews;
 
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.AsyncOperationManager;
-import com.EatEaseFrontend.LoadingStateManager;
 import com.EatEaseFrontend.Mesa;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.EatEaseFrontend.JsonParser;
-import com.EatEaseFrontend.SideBarViews.PopUp;
+
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -25,7 +26,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,8 +41,15 @@ public class MesasView {
     private final StackPane contentArea;
     private final HttpClient httpClient;
     private final AsyncOperationManager asyncManager;
-    private final LoadingStateManager loadingManager;
     private final AtomicBoolean isTimerOperationRunning = new AtomicBoolean(false);
+
+    // Map to store mesa positions persistently
+    private final Map<Integer, Double[]> mesaPositions = new HashMap<>();
+
+    // Responsive layout variables
+    private Pane currentMesasGrid;
+    private double lastContainerWidth = 0;
+    private double lastContainerHeight = 0;
 
     // Temporizador para atualizações automáticas
     private Timer autoUpdateTimer;
@@ -58,7 +68,6 @@ public class MesasView {
         this.contentArea = contentArea;
         this.httpClient = httpClient;
         this.asyncManager = new AsyncOperationManager();
-        this.loadingManager = new LoadingStateManager();
     }
 
     /**
@@ -91,11 +100,10 @@ public class MesasView {
      */
     private void loadMesas() {
         System.out.println("[MESAS] Iniciando carregamento de mesas...");
-        
+
         // Verificar se é uma operação do timer para evitar conflitos
         boolean isTimerOperation = !Platform.isFxApplicationThread();
-        String operationId = isTimerOperation ? "autoLoadMesas" : "manualLoadMesas";
-        
+
         // Para operações do timer, usar controle atômico
         if (isTimerOperation) {
             if (!isTimerOperationRunning.compareAndSet(false, true)) {
@@ -115,8 +123,9 @@ public class MesasView {
                 () -> {
                     try {
                         System.out.println("[MESAS] Enviando requisição síncrona para carregar mesas...");
-                        HttpResponse<String> response = httpClient.send(getMesasReq, HttpResponse.BodyHandlers.ofString());
-                        
+                        HttpResponse<String> response = httpClient.send(getMesasReq,
+                                HttpResponse.BodyHandlers.ofString());
+
                         System.out.println("[MESAS] Response status: " + response.statusCode());
                         if (response.statusCode() == 200) {
                             System.out.println("[MESAS] Mesas recebidas com sucesso");
@@ -138,24 +147,26 @@ public class MesasView {
                 () -> {
                     // onComplete - executado na UI thread
                     System.out.println("[MESAS] Carregamento completo, atualizando UI");
-                }
-        ).thenAccept(mesas -> {
-            if (mesas != null) {
-                Platform.runLater(() -> displayMesasAsGrid(mesas));
-            }
-        }).exceptionally(e -> {
-            System.err.println("[MESAS] Erro no carregamento assíncrono: " + e.getMessage());
-            Platform.runLater(() -> {
-                if (!isTimerOperation) { // Só mostrar erro para operações manuais
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Erro");
-                    alert.setHeaderText("Falha ao carregar mesas");
-                    alert.setContentText("Erro: " + e.getMessage());
-                    alert.showAndWait();
-                }
-            });
-            return null;
-        });
+                }).thenAccept(mesas -> {
+                    if (mesas != null) {
+                        // Load positions from server first, then display mesas
+                        loadMesaPositionsFromServer(mesas, () -> {
+                            Platform.runLater(() -> displayMesasAsGrid(mesas));
+                        });
+                    }
+                }).exceptionally(e -> {
+                    System.err.println("[MESAS] Erro no carregamento assíncrono: " + e.getMessage());
+                    Platform.runLater(() -> {
+                        if (!isTimerOperation) { // Só mostrar erro para operações manuais
+                            Alert alert = new Alert(Alert.AlertType.ERROR);
+                            alert.setTitle("Erro");
+                            alert.setHeaderText("Falha ao carregar mesas");
+                            alert.setContentText("Erro: " + e.getMessage());
+                            alert.showAndWait();
+                        }
+                    });
+                    return null;
+                });
     }
 
     /**
@@ -165,8 +176,9 @@ public class MesasView {
         // Cancelar qualquer temporizador existente
         stopAutoUpdateTimer();
 
-        System.out.println("[MESAS] Iniciando timer de atualização automática (intervalo: " + updateIntervalSeconds + "s)");
-        
+        System.out.println(
+                "[MESAS] Iniciando timer de atualização automática (intervalo: " + updateIntervalSeconds + "s)");
+
         // Criar um novo temporizador
         autoUpdateTimer = new Timer();
         autoUpdateTimer.scheduleAtFixedRate(new TimerTask() {
@@ -197,9 +209,10 @@ public class MesasView {
 
     /**
      * Atualiza as mesas silenciosamente (sem mostrar indicador de carregamento)
+     * Inclui atualização das posições do servidor
      */
     private void silentlyUpdateMesas() {
-        System.out.println("Realizando atualização automática das mesas...");
+        System.out.println("Realizando atualização automática das mesas (incluindo posições)...");
         HttpRequest getMesasReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getAll")))
                 .GET()
@@ -216,8 +229,13 @@ public class MesasView {
                 .thenAccept(mesas -> {
                     // Só atualizar a UI se a view estiver ativa
                     if (isViewActive) {
-                        System.out.println("Atualizando visualização das mesas automaticamente");
-                        Platform.runLater(() -> displayMesasAsGrid(mesas));
+                        System.out.println("Carregando posições atualizadas do servidor...");
+                        // Primeiro carregar as posições do servidor, depois atualizar apenas os estados
+                        loadMesaPositionsFromServer(mesas, () -> {
+                            System.out.println(
+                                    "Atualizando estado das mesas automaticamente preservando posições atualizadas");
+                            Platform.runLater(() -> updateMesaStatesAndPositions(mesas));
+                        });
                     }
                 })
                 .exceptionally(e -> {
@@ -226,6 +244,251 @@ public class MesasView {
                     e.printStackTrace();
                     return null;
                 });
+    }
+
+    /**
+     * Busca as posições relativas das mesas do servidor (coordenadas 0-1)
+     */
+    private void loadMesaPositionsFromServer(List<Mesa> mesas, Runnable onComplete) {
+        System.out.println("Carregando posições das mesas do servidor...");
+
+        // Use a counter to track completed requests
+        final int[] completedRequests = { 0 };
+        final int totalRequests = mesas.size();
+
+        if (totalRequests == 0) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return; // No mesas to load positions for
+        }
+
+        for (Mesa mesa : mesas) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getMesaPositionsById?mesaId=" + mesa.getId())))
+                    .GET()
+                    .build();
+
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        if (response.statusCode() == 200) {
+                            return response.body();
+                        } else {
+                            System.err.println(
+                                    "Erro ao buscar posição da mesa " + mesa.getId() + ": " + response.statusCode());
+                            return null;
+                        }
+                    })
+                    .thenAccept(responseBody -> {
+                        synchronized (this) {
+                            if (responseBody != null && !responseBody.trim().isEmpty()) {
+                                try {
+                                    ObjectMapper mapper = new ObjectMapper();
+                                    Map<String, Double> coords = mapper.readValue(responseBody,
+                                            new TypeReference<>() {
+                                            });
+                                    double relativeX = coords.get("pos_x");
+                                    double relativeY = coords.get("pos_y");
+
+                                    // Store relative coordinates directly from server (0-1 scale)
+                                    Double[] relativePos = new Double[] { relativeX, relativeY };
+                                    mesaPositions.put(mesa.getId(), relativePos);
+
+                                    System.out.println("Mesa " + mesa.getNumero() + " (ID: " + mesa.getId() +
+                                            ") - Posição relativa carregada do servidor: (" +
+                                            String.format("%.3f", relativeX) + ", " + String.format("%.3f", relativeY) +
+                                            ") [0-1 scale]");
+
+                                } catch (Exception e) {
+                                    System.err.println(
+                                            "Erro ao parsear posição da mesa " + mesa.getId() + ": " + e.getMessage());
+                                }
+                            }
+
+                            completedRequests[0]++;
+                            if (completedRequests[0] == totalRequests) {
+                                System.out.println("Todas as posições das mesas foram carregadas do servidor");
+                                if (onComplete != null) {
+                                    onComplete.run();
+                                }
+                            }
+                        }
+                    })
+                    .exceptionally(e -> {
+                        synchronized (this) {
+                            System.err.println(
+                                    "Exceção ao buscar posição da mesa " + mesa.getId() + ": " + e.getMessage());
+                            completedRequests[0]++;
+                            if (completedRequests[0] == totalRequests) {
+                                System.out.println("Carregamento de posições finalizado (com alguns erros)");
+                                if (onComplete != null) {
+                                    onComplete.run();
+                                }
+                            }
+                        }
+                        return null;
+                    });
+        }
+    }
+
+    /**
+     * Salva a posição relativa de uma mesa no servidor (coordenadas 0-1)
+     */
+    private void saveMesaPositionToServer(int mesaId, double relativeX, double relativeY) {
+        System.out.println("Salvando posição relativa da mesa " + mesaId + " no servidor: (" +
+                String.format("%.3f", relativeX) + ", " + String.format("%.3f", relativeY) + ") [0-1 scale]");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.getApiEndpoint("/mesa/updatePosition?id=" + mesaId +
+                        "&pos_x=" + relativeX + "&pos_y=" + relativeY)))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    if (response.statusCode() == 200) {
+                        System.out.println("Posição relativa da mesa " + mesaId + " salva com sucesso no servidor");
+                        return true;
+                    } else {
+                        System.err.println("Erro ao salvar posição da mesa " + mesaId + ": " + response.statusCode());
+                        return false;
+                    }
+                })
+                .exceptionally(e -> {
+                    System.err.println("Exceção ao salvar posição da mesa " + mesaId + ": " + e.getMessage());
+                    return false;
+                });
+    }
+
+    /**
+     * Atualiza apenas o estado das mesas sem recriar o layout (preserva posições)
+     */
+    private void updateMesaStatesOnly(List<Mesa> mesas) {
+        if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
+            // Se não há layout existente, criar um novo
+            displayMesasAsGrid(mesas);
+            return;
+        }
+
+        // Criar um mapa para lookup rápido das mesas por ID
+        Map<Integer, Mesa> mesaMap = new HashMap<>();
+        for (Mesa mesa : mesas) {
+            mesaMap.put(mesa.getId(), mesa);
+        }
+
+        // Atualizar apenas o estado visual das mesas existentes
+        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
+            if (node instanceof StackPane) {
+                StackPane mesaBox = (StackPane) node;
+                try {
+                    // Extrair o número da mesa do texto
+                    VBox layout = (VBox) mesaBox.getChildren().get(0);
+                    VBox infoContainer = (VBox) ((StackPane) layout.getChildren().get(0)).getChildren().get(1);
+                    Text mesaNumberText = (Text) infoContainer.getChildren().get(1);
+                    String text = mesaNumberText.getText(); // "Mesa X"
+                    int mesaNumber = Integer.parseInt(text.split(" ")[1]);
+
+                    // Assumindo que ID = numero para simplificação
+                    Mesa updatedMesa = mesaMap.get(mesaNumber);
+                    if (updatedMesa != null) {
+                        // Atualizar apenas a cor baseada no estado
+                        StackPane tableContainer = (StackPane) layout.getChildren().get(0);
+                        Rectangle mesaRect = (Rectangle) tableContainer.getChildren().get(0);
+
+                        Color mesaColor = updatedMesa.isEstadoLivre() ? Color.valueOf("#4CAF50")
+                                : Color.valueOf("#F44336");
+                        mesaRect.setFill(mesaColor);
+
+                        // Atualizar texto do status se existir
+                        if (infoContainer.getChildren().size() > 2) {
+                            Text statusText = (Text) infoContainer.getChildren().get(2);
+                            statusText.setText(updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada");
+                        }
+
+                        System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
+                                (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada") +
+                                " (posição preservada)");
+                    }
+                } catch (Exception e) {
+                    System.err.println("Erro ao atualizar estado da mesa: " + e.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Atualiza estados e posições das mesas durante atualizações automáticas
+     */
+    private void updateMesaStatesAndPositions(List<Mesa> mesas) {
+        if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
+            // Se não há layout existente, criar um novo
+            displayMesasAsGrid(mesas);
+            return;
+        }
+
+        // Criar um mapa para lookup rápido das mesas por ID
+        Map<Integer, Mesa> mesaMap = new HashMap<>();
+        for (Mesa mesa : mesas) {
+            mesaMap.put(mesa.getId(), mesa);
+        }
+
+        System.out.println("Atualizando posições e estados das mesas...");
+
+        // Atualizar posições e estados das mesas existentes
+        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
+            if (node instanceof StackPane) {
+                StackPane mesaBox = (StackPane) node;
+                try {
+                    // Extrair o número da mesa do texto
+                    VBox layout = (VBox) mesaBox.getChildren().get(0);
+                    VBox infoContainer = (VBox) ((StackPane) layout.getChildren().get(0)).getChildren().get(1);
+                    Text mesaNumberText = (Text) infoContainer.getChildren().get(1);
+                    String text = mesaNumberText.getText(); // "Mesa X"
+                    int mesaNumber = Integer.parseInt(text.split(" ")[1]);
+
+                    Mesa updatedMesa = mesaMap.get(mesaNumber);
+                    if (updatedMesa != null) {
+                        // 1. Atualizar posição se mudou no servidor
+                        Double[] serverPosition = mesaPositions.get(updatedMesa.getId());
+                        if (serverPosition != null && isRelativePosition(serverPosition)) {
+                            Double[] absolutePos = convertToAbsolutePosition(serverPosition[0], serverPosition[1]);
+                            double newX = absolutePos[0];
+                            double newY = absolutePos[1];
+
+                            // Só mover se a posição mudou significativamente
+                            double currentX = mesaBox.getLayoutX();
+                            double currentY = mesaBox.getLayoutY();
+
+                            if (Math.abs(currentX - newX) > 5 || Math.abs(currentY - newY) > 5) {
+                                mesaBox.setLayoutX(newX);
+                                mesaBox.setLayoutY(newY);
+                                System.out.println("Mesa " + mesaNumber + " - Posição atualizada do servidor: (" +
+                                        String.format("%.2f", newX) + ", " + String.format("%.2f", newY) + ")");
+                            }
+                        }
+
+                        // 2. Atualizar estado visual (cor e texto)
+                        StackPane tableContainer = (StackPane) layout.getChildren().get(0);
+                        Rectangle mesaRect = (Rectangle) tableContainer.getChildren().get(0);
+
+                        Color mesaColor = updatedMesa.isEstadoLivre() ? Color.valueOf("#4CAF50")
+                                : Color.valueOf("#F44336");
+                        mesaRect.setFill(mesaColor);
+
+                        // Atualizar texto do status se existir
+                        if (infoContainer.getChildren().size() > 2) {
+                            Text statusText = (Text) infoContainer.getChildren().get(2);
+                            statusText.setText(updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada");
+                        }
+
+                        System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
+                                (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada"));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Erro ao atualizar mesa: " + e.getMessage());
+                }
+            }
+        }
     }
 
     /**
@@ -270,16 +533,77 @@ public class MesasView {
 
         header.getChildren().addAll(title, spacer, addButton, refreshButton);
 
-        // Create content
-        FlowPane mesasGrid = new FlowPane();
-        mesasGrid.setHgap(20);
-        mesasGrid.setVgap(20);
+        // Create content with draggable layout
+        Pane mesasGrid = new Pane();
         mesasGrid.setPadding(new Insets(20));
-        mesasGrid.setAlignment(Pos.CENTER);
+        currentMesasGrid = mesasGrid; // Store reference for responsive updates
 
-        // Add mesa cards to grid
-        for (Mesa mesa : mesas) {
-            mesasGrid.getChildren().add(createMesaBox(mesa));
+        // Make the pane responsive
+        mesasGrid.widthProperty().addListener((obs, oldWidth, newWidth) -> {
+            if (Math.abs(newWidth.doubleValue() - lastContainerWidth) > 50) { // Only respond to significant changes
+                lastContainerWidth = newWidth.doubleValue();
+                updateResponsiveLayout();
+            }
+        });
+
+        mesasGrid.heightProperty().addListener((obs, oldHeight, newHeight) -> {
+            if (Math.abs(newHeight.doubleValue() - lastContainerHeight) > 50) { // Only respond to significant changes
+                lastContainerHeight = newHeight.doubleValue();
+                updateResponsiveLayout();
+            }
+        });
+
+        // Convert any existing absolute positions to relative
+        convertExistingPositionsToRelative();
+
+        // Add mesa cards to grid with persistent positions
+        for (int i = 0; i < mesas.size(); i++) {
+            Mesa mesa = mesas.get(i);
+            StackPane mesaBox = createMesaBox(mesa);
+
+            // Check if we have a stored position for this mesa
+            Double[] storedPosition = mesaPositions.get(mesa.getId());
+            double x, y;
+
+            if (storedPosition != null && isRelativePosition(storedPosition)) {
+                // Convert relative position to absolute based on current container size
+                Double[] absolutePos = convertToAbsolutePosition(storedPosition[0], storedPosition[1]);
+                x = absolutePos[0];
+                y = absolutePos[1];
+                System.out.println("Mesa " + mesa.getNumero() + " - Restored relative position: (" +
+                        String.format("%.3f", storedPosition[0]) + ", " + String.format("%.3f", storedPosition[1]) +
+                        ") [relative] = (" + String.format("%.2f", x) + ", " + String.format("%.2f", y)
+                        + ") [absolute]");
+            } else {
+                // Calculate initial position for new mesas
+                int columns = calculateOptimalColumns();
+                int xOffset = 50;
+                int yOffset = 50;
+                int cardWidth = 220; // Width including spacing
+                int cardHeight = 240; // Height including spacing
+
+                int row = i / columns;
+                int col = i % columns;
+                x = xOffset + (col * cardWidth);
+                y = yOffset + (row * cardHeight);
+
+                // Store the initial position as relative coordinates
+                Double[] relativePos = convertToRelativePosition(x, y);
+                mesaPositions.put(mesa.getId(), relativePos);
+                System.out.println("Mesa " + mesa.getNumero() + " - Initial position: (" +
+                        String.format("%.2f", x) + ", " + String.format("%.2f", y) +
+                        ") [absolute] = (" + String.format("%.3f", relativePos[0]) + ", " +
+                        String.format("%.3f", relativePos[1]) + ") [relative]");
+            }
+
+            // Set position
+            mesaBox.setLayoutX(x);
+            mesaBox.setLayoutY(y);
+
+            // Make mesa draggable
+            makeMesaDraggable(mesaBox, mesa);
+
+            mesasGrid.getChildren().add(mesaBox);
         }
 
         // Add everything to a scroll pane
@@ -653,5 +977,274 @@ public class MesasView {
             isViewActive = false;
             stopAutoUpdateTimer();
         }
+    }
+
+    /**
+     * Calcula o número ideal de colunas baseado no tamanho da janela
+     * 
+     * @return Número de colunas para o layout inicial
+     */
+    private int calculateOptimalColumns() {
+        double availableWidth = contentArea.getWidth();
+        if (availableWidth <= 0) {
+            availableWidth = 1000; // Default fallback
+        }
+
+        int cardWidth = 220; // Width including spacing
+        int padding = 100; // Total padding (left + right)
+        int minColumns = 2;
+        int maxColumns = 6;
+
+        int columns = Math.max(minColumns, (int) ((availableWidth - padding) / cardWidth));
+        return Math.min(columns, maxColumns);
+    }
+
+    /**
+     * Atualiza o layout de forma responsiva quando o tamanho da janela muda
+     */
+    private void updateResponsiveLayout() {
+        if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
+            return;
+        }
+
+        // Update all mesa positions from relative to absolute coordinates based on new
+        // container size
+        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
+            if (node instanceof StackPane) {
+                StackPane mesaBox = (StackPane) node;
+
+                // Find the mesa associated with this box
+                Mesa mesa = findMesaForBox(mesaBox);
+                if (mesa != null) {
+                    Double[] relativePos = mesaPositions.get(mesa.getId());
+                    if (relativePos != null && isRelativePosition(relativePos)) {
+                        // Convert relative position to new absolute position
+                        Double[] absolutePos = convertToAbsolutePosition(relativePos[0], relativePos[1]);
+                        mesaBox.setLayoutX(absolutePos[0]);
+                        mesaBox.setLayoutY(absolutePos[1]);
+
+                        System.out.println("Mesa " + mesa.getNumero() + " - Responsive update: (" +
+                                String.format("%.3f", relativePos[0]) + ", " + String.format("%.3f", relativePos[1]) +
+                                ") [relative] = (" + String.format("%.2f", absolutePos[0]) + ", " +
+                                String.format("%.2f", absolutePos[1]) + ") [absolute]");
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Encontra a mesa associada a um StackPane
+     */
+    private Mesa findMesaForBox(StackPane mesaBox) {
+        try {
+            VBox layout = (VBox) mesaBox.getChildren().get(0);
+            VBox infoContainer = (VBox) ((StackPane) layout.getChildren().get(0)).getChildren().get(1);
+            Text mesaNumberText = (Text) infoContainer.getChildren().get(1);
+            String text = mesaNumberText.getText(); // "Mesa X"
+            int mesaNumber = Integer.parseInt(text.split(" ")[1]);
+
+            // This is a simplified approach - in a real implementation you'd want to store
+            // mesa references properly
+            // For now, we assume mesa ID matches mesa number
+            return new Mesa(mesaNumber, mesaNumber, true); // Dummy mesa for ID lookup
+        } catch (Exception e) {
+            System.err.println("Error finding mesa for box: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Torna uma mesa arrastável e salva posições relativas
+     * 
+     * @param mesaBox O StackPane da mesa a ser tornada arrastável
+     * @param mesa    A mesa associada ao StackPane
+     */
+    private void makeMesaDraggable(StackPane mesaBox, Mesa mesa) {
+        // Variables to store initial mouse position
+        final double[] mouseX = new double[1];
+        final double[] mouseY = new double[1];
+        final double[] initialX = new double[1];
+        final double[] initialY = new double[1];
+
+        // Mouse pressed event - record initial positions
+        mesaBox.setOnMousePressed(event -> {
+            mouseX[0] = event.getSceneX();
+            mouseY[0] = event.getSceneY();
+            initialX[0] = mesaBox.getLayoutX();
+            initialY[0] = mesaBox.getLayoutY();
+
+            // Change cursor to indicate dragging
+            mesaBox.setStyle(mesaBox.getStyle() + "; -fx-cursor: move;");
+
+            System.out.println("Mesa " + mesa.getNumero() + " - Drag started at: (" +
+                    String.format("%.2f", initialX[0]) + ", " +
+                    String.format("%.2f", initialY[0]) + ")");
+        });
+
+        // Mouse dragged event - update position
+        mesaBox.setOnMouseDragged(event -> {
+            double deltaX = event.getSceneX() - mouseX[0];
+            double deltaY = event.getSceneY() - mouseY[0];
+
+            double newX = initialX[0] + deltaX;
+            double newY = initialY[0] + deltaY;
+
+            // Constrain to parent bounds
+            if (mesaBox.getParent() instanceof Pane) {
+                Pane parent = (Pane) mesaBox.getParent();
+                double maxX = parent.getWidth() - mesaBox.getWidth();
+                double maxY = parent.getHeight() - mesaBox.getHeight();
+
+                if (maxX > 0 && maxY > 0) {
+                    newX = Math.max(20, Math.min(newX, maxX - 20));
+                    newY = Math.max(20, Math.min(newY, maxY - 20));
+                }
+            }
+
+            // Update position
+            mesaBox.setLayoutX(newX);
+            mesaBox.setLayoutY(newY);
+        });
+
+        // Mouse released event - save relative position
+        mesaBox.setOnMouseReleased(event -> {
+            // Reset cursor
+            mesaBox.setStyle(mesaBox.getStyle().replace("; -fx-cursor: move;", ""));
+
+            double finalX = mesaBox.getLayoutX();
+            double finalY = mesaBox.getLayoutY();
+
+            // Convert to relative position and store
+            Double[] relativePos = convertToRelativePosition(finalX, finalY);
+            mesaPositions.put(mesa.getId(), relativePos);
+
+            // Save relative position to server (0-1 scale for responsiveness)
+            saveMesaPositionToServer(mesa.getId(), relativePos[0], relativePos[1]);
+
+            System.out.println("Mesa " + mesa.getNumero() + " - Final position: (" +
+                    String.format("%.2f", finalX) + ", " + String.format("%.2f", finalY) +
+                    ") [absolute] = (" + String.format("%.3f", relativePos[0]) + ", " +
+                    String.format("%.3f", relativePos[1]) + ") [relative]");
+        });
+    }
+
+    /**
+     * Converte coordenadas absolutas para relativas (0-1) baseadas no tamanho do
+     * container
+     * 
+     * @param absoluteX Coordenada X absoluta em pixels
+     * @param absoluteY Coordenada Y absoluta em pixels
+     * @return Array com [relativeX, relativeY] em escala 0-1
+     */
+    private Double[] convertToRelativePosition(double absoluteX, double absoluteY) {
+        if (currentMesasGrid == null) {
+            return new Double[] { 0.1, 0.1 }; // Posição relativa padrão
+        }
+
+        double containerWidth = currentMesasGrid.getWidth();
+        double containerHeight = currentMesasGrid.getHeight();
+
+        // Se o container ainda não tem tamanho definido, usar dimensões da janela
+        if (containerWidth <= 0)
+            containerWidth = contentArea.getWidth();
+        if (containerHeight <= 0)
+            containerHeight = contentArea.getHeight();
+
+        // Usar dimensões padrão se ainda não estiverem disponíveis
+        if (containerWidth <= 0)
+            containerWidth = 1000;
+        if (containerHeight <= 0)
+            containerHeight = 800;
+
+        // Calcular posições relativas (0-1)
+        double relativeX = absoluteX / containerWidth;
+        double relativeY = absoluteY / containerHeight;
+
+        // Garantir que permaneçam dentro dos limites 0-1
+        relativeX = Math.max(0.0, Math.min(1.0, relativeX));
+        relativeY = Math.max(0.0, Math.min(1.0, relativeY));
+
+        return new Double[] { relativeX, relativeY };
+    }
+
+    /**
+     * Converte coordenadas relativas (0-1) para absolutas baseadas no tamanho do
+     * container
+     * 
+     * @param relativeX Coordenada X relativa (0-1)
+     * @param relativeY Coordenada Y relativa (0-1)
+     * @return Array com [absoluteX, absoluteY]
+     */
+    private Double[] convertToAbsolutePosition(double relativeX, double relativeY) {
+        if (currentMesasGrid == null) {
+            return new Double[] { 50.0, 50.0 }; // Posição padrão
+        }
+
+        double containerWidth = currentMesasGrid.getWidth();
+        double containerHeight = currentMesasGrid.getHeight();
+
+        // Se o container ainda não tem tamanho definido, usar dimensões padrão
+        if (containerWidth <= 0)
+            containerWidth = 1000;
+        if (containerHeight <= 0)
+            containerHeight = 800;
+
+        // Calcular posições absolutas, garantindo que fiquem dentro dos limites
+        double mesaBoxWidth = 200; // Largura aproximada do mesa box
+        double mesaBoxHeight = 200; // Altura aproximada do mesa box
+        double margin = 20;
+
+        double maxX = containerWidth - mesaBoxWidth - margin;
+        double maxY = containerHeight - mesaBoxHeight - margin;
+
+        double absoluteX = Math.max(margin, Math.min(maxX, relativeX * containerWidth));
+        double absoluteY = Math.max(margin, Math.min(maxY, relativeY * containerHeight));
+
+        return new Double[] { absoluteX, absoluteY };
+    }
+
+    /**
+     * Verifica se uma posição armazenada é relativa (valores entre 0-1) ou absoluta
+     * 
+     * @param position Array com [x, y]
+     * @return true se for posição relativa, false se for absoluta
+     */
+    private boolean isRelativePosition(Double[] position) {
+        if (position == null || position.length != 2) {
+            return false;
+        }
+        // Se ambos os valores estão entre 0 e 1, assumimos que é posição relativa
+        return position[0] >= 0.0 && position[0] <= 1.0 &&
+                position[1] >= 0.0 && position[1] <= 1.0;
+    }
+
+    /**
+     * Converte todas as posições absolutas antigas para relativas
+     */
+    private void convertExistingPositionsToRelative() {
+        if (currentMesasGrid == null)
+            return;
+
+        Map<Integer, Double[]> convertedPositions = new HashMap<>();
+
+        for (Map.Entry<Integer, Double[]> entry : mesaPositions.entrySet()) {
+            Double[] position = entry.getValue();
+            if (!isRelativePosition(position)) {
+                // Converter posição absoluta para relativa
+                Double[] relativePos = convertToRelativePosition(position[0], position[1]);
+                convertedPositions.put(entry.getKey(), relativePos);
+                System.out.println("Convertendo posição da Mesa ID " + entry.getKey() +
+                        " de (" + String.format("%.2f", position[0]) + ", " + String.format("%.2f", position[1]) +
+                        ") para (" + String.format("%.3f", relativePos[0]) + ", "
+                        + String.format("%.3f", relativePos[1]) + ") [relativa]");
+            } else {
+                convertedPositions.put(entry.getKey(), position);
+            }
+        }
+
+        // Substituir as posições antigas pelas convertidas
+        mesaPositions.clear();
+        mesaPositions.putAll(convertedPositions);
     }
 }

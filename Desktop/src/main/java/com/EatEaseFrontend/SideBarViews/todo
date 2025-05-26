@@ -1,2 +1,1 @@
-numero de stock de ingredientes tem de ser automatico
-se nao houver ingredientes ja da erro mas o item nao deve sequer ser enviado para o frontend
+se houver 2 itens de stock o user pode selecionar 3
