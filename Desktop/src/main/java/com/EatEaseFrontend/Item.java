@@ -32,6 +32,8 @@ public class Item {
     /** Lista já desserializada de ingredientes. */
     private List<ItemIngrediente> ingredientes = new ArrayList<>();
 
+    private String foto;
+
     /* ---------- Classe interna ---------- */
     public static class ItemIngrediente {
         @JsonProperty("ingredienteId")
@@ -125,5 +127,13 @@ public class Item {
             case 4 -> "Bebida";
             default -> "Desconhecido";
         };
+    }
+
+    public String getFoto() {
+        return foto;
+    }
+
+    public void setFoto(String foto) {
+        this.foto = foto;
     }
 }
