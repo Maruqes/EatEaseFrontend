@@ -457,11 +457,11 @@ public class MesasView {
                     System.out.println("Mesa nova " + newMesa.getNumero() + " - Posição restaurada do servidor: (" +
                             String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")");
                 } else {
-                    // Calcular posição inicial para mesa nova
+                    // Calcular posição inicial para mesa nova - maximize space usage
                     int existingCount = currentMesasGrid.getChildren().size();
                     int columns = calculateOptimalColumns();
-                    int xOffset = 50;
-                    int yOffset = 50;
+                    int xOffset = 20; // Reduced offset for maximum space utilization
+                    int yOffset = 20; // Reduced offset for maximum space utilization
                     int cardWidth = 220;
                     int cardHeight = 240;
 
@@ -503,9 +503,10 @@ public class MesasView {
 
         contentArea.getChildren().clear();
 
-        // Header with title and refresh button
+        // Header with title and refresh button - compact layout
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(5, 10, 5, 10)); // Minimal padding for clean look
 
         Text title = new Text("Gestão de Mesas");
         title.getStyleClass().add("welcome-text");
@@ -534,9 +535,9 @@ public class MesasView {
 
         header.getChildren().addAll(title, spacer, addButton, refreshButton);
 
-        // Create content with draggable layout
+        // Create content with draggable layout - maximize available space
         Pane mesasGrid = new Pane();
-        mesasGrid.setPadding(new Insets(20));
+        mesasGrid.setPadding(new Insets(10)); // Minimal padding to maximize usable space
         currentMesasGrid = mesasGrid; // Store reference for responsive updates
 
         // Make the pane responsive
@@ -574,12 +575,15 @@ public class MesasView {
                 System.out.println("Mesa " + mesa.getNumero() + " - Restored relative position: (" +
                         String.format("%.3f", storedPosition[0]) + ", " + String.format("%.3f", storedPosition[1]) +
                         ") [relative] = (" + String.format("%.2f", x) + ", " + String.format("%.2f", y)
-                        + ") [absolute]");
+                        + ") [absolute] (contentArea: "
+                        + String.format("%.0fx%.0f", contentArea.getWidth(), contentArea.getHeight()) +
+                        ", mesasGrid: " + String.format("%.0fx%.0f", mesasGrid.getWidth(), mesasGrid.getHeight())
+                        + ")");
             } else {
-                // Calculate initial position for new mesas
+                // Calculate initial position for new mesas - maximize space usage
                 int columns = calculateOptimalColumns();
-                int xOffset = 50;
-                int yOffset = 50;
+                int xOffset = 20; // Reduced offset for maximum space utilization
+                int yOffset = 20; // Reduced offset for maximum space utilization
                 int cardWidth = 220; // Width including spacing
                 int cardHeight = 240; // Height including spacing
 
@@ -607,15 +611,32 @@ public class MesasView {
             mesasGrid.getChildren().add(mesaBox);
         }
 
+        // After adding all children, update positions once the container is properly
+        // laid out
+        Platform.runLater(() -> {
+            // This runs after the scene graph has been laid out
+            updateStoredRelativePositions();
+        });
+
         // Add everything to a scroll pane
         ScrollPane scrollPane = new ScrollPane(mesasGrid);
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(true);
+        scrollPane.setPannable(true);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
-        // Main layout
-        VBox mainLayout = new VBox(20);
-        mainLayout.setPadding(new Insets(20));
+        // Main layout - maximize use of available space
+        VBox mainLayout = new VBox(10); // Reduced spacing
+        mainLayout.setPadding(new Insets(10)); // Minimal padding
         mainLayout.getChildren().addAll(header, scrollPane);
+
+        // Make scrollPane grow to fill available space
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        // Make mainLayout fill the entire contentArea
+        mainLayout.prefWidthProperty().bind(contentArea.widthProperty());
+        mainLayout.prefHeightProperty().bind(contentArea.heightProperty());
 
         contentArea.getChildren().add(mainLayout);
     }
@@ -982,6 +1003,7 @@ public class MesasView {
 
     /**
      * Calcula o número ideal de colunas baseado no tamanho da janela
+     * Otimizado para maximizar o uso do espaço disponível
      * 
      * @return Número de colunas para o layout inicial
      */
@@ -992,9 +1014,9 @@ public class MesasView {
         }
 
         int cardWidth = 220; // Width including spacing
-        int padding = 100; // Total padding (left + right)
+        int padding = 40; // Reduced total padding for maximum space usage (left + right)
         int minColumns = 2;
-        int maxColumns = 6;
+        int maxColumns = 8; // Increased max columns for better space utilization
 
         int columns = Math.max(minColumns, (int) ((availableWidth - padding) / cardWidth));
         return Math.min(columns, maxColumns);
@@ -1098,8 +1120,8 @@ public class MesasView {
                 double maxY = parent.getHeight() - mesaBox.getHeight();
 
                 if (maxX > 0 && maxY > 0) {
-                    newX = Math.max(20, Math.min(newX, maxX - 20));
-                    newY = Math.max(20, Math.min(newY, maxY - 20));
+                    newX = Math.max(10, Math.min(newX, maxX - 10)); // Reduced margin for max space usage
+                    newY = Math.max(10, Math.min(newY, maxY - 10)); // Reduced margin for max space usage
                 }
             }
 
@@ -1146,11 +1168,13 @@ public class MesasView {
         double containerWidth = currentMesasGrid.getWidth();
         double containerHeight = currentMesasGrid.getHeight();
 
-        // Se o container ainda não tem tamanho definido, usar dimensões da janela
-        if (containerWidth <= 0)
-            containerWidth = contentArea.getWidth();
-        if (containerHeight <= 0)
-            containerHeight = contentArea.getHeight();
+        // Se o container ainda não tem tamanho definido, usar dimensões da contentArea
+        if (containerWidth <= 0) {
+            containerWidth = contentArea.getWidth() - 40; // Subtrair padding/margins
+        }
+        if (containerHeight <= 0) {
+            containerHeight = contentArea.getHeight() - 100; // Subtrair header e padding
+        }
 
         // Usar dimensões padrão se ainda não estiverem disponíveis
         if (containerWidth <= 0)
@@ -1158,13 +1182,26 @@ public class MesasView {
         if (containerHeight <= 0)
             containerHeight = 800;
 
-        // Calcular posições relativas (0-1)
-        double relativeX = absoluteX / containerWidth;
-        double relativeY = absoluteY / containerHeight;
+        // Calcular a área utilizável
+        double mesaBoxWidth = 200;
+        double mesaBoxHeight = 200;
+        double margin = 10;
+
+        double usableWidth = containerWidth - mesaBoxWidth - (margin * 2);
+        double usableHeight = containerHeight - mesaBoxHeight - (margin * 2);
+
+        // Converter para posições relativas dentro da área utilizável
+        double relativeX = (absoluteX - margin) / usableWidth;
+        double relativeY = (absoluteY - margin) / usableHeight;
 
         // Garantir que permaneçam dentro dos limites 0-1
         relativeX = Math.max(0.0, Math.min(1.0, relativeX));
         relativeY = Math.max(0.0, Math.min(1.0, relativeY));
+
+        System.out.println("Conversão: (" + String.format("%.2f", absoluteX) + ", " + String.format("%.2f", absoluteY) +
+                ") [absolute] -> (" + String.format("%.3f", relativeX) + ", " + String.format("%.3f", relativeY) +
+                ") [relative] (container: " + String.format("%.0f", containerWidth) + "x"
+                + String.format("%.0f", containerHeight) + ")");
 
         return new Double[] { relativeX, relativeY };
     }
@@ -1185,22 +1222,41 @@ public class MesasView {
         double containerWidth = currentMesasGrid.getWidth();
         double containerHeight = currentMesasGrid.getHeight();
 
-        // Se o container ainda não tem tamanho definido, usar dimensões padrão
+        // Se o container ainda não tem tamanho definido, usar dimensões da contentArea
+        if (containerWidth <= 0) {
+            containerWidth = contentArea.getWidth() - 40; // Subtrair padding/margins
+        }
+        if (containerHeight <= 0) {
+            containerHeight = contentArea.getHeight() - 100; // Subtrair header e padding
+        }
+
+        // Se ainda não estiverem disponíveis, usar dimensões padrão
         if (containerWidth <= 0)
             containerWidth = 1000;
         if (containerHeight <= 0)
             containerHeight = 800;
 
-        // Calcular posições absolutas, garantindo que fiquem dentro dos limites
+        // Calcular posições absolutas usando a área disponível total
         double mesaBoxWidth = 200; // Largura aproximada do mesa box
         double mesaBoxHeight = 200; // Altura aproximada do mesa box
-        double margin = 20;
+        double margin = 10; // Margem mínima
 
-        double maxX = containerWidth - mesaBoxWidth - margin;
-        double maxY = containerHeight - mesaBoxHeight - margin;
+        // Calcular a área utilizável (descontando o tamanho da mesa e margens)
+        double usableWidth = containerWidth - mesaBoxWidth - (margin * 2);
+        double usableHeight = containerHeight - mesaBoxHeight - (margin * 2);
 
-        double absoluteX = Math.max(margin, Math.min(maxX, relativeX * containerWidth));
-        double absoluteY = Math.max(margin, Math.min(maxY, relativeY * containerHeight));
+        // Converter posições relativas para absolutas dentro da área utilizável
+        double absoluteX = margin + (relativeX * usableWidth);
+        double absoluteY = margin + (relativeY * usableHeight);
+
+        // Garantir que não ultrapassem os limites
+        absoluteX = Math.max(margin, Math.min(containerWidth - mesaBoxWidth - margin, absoluteX));
+        absoluteY = Math.max(margin, Math.min(containerHeight - mesaBoxHeight - margin, absoluteY));
+
+        System.out.println("Conversão: (" + String.format("%.3f", relativeX) + ", " + String.format("%.3f", relativeY) +
+                ") [relative] -> (" + String.format("%.2f", absoluteX) + ", " + String.format("%.2f", absoluteY) +
+                ") [absolute] (container: " + String.format("%.0f", containerWidth) + "x"
+                + String.format("%.0f", containerHeight) + ")");
 
         return new Double[] { absoluteX, absoluteY };
     }
@@ -1247,5 +1303,45 @@ public class MesasView {
         // Substituir as posições antigas pelas convertidas
         mesaPositions.clear();
         mesaPositions.putAll(convertedPositions);
+    }
+
+    /**
+     * Atualiza as posições relativas armazenadas após o layout estar completo
+     * Método chamado depois que o container tem suas dimensões finais
+     */
+    private void updateStoredRelativePositions() {
+        if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
+            return;
+        }
+
+        System.out.println("Atualizando posições relativas após layout estar completo...");
+        System.out.println("Container dimensões finais: " +
+                String.format("%.0fx%.0f", currentMesasGrid.getWidth(), currentMesasGrid.getHeight()));
+        System.out.println("ContentArea dimensões: " +
+                String.format("%.0fx%.0f", contentArea.getWidth(), contentArea.getHeight()));
+
+        // Re-convert all positions using the actual container dimensions
+        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
+            if (node instanceof StackPane) {
+                StackPane mesaBox = (StackPane) node;
+                Mesa mesa = findMesaForBox(mesaBox);
+
+                if (mesa != null) {
+                    Double[] storedPosition = mesaPositions.get(mesa.getId());
+                    if (storedPosition != null && isRelativePosition(storedPosition)) {
+                        // Re-convert using actual container size
+                        Double[] newAbsolutePos = convertToAbsolutePosition(storedPosition[0], storedPosition[1]);
+                        mesaBox.setLayoutX(newAbsolutePos[0]);
+                        mesaBox.setLayoutY(newAbsolutePos[1]);
+
+                        System.out.println("Mesa " + mesa.getNumero() + " - Posição atualizada: (" +
+                                String.format("%.3f", storedPosition[0]) + ", "
+                                + String.format("%.3f", storedPosition[1]) +
+                                ") [relative] -> (" + String.format("%.2f", newAbsolutePos[0]) + ", " +
+                                String.format("%.2f", newAbsolutePos[1]) + ") [absolute]");
+                    }
+                }
+            }
+        }
     }
 }
