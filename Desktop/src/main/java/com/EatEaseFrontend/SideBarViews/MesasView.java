@@ -401,7 +401,7 @@ public class MesasView {
                     Mesa updatedMesa = mesaMap.get(mesaNumber);
                     if (updatedMesa != null) {
                         existingMesaIds.add(updatedMesa.getId());
-                        
+
                         // Atualizar apenas a cor baseada no estado
                         StackPane tableContainer = (StackPane) layout.getChildren().get(0);
                         Rectangle mesaRect = (Rectangle) tableContainer.getChildren().get(0);
@@ -429,7 +429,7 @@ public class MesasView {
                 }
             }
         }
-        
+
         // Detectar e adicionar mesas novas vindas do servidor
         List<Mesa> newMesas = new ArrayList<>();
         for (Mesa mesa : mesas) {
@@ -437,18 +437,18 @@ public class MesasView {
                 newMesas.add(mesa);
             }
         }
-        
+
         if (!newMesas.isEmpty()) {
             System.out.println("Detectadas " + newMesas.size() + " mesa(s) nova(s) do servidor, adicionando à UI...");
-            
+
             // Adicionar as mesas novas ao layout
             for (Mesa newMesa : newMesas) {
                 StackPane mesaBox = createMesaBox(newMesa);
-                
+
                 // Verificar se temos posição armazenada para esta mesa
                 Double[] storedPosition = mesaPositions.get(newMesa.getId());
                 double x, y;
-                
+
                 if (storedPosition != null && isRelativePosition(storedPosition)) {
                     // Converter posição relativa para absoluta
                     Double[] absolutePos = convertToAbsolutePosition(storedPosition[0], storedPosition[1]);
@@ -473,20 +473,21 @@ public class MesasView {
                     // Armazenar a posição inicial como coordenadas relativas
                     Double[] relativePos = convertToRelativePosition(x, y);
                     mesaPositions.put(newMesa.getId(), relativePos);
-                    
+
                     System.out.println("Mesa nova " + newMesa.getNumero() + " - Posição inicial: (" +
                             String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")");
                 }
-                
+
                 // Definir posição e tornar arrastável
                 mesaBox.setLayoutX(x);
                 mesaBox.setLayoutY(y);
                 makeMesaDraggable(mesaBox, newMesa);
-                
+
                 // Adicionar ao grid
                 currentMesasGrid.getChildren().add(mesaBox);
-                
-                System.out.println("Mesa " + newMesa.getNumero() + " (ID: " + newMesa.getId() + ") adicionada com sucesso");
+
+                System.out.println(
+                        "Mesa " + newMesa.getNumero() + " (ID: " + newMesa.getId() + ") adicionada com sucesso");
             }
         }
     }
