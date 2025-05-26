@@ -25,10 +25,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -54,7 +57,7 @@ public class MesasView {
     // Temporizador para atualizações automáticas
     private Timer autoUpdateTimer;
     // Intervalo de atualização em segundos (facilmente ajustável)
-    private final int updateIntervalSeconds = 15; // Altere esse valor para modificar o intervalo de atualização
+    private static final int UPDATE_INTERVAL_SECONDS = 10; // Configuração global do intervalo de atualização
     // Flag para controlar se a view está ativa
     private boolean isViewActive = false;
 
@@ -177,7 +180,7 @@ public class MesasView {
         stopAutoUpdateTimer();
 
         System.out.println(
-                "[MESAS] Iniciando timer de atualização automática (intervalo: " + updateIntervalSeconds + "s)");
+                "[MESAS] Iniciando timer de atualização automática (intervalo: " + UPDATE_INTERVAL_SECONDS + "s)");
 
         // Criar um novo temporizador
         autoUpdateTimer = new Timer();
@@ -194,7 +197,7 @@ public class MesasView {
                     this.cancel();
                 }
             }
-        }, updateIntervalSeconds * 1000, updateIntervalSeconds * 1000);
+        }, UPDATE_INTERVAL_SECONDS * 1000, UPDATE_INTERVAL_SECONDS * 1000);
     }
 
     /**
@@ -233,8 +236,8 @@ public class MesasView {
                         // Primeiro carregar as posições do servidor, depois atualizar apenas os estados
                         loadMesaPositionsFromServer(mesas, () -> {
                             System.out.println(
-                                    "Atualizando estado das mesas automaticamente preservando posições atualizadas");
-                            Platform.runLater(() -> updateMesaStatesAndPositions(mesas));
+                                    "Atualizando apenas estados das mesas vindos do servidor (preservando posições)");
+                            Platform.runLater(() -> updateMesaStatesOnly(mesas));
                         });
                     }
                 })
@@ -362,6 +365,7 @@ public class MesasView {
 
     /**
      * Atualiza apenas o estado das mesas sem recriar o layout (preserva posições)
+     * Inclui detecção e adição de mesas novas vindas do servidor
      */
     private void updateMesaStatesOnly(List<Mesa> mesas) {
         if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
@@ -376,8 +380,14 @@ public class MesasView {
             mesaMap.put(mesa.getId(), mesa);
         }
 
+        System.out.println("Atualizando estados das mesas vindos do servidor (preservando posições)...");
+
+        // Coletar IDs das mesas atualmente exibidas
+        Set<Integer> existingMesaIds = new HashSet<>();
+        List<javafx.scene.Node> nodesToUpdate = new ArrayList<>(currentMesasGrid.getChildren());
+
         // Atualizar apenas o estado visual das mesas existentes
-        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
+        for (javafx.scene.Node node : nodesToUpdate) {
             if (node instanceof StackPane) {
                 StackPane mesaBox = (StackPane) node;
                 try {
@@ -388,9 +398,10 @@ public class MesasView {
                     String text = mesaNumberText.getText(); // "Mesa X"
                     int mesaNumber = Integer.parseInt(text.split(" ")[1]);
 
-                    // Assumindo que ID = numero para simplificação
                     Mesa updatedMesa = mesaMap.get(mesaNumber);
                     if (updatedMesa != null) {
+                        existingMesaIds.add(updatedMesa.getId());
+                        
                         // Atualizar apenas a cor baseada no estado
                         StackPane tableContainer = (StackPane) layout.getChildren().get(0);
                         Rectangle mesaRect = (Rectangle) tableContainer.getChildren().get(0);
@@ -408,85 +419,74 @@ public class MesasView {
                         System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
                                 (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada") +
                                 " (posição preservada)");
+                    } else {
+                        // Mesa não existe mais no servidor, remover da UI
+                        currentMesasGrid.getChildren().remove(mesaBox);
+                        System.out.println("Mesa " + mesaNumber + " removida (não existe mais no servidor)");
                     }
                 } catch (Exception e) {
                     System.err.println("Erro ao atualizar estado da mesa: " + e.getMessage());
                 }
             }
         }
-    }
-
-    /**
-     * Atualiza estados e posições das mesas durante atualizações automáticas
-     */
-    private void updateMesaStatesAndPositions(List<Mesa> mesas) {
-        if (currentMesasGrid == null || currentMesasGrid.getChildren().isEmpty()) {
-            // Se não há layout existente, criar um novo
-            displayMesasAsGrid(mesas);
-            return;
-        }
-
-        // Criar um mapa para lookup rápido das mesas por ID
-        Map<Integer, Mesa> mesaMap = new HashMap<>();
+        
+        // Detectar e adicionar mesas novas vindas do servidor
+        List<Mesa> newMesas = new ArrayList<>();
         for (Mesa mesa : mesas) {
-            mesaMap.put(mesa.getId(), mesa);
+            if (!existingMesaIds.contains(mesa.getId())) {
+                newMesas.add(mesa);
+            }
         }
+        
+        if (!newMesas.isEmpty()) {
+            System.out.println("Detectadas " + newMesas.size() + " mesa(s) nova(s) do servidor, adicionando à UI...");
+            
+            // Adicionar as mesas novas ao layout
+            for (Mesa newMesa : newMesas) {
+                StackPane mesaBox = createMesaBox(newMesa);
+                
+                // Verificar se temos posição armazenada para esta mesa
+                Double[] storedPosition = mesaPositions.get(newMesa.getId());
+                double x, y;
+                
+                if (storedPosition != null && isRelativePosition(storedPosition)) {
+                    // Converter posição relativa para absoluta
+                    Double[] absolutePos = convertToAbsolutePosition(storedPosition[0], storedPosition[1]);
+                    x = absolutePos[0];
+                    y = absolutePos[1];
+                    System.out.println("Mesa nova " + newMesa.getNumero() + " - Posição restaurada do servidor: (" +
+                            String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")");
+                } else {
+                    // Calcular posição inicial para mesa nova
+                    int existingCount = currentMesasGrid.getChildren().size();
+                    int columns = calculateOptimalColumns();
+                    int xOffset = 50;
+                    int yOffset = 50;
+                    int cardWidth = 220;
+                    int cardHeight = 240;
 
-        System.out.println("Atualizando posições e estados das mesas...");
+                    int row = existingCount / columns;
+                    int col = existingCount % columns;
+                    x = xOffset + (col * cardWidth);
+                    y = yOffset + (row * cardHeight);
 
-        // Atualizar posições e estados das mesas existentes
-        for (javafx.scene.Node node : currentMesasGrid.getChildren()) {
-            if (node instanceof StackPane) {
-                StackPane mesaBox = (StackPane) node;
-                try {
-                    // Extrair o número da mesa do texto
-                    VBox layout = (VBox) mesaBox.getChildren().get(0);
-                    VBox infoContainer = (VBox) ((StackPane) layout.getChildren().get(0)).getChildren().get(1);
-                    Text mesaNumberText = (Text) infoContainer.getChildren().get(1);
-                    String text = mesaNumberText.getText(); // "Mesa X"
-                    int mesaNumber = Integer.parseInt(text.split(" ")[1]);
-
-                    Mesa updatedMesa = mesaMap.get(mesaNumber);
-                    if (updatedMesa != null) {
-                        // 1. Atualizar posição se mudou no servidor
-                        Double[] serverPosition = mesaPositions.get(updatedMesa.getId());
-                        if (serverPosition != null && isRelativePosition(serverPosition)) {
-                            Double[] absolutePos = convertToAbsolutePosition(serverPosition[0], serverPosition[1]);
-                            double newX = absolutePos[0];
-                            double newY = absolutePos[1];
-
-                            // Só mover se a posição mudou significativamente
-                            double currentX = mesaBox.getLayoutX();
-                            double currentY = mesaBox.getLayoutY();
-
-                            if (Math.abs(currentX - newX) > 5 || Math.abs(currentY - newY) > 5) {
-                                mesaBox.setLayoutX(newX);
-                                mesaBox.setLayoutY(newY);
-                                System.out.println("Mesa " + mesaNumber + " - Posição atualizada do servidor: (" +
-                                        String.format("%.2f", newX) + ", " + String.format("%.2f", newY) + ")");
-                            }
-                        }
-
-                        // 2. Atualizar estado visual (cor e texto)
-                        StackPane tableContainer = (StackPane) layout.getChildren().get(0);
-                        Rectangle mesaRect = (Rectangle) tableContainer.getChildren().get(0);
-
-                        Color mesaColor = updatedMesa.isEstadoLivre() ? Color.valueOf("#4CAF50")
-                                : Color.valueOf("#F44336");
-                        mesaRect.setFill(mesaColor);
-
-                        // Atualizar texto do status se existir
-                        if (infoContainer.getChildren().size() > 2) {
-                            Text statusText = (Text) infoContainer.getChildren().get(2);
-                            statusText.setText(updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada");
-                        }
-
-                        System.out.println("Mesa " + mesaNumber + " - Estado atualizado: " +
-                                (updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada"));
-                    }
-                } catch (Exception e) {
-                    System.err.println("Erro ao atualizar mesa: " + e.getMessage());
+                    // Armazenar a posição inicial como coordenadas relativas
+                    Double[] relativePos = convertToRelativePosition(x, y);
+                    mesaPositions.put(newMesa.getId(), relativePos);
+                    
+                    System.out.println("Mesa nova " + newMesa.getNumero() + " - Posição inicial: (" +
+                            String.format("%.2f", x) + ", " + String.format("%.2f", y) + ")");
                 }
+                
+                // Definir posição e tornar arrastável
+                mesaBox.setLayoutX(x);
+                mesaBox.setLayoutY(y);
+                makeMesaDraggable(mesaBox, newMesa);
+                
+                // Adicionar ao grid
+                currentMesasGrid.getChildren().add(mesaBox);
+                
+                System.out.println("Mesa " + newMesa.getNumero() + " (ID: " + newMesa.getId() + ") adicionada com sucesso");
             }
         }
     }
