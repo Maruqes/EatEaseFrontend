@@ -30,6 +30,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.text.Text;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
@@ -84,6 +85,7 @@ public class LoginPage {
         appName.setFont(Font.font("System", FontWeight.BOLD, 52));
         appName.setFill(Color.WHITE);
         appName.getStyleClass().add("app-name");
+        appName.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
         // Add stylish tagline
         Label tagline = new Label("Gestão de Restaurantes Simplificada");
@@ -147,9 +149,6 @@ public class LoginPage {
         // Remember me checkbox and forgot password (visual only)
         HBox optionsBox = new HBox();
         optionsBox.setAlignment(Pos.CENTER_RIGHT);
-        Label forgotPassword = new Label("Esqueceu a senha?");
-        forgotPassword.getStyleClass().add("forgot-password");
-        optionsBox.getChildren().add(forgotPassword);
 
         // Modern styled login button
         Button loginBtn = new Button("ENTRAR");

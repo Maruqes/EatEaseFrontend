@@ -128,9 +128,6 @@ public class RelatoriosView {
         // Add scroll pane to content area
         contentArea.getChildren().add(scrollPane);
 
-        // Initialize demo data immediately for testing
-        initializeDemoData();
-
         // Load initial data
         loadInitialData();
     }
@@ -185,13 +182,24 @@ public class RelatoriosView {
         startDateBox.setAlignment(Pos.CENTER_LEFT);
         Label startDateLabel = new Label("Data Inicial:");
         startDate = new DatePicker(LocalDate.now().minusDays(30));
+
+        // Add listener to reload data when start date changes
+        startDate.setOnAction(e -> {
+            // Ensure end date is always today
+            endDate.setValue(LocalDate.now());
+            // Reload data for the new date range
+            loadInitialData();
+        });
+
         startDateBox.getChildren().addAll(startDateLabel, startDate);
 
-        // End date
+        // End date (fixed to today, not editable)
         VBox endDateBox = new VBox(5);
         endDateBox.setAlignment(Pos.CENTER_LEFT);
-        Label endDateLabel = new Label("Data Final:");
+        Label endDateLabel = new Label("Data Final (Hoje):");
         endDate = new DatePicker(LocalDate.now());
+        endDate.setDisable(true); // Make it non-editable
+        endDate.setStyle("-fx-opacity: 0.6;"); // Visual indication that it's disabled
         endDateBox.getChildren().addAll(endDateLabel, endDate);
 
         dateControls.getChildren().addAll(startDateBox, endDateBox);
@@ -212,19 +220,18 @@ public class RelatoriosView {
 
         // Create report option cards
         String[] reportTitles = {
-                "Relatório de Vendas", "Relatório de Pedidos",
+                "Relatório de Vendas",
                 "Relatório de Produtos", "Relatório de Stock"
         };
 
         String[] reportDescriptions = {
-                "Análise detalhada das vendas por período",
-                "Estatísticas de pedidos e ticket médio",
+                "Análise detalhada das vendas e pedidos por período",
                 "Relatório dos produtos mais vendidos",
                 "Alertas de stock e gestão de inventário"
         };
 
         MaterialDesign[] icons = {
-                MaterialDesign.MDI_CASH_MULTIPLE, MaterialDesign.MDI_RECEIPT,
+                MaterialDesign.MDI_CASH_MULTIPLE,
                 MaterialDesign.MDI_FOOD, MaterialDesign.MDI_PACKAGE_VARIANT
         };
 
@@ -335,26 +342,12 @@ public class RelatoriosView {
     }
 
     /**
-     * Initialize demo data for testing when APIs are not available
-     */
-    private void initializeDemoData() {
-        Platform.runLater(() -> {
-            // First create demo items
-            createDemoItems();
-
-            // Then create demo sales and orders data
-            showDemoData();
-
-            System.out.println("Demo data initialized with " + allItems.size() + " items");
-            System.out.println("Sales data entries: " + dailySalesData.size());
-            System.out.println("Orders data entries: " + dailyOrdersData.size());
-        });
-    }
-
-    /**
      * Loads initial data for reports
      */
     private void loadInitialData() {
+        // Ensure end date is always today
+        endDate.setValue(LocalDate.now());
+
         loadHistoricalSalesData();
         loadHistoricalOrdersData();
         loadAllItemsData();
@@ -387,27 +380,61 @@ public class RelatoriosView {
                     .build();
 
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(HttpResponse::body)
-                    .thenAccept(responseBody -> {
-                        try {
-                            if (responseBody.trim().startsWith("<")) {
-                                System.out.println("Sales API returned HTML error page for date: " + dateStr);
-                                return;
-                            }
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            try {
+                                String responseBody = resp.body().trim();
+                                if (responseBody.startsWith("<")) {
+                                    System.out.println("Sales API returned HTML error page for date: " + dateStr);
+                                    return;
+                                }
 
-                            JsonNode salesNode = objectMapper.readTree(responseBody);
-                            dailySalesData.put(dateStr, salesNode);
-                            Platform.runLater(() -> updateLastUpdatedTime());
-                        } catch (Exception e) {
-                            System.out.println("Error parsing sales data for date " + dateStr + ": " + e.getMessage());
-                            e.printStackTrace();
+                                // Parse response similar to DashboardView pattern
+                                JsonNode salesNode;
+                                try {
+                                    // Try to parse as direct number first
+                                    double salesValue = Double.parseDouble(responseBody);
+                                    // Create a JSON node with the expected structure
+                                    salesNode = objectMapper.createObjectNode()
+                                            .put("vendasDia", salesValue)
+                                            .put("numeroPedidos", 0) // Default value
+                                            .put("ticketMedio", 0.0); // Default value
+                                } catch (NumberFormatException e1) {
+                                    // If that fails, try to parse as JSON
+                                    try {
+                                        salesNode = objectMapper.readTree(responseBody);
+                                    } catch (Exception e2) {
+                                        System.err.println("Erro ao processar resposta de vendas: " + responseBody);
+                                        return;
+                                    }
+                                }
+
+                                dailySalesData.put(dateStr, salesNode);
+                                Platform.runLater(() -> updateLastUpdatedTime());
+                            } catch (Exception e) {
+                                System.out.println(
+                                        "Error parsing sales data for date " + dateStr + ": " + e.getMessage());
+                                Platform.runLater(() -> {
+                                    showErrorMessage("Erro ao processar dados de vendas para " + dateStr + ": "
+                                            + e.getMessage());
+                                });
+                                e.printStackTrace();
+                            }
+                        } else {
+                            System.out.println(
+                                    "Failed to load sales data for date " + dateStr + ". Status: " + resp.statusCode());
+                            Platform.runLater(() -> {
+                                showErrorMessage(
+                                        "Erro ao carregar vendas para " + dateStr + ". Status: " + resp.statusCode());
+                            });
                         }
                     })
                     .exceptionally(e -> {
                         System.out.println("Failed to load sales data for date: " + dateStr);
-                        if (dailySalesData.isEmpty()) {
-                            Platform.runLater(() -> showDemoData());
-                        }
+                        Platform.runLater(() -> {
+                            showErrorMessage(
+                                    "Erro ao carregar dados de vendas para " + dateStr + ": " + e.getMessage());
+                        });
                         e.printStackTrace();
                         return null;
                     });
@@ -438,28 +465,56 @@ public class RelatoriosView {
             String dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/dashboard/pedidos-dia?data=" + dateStr)))
+                    .header("Accept", "application/json")
                     .GET()
                     .build();
 
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(HttpResponse::body)
-                    .thenAccept(responseBody -> {
-                        try {
-                            if (responseBody.trim().startsWith("<")) {
-                                System.out.println("Orders API returned HTML error page for date: " + dateStr);
-                                return;
-                            }
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            try {
+                                String responseBody = resp.body().trim();
+                                if (responseBody.startsWith("<")) {
+                                    System.out.println("Orders API returned HTML error page for date: " + dateStr);
+                                    return;
+                                }
 
-                            JsonNode ordersNode = objectMapper.readTree(responseBody);
-                            dailyOrdersData.put(dateStr, ordersNode);
-                            Platform.runLater(() -> updateLastUpdatedTime());
-                        } catch (Exception e) {
-                            System.out.println("Error parsing orders data for date " + dateStr + ": " + e.getMessage());
-                            e.printStackTrace();
+                                JsonNode ordersNode;
+                                try {
+                                    // Try parsing as direct number first
+                                    int ordersValue = Integer.parseInt(responseBody);
+                                    ordersNode = objectMapper.createObjectNode().put("value", ordersValue);
+                                } catch (NumberFormatException e) {
+                                    // Fall back to JSON parsing
+                                    ordersNode = objectMapper.readTree(responseBody);
+                                }
+
+                                dailyOrdersData.put(dateStr, ordersNode);
+                                Platform.runLater(() -> updateLastUpdatedTime());
+                            } catch (Exception e) {
+                                System.out.println(
+                                        "Error parsing orders data for date " + dateStr + ": " + e.getMessage());
+                                Platform.runLater(() -> {
+                                    showErrorMessage("Erro ao processar dados de pedidos para " + dateStr + ": "
+                                            + e.getMessage());
+                                });
+                                e.printStackTrace();
+                            }
+                        } else {
+                            System.out.println("Failed to load orders data for date " + dateStr + ". Status: "
+                                    + resp.statusCode());
+                            Platform.runLater(() -> {
+                                showErrorMessage(
+                                        "Erro ao carregar pedidos para " + dateStr + ". Status: " + resp.statusCode());
+                            });
                         }
                     })
                     .exceptionally(e -> {
-                        System.out.println("Failed to load orders data for date: " + dateStr);
+                        System.out.println("Failed to load orders data for date: " + dateStr + ": " + e.getMessage());
+                        Platform.runLater(() -> {
+                            showErrorMessage(
+                                    "Erro ao carregar dados de pedidos para " + dateStr + ": " + e.getMessage());
+                        });
                         e.printStackTrace();
                         return null;
                     });
@@ -480,57 +535,50 @@ public class RelatoriosView {
                     .build();
 
             httpClient.sendAsync(getItemsReq, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(HttpResponse::body)
-                    .thenAccept(responseBody -> {
-                        try {
-                            if (responseBody.trim().startsWith("<")) {
-                                System.out.println("Items API returned HTML error page, using demo data");
-                                createDemoItems();
-                                return;
-                            }
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            try {
+                                String responseBody = resp.body();
+                                if (responseBody.trim().startsWith("<")) {
+                                    Platform.runLater(() -> {
+                                        showErrorMessage(
+                                                "Erro no servidor: resposta HTML recebida em vez de dados JSON");
+                                    });
+                                    return;
+                                }
 
-                            allItems.clear();
-                            allItems.addAll(ItemJsonLoader.parseItems(responseBody));
-                            // After loading items, load profit data for each item
-                            loadItemProfitData();
-                        } catch (Exception e) {
-                            System.out.println("Error parsing items data: " + e.getMessage());
+                                allItems.clear();
+                                allItems.addAll(ItemJsonLoader.parseItems(responseBody));
+                                // After loading items, load profit data for each item
+                                loadItemProfitData();
+                                Platform.runLater(() -> updateLastUpdatedTime());
+                            } catch (Exception e) {
+                                System.out.println("Error parsing items data: " + e.getMessage());
+                                Platform.runLater(() -> {
+                                    showErrorMessage("Erro ao processar dados dos produtos: " + e.getMessage());
+                                });
+                                e.printStackTrace();
+                            }
+                        } else {
                             Platform.runLater(() -> {
-                                createDemoItems();
-                                showErrorMessage("Erro ao carregar dados dos produtos: " + e.getMessage());
+                                showErrorMessage("Erro ao carregar produtos. Status: " + resp.statusCode());
                             });
-                            e.printStackTrace();
                         }
                     })
                     .exceptionally(e -> {
-                        System.out.println("Failed to load items data, using demo data");
-                        Platform.runLater(() -> createDemoItems());
+                        System.out.println("Failed to load items data: " + e.getMessage());
+                        Platform.runLater(() -> {
+                            showErrorMessage("Erro ao carregar dados dos produtos: " + e.getMessage());
+                        });
                         e.printStackTrace();
                         return null;
                     });
         } catch (Exception e) {
-            createDemoItems();
+            Platform.runLater(() -> {
+                showErrorMessage("Erro ao carregar dados dos produtos: " + e.getMessage());
+            });
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Creates demo items when API is not available
-     */
-    private void createDemoItems() {
-        allItems.clear();
-        allItems.add(new Item(1, "Pizza Margherita", 12.50, 1));
-        allItems.add(new Item(2, "Hambúrguer Clássico", 8.90, 2));
-        allItems.add(new Item(3, "Salada Caesar", 7.50, 3));
-        allItems.add(new Item(4, "Lasanha Bolonhesa", 14.00, 1));
-        allItems.add(new Item(5, "Coca-Cola", 2.50, 4));
-
-        // Set some demo stock levels
-        allItems.get(0).setStock(15);
-        allItems.get(1).setStock(3); // Low stock
-        allItems.get(2).setStock(20);
-        allItems.get(3).setStock(8);
-        allItems.get(4).setStock(1); // Very low stock
     }
 
     /**
@@ -554,39 +602,57 @@ public class RelatoriosView {
                     .build();
 
             httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                    .thenApply(HttpResponse::body)
-                    .thenAccept(responseBody -> {
-                        try {
-                            if (responseBody.trim().startsWith("<")) {
-                                System.out.println("Profit API returned HTML error page for item: " + itemId);
-                                return;
-                            }
+                    .thenAccept(resp -> {
+                        if (resp.statusCode() == 200) {
+                            try {
+                                String responseBody = resp.body();
+                                if (responseBody.trim().startsWith("<")) {
+                                    System.out.println("Profit API returned HTML error page for item: " + itemId);
+                                    return;
+                                }
 
-                            JsonNode profitNode = objectMapper.readTree(responseBody);
+                                JsonNode profitNode = objectMapper.readTree(responseBody);
 
-                            // Store profit data by item ID
-                            if (!itemProfitData.containsKey(itemId)) {
-                                itemProfitData.put(itemId, new HashMap<>());
-                            }
+                                // Store profit data by item ID
+                                if (!itemProfitData.containsKey(itemId)) {
+                                    itemProfitData.put(itemId, new HashMap<>());
+                                }
 
-                            // Process daily profit data
-                            if (profitNode.isArray()) {
-                                for (JsonNode dayData : profitNode) {
-                                    if (dayData.has("data")) {
-                                        String dateStr = dayData.get("data").asText();
-                                        itemProfitData.get(itemId).put(dateStr, dayData);
+                                // Process daily profit data
+                                if (profitNode.isArray()) {
+                                    for (JsonNode dayData : profitNode) {
+                                        if (dayData.has("data")) {
+                                            String dateStr = dayData.get("data").asText();
+                                            itemProfitData.get(itemId).put(dateStr, dayData);
+                                        }
                                     }
                                 }
-                            }
 
-                            Platform.runLater(() -> updateLastUpdatedTime());
-                        } catch (Exception e) {
-                            System.out.println("Error parsing profit data for item " + itemId + ": " + e.getMessage());
-                            e.printStackTrace();
+                                Platform.runLater(() -> updateLastUpdatedTime());
+                            } catch (Exception e) {
+                                System.out.println(
+                                        "Error parsing profit data for item " + itemId + ": " + e.getMessage());
+                                Platform.runLater(() -> {
+                                    showErrorMessage("Erro ao processar dados de lucro para item " + itemId + ": "
+                                            + e.getMessage());
+                                });
+                                e.printStackTrace();
+                            }
+                        } else {
+                            System.out.println(
+                                    "Failed to load profit data for item " + itemId + ". Status: " + resp.statusCode());
+                            Platform.runLater(() -> {
+                                showErrorMessage("Erro ao carregar lucro para item " + itemId + ". Status: "
+                                        + resp.statusCode());
+                            });
                         }
                     })
                     .exceptionally(e -> {
-                        System.out.println("Failed to load profit data for item: " + itemId);
+                        System.out.println("Failed to load profit data for item " + itemId + ": " + e.getMessage());
+                        Platform.runLater(() -> {
+                            showErrorMessage(
+                                    "Erro ao carregar dados de lucro para item " + itemId + ": " + e.getMessage());
+                        });
                         e.printStackTrace();
                         return null;
                     });
@@ -600,64 +666,6 @@ public class RelatoriosView {
      */
     private void showErrorMessage(String message) {
         DialogHelper.showErrorAlert("Erro", "Falha ao Carregar Dados", message);
-    }
-
-    /**
-     * Shows demo data when API is not available
-     */
-    private void showDemoData() {
-        // Create demo historical sales data
-        try {
-            LocalDate endDateValue = this.endDate != null ? this.endDate.getValue() : LocalDate.now();
-            LocalDate startDateValue = this.startDate != null ? this.startDate.getValue()
-                    : LocalDate.now().minusDays(30);
-
-            System.out.println("Generating demo data from " + startDateValue + " to " + endDateValue);
-
-            for (LocalDate date = startDateValue; !date.isAfter(endDateValue); date = date.plusDays(1)) {
-                String dateStr = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-
-                // Demo sales data with more realistic values
-                double salesAmount = 200.0 + Math.random() * 300.0; // Random sales between 200-500
-                int numOrders = 5 + (int) (Math.random() * 10); // Random orders between 5-15
-                double avgTicket = salesAmount / numOrders; // Calculate realistic ticket
-
-                String demoSalesJson = String.format(Locale.US, "{"
-                        + "\"data\": \"%s\","
-                        + "\"vendasDia\": %.2f,"
-                        + "\"numeroPedidos\": %d,"
-                        + "\"ticketMedio\": %.2f"
-                        + "}", dateStr, salesAmount, numOrders, avgTicket);
-
-                // Demo orders data with consistent values
-                int totalPedidos = numOrders;
-                int pedidosAtendidos = Math.max(1, totalPedidos - 1); // Almost all orders attended
-                double tempoMedio = 15.0 + Math.random() * 10.0; // 15-25 minutes
-
-                String demoOrdersJson = String.format(Locale.US, "{"
-                        + "\"data\": \"%s\","
-                        + "\"totalPedidos\": %d,"
-                        + "\"pedidosAtendidos\": %d,"
-                        + "\"tempoMedioAtendimento\": %.1f"
-                        + "}", dateStr, totalPedidos, pedidosAtendidos, tempoMedio);
-
-                dailySalesData.put(dateStr, objectMapper.readTree(demoSalesJson));
-                dailyOrdersData.put(dateStr, objectMapper.readTree(demoOrdersJson));
-            }
-
-            System.out.println("Generated demo data: " + dailySalesData.size() + " sales entries, "
-                    + dailyOrdersData.size() + " orders entries");
-
-            // Demo data notifications - ensure UI updates are on FX thread
-            Platform.runLater(() -> {
-                updateLastUpdatedTime();
-                lastUpdatedLabel.setText("Dados de demonstração - API não disponível");
-            });
-
-        } catch (Exception e) {
-            System.out.println("Error generating demo data: " + e.getMessage());
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -679,6 +687,29 @@ public class RelatoriosView {
         System.out.println("Orders data size: " + dailyOrdersData.size());
         System.out.println("Items size: " + allItems.size());
 
+        // Show confirmation popup before proceeding with PDF generation
+        String reportsList = String.join(", ", selectedReports);
+        String confirmationMessage = String.format(
+                "Deseja gerar o PDF com os seguintes relatórios?\n\n%s\n\nPeríodo: %s a %s",
+                reportsList,
+                startDate.getValue().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                endDate.getValue().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+
+        PopUp.showConfirmationPopup(
+                Alert.AlertType.INFORMATION,
+                "Confirmar Geração de PDF",
+                "Geração de Relatório",
+                confirmationMessage,
+                () -> {
+                    // User confirmed, proceed with PDF generation
+                    generatePdfFile(selectedReports);
+                });
+    }
+
+    /**
+     * Generates the actual PDF file after user confirmation
+     */
+    private void generatePdfFile(List<String> selectedReports) {
         // Choose the directory to save the PDF
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Salvar Relatório PDF");
@@ -706,18 +737,27 @@ public class RelatoriosView {
             // Close the document
             document.close();
 
-            // Show success message
+            // Show success message using popup
             Platform.runLater(() -> {
-                DialogHelper.showInfoAlert("PDF criado com sucesso",
-                        "O relatório foi salvo como: " + pdfFile.getAbsolutePath());
+                PopUp.showPopupDialog(
+                        Alert.AlertType.INFORMATION,
+                        "PDF Criado com Sucesso",
+                        "Relatório Gerado",
+                        "O relatório foi salvo como:\n" + pdfFile.getAbsolutePath());
             });
 
         } catch (FileNotFoundException e) {
-            DialogHelper.showErrorAlert("Erro ao salvar arquivo",
+            PopUp.showPopupDialog(
+                    Alert.AlertType.ERROR,
+                    "Erro ao Salvar Arquivo",
+                    "Falha na Criação do PDF",
                     "Não foi possível salvar o arquivo. O arquivo está aberto em outro programa?");
             e.printStackTrace();
         } catch (Exception e) {
-            DialogHelper.showErrorAlert("Erro ao gerar PDF",
+            PopUp.showPopupDialog(
+                    Alert.AlertType.ERROR,
+                    "Erro ao Gerar PDF",
+                    "Falha na Geração do Relatório",
                     "Ocorreu um erro ao gerar o relatório: " + e.getMessage());
             e.printStackTrace();
         }
@@ -805,9 +845,6 @@ public class RelatoriosView {
                 case "Relatório de Vendas":
                     addHistoricalSalesReport(document, fontBold, fontRegular, primaryColor, lightGray);
                     break;
-                case "Relatório de Pedidos":
-                    addHistoricalOrdersReport(document, fontBold, fontRegular, primaryColor, lightGray);
-                    break;
                 case "Relatório de Produtos":
                     addProductsProfitReport(document, fontBold, fontRegular, primaryColor, lightGray);
                     break;
@@ -824,7 +861,7 @@ public class RelatoriosView {
     private void addHistoricalSalesReport(Document document, PdfFont fontBold, PdfFont fontRegular,
             DeviceRgb primaryColor, DeviceRgb lightGray) {
         // Section title
-        Paragraph sectionTitle = new Paragraph("Relatório de Vendas - Timeline Completa")
+        Paragraph sectionTitle = new Paragraph("Relatório de Vendas e Pedidos - Timeline Completa")
                 .setFont(fontBold)
                 .setFontSize(16)
                 .setFontColor(primaryColor);
@@ -857,11 +894,21 @@ public class RelatoriosView {
             Collections.sort(sortedDates);
 
             for (String dateStr : sortedDates) {
-                JsonNode dayData = dailySalesData.get(dateStr);
+                JsonNode salesData = dailySalesData.get(dateStr);
+                JsonNode ordersData = dailyOrdersData.get(dateStr);
 
-                double dayVendas = dayData.has("vendasDia") ? dayData.get("vendasDia").asDouble() : 0.0;
-                int dayOrders = dayData.has("numeroPedidos") ? dayData.get("numeroPedidos").asInt() : 0;
-                double dayTicket = dayData.has("ticketMedio") ? dayData.get("ticketMedio").asDouble() : 0.0;
+                double dayVendas = salesData.has("vendasDia") ? salesData.get("vendasDia").asDouble() : 0.0;
+
+                // Get orders count from orders data if available, otherwise from sales data
+                int dayOrders = 0;
+                if (ordersData != null) {
+                    dayOrders = ordersData.has("value") ? ordersData.get("value").asInt()
+                            : ordersData.has("totalPedidos") ? ordersData.get("totalPedidos").asInt() : 0;
+                } else if (salesData.has("numeroPedidos")) {
+                    dayOrders = salesData.get("numeroPedidos").asInt();
+                }
+
+                double dayTicket = dayOrders > 0 ? dayVendas / dayOrders : 0.0;
 
                 // Format date for display
                 try {
@@ -890,7 +937,26 @@ public class RelatoriosView {
             // Add summary statistics
             document.add(new Paragraph("\n"));
 
-            Paragraph summaryTitle = new Paragraph("Resumo do Período")
+            // Create dynamic period description
+            LocalDate startDateValue = startDate.getValue();
+            LocalDate endDateValue = endDate.getValue();
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(startDateValue, endDateValue) + 1;
+
+            String periodDescription;
+            if (daysBetween <= 7) {
+                periodDescription = String.format("Resumo dos Últimos %d Dias", daysBetween);
+            } else if (daysBetween <= 31) {
+                periodDescription = String.format("Resumo do Último Mês (%d dias)", daysBetween);
+            } else if (daysBetween <= 93) {
+                long months = daysBetween / 30;
+                periodDescription = String.format("Resumo dos Últimos %d Meses", months);
+            } else {
+                periodDescription = String.format("Resumo do Período (%s a %s)",
+                        startDateValue.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                        endDateValue.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            }
+
+            Paragraph summaryTitle = new Paragraph(periodDescription)
                     .setFont(fontBold)
                     .setFontSize(14)
                     .setFontColor(primaryColor);
@@ -931,118 +997,6 @@ public class RelatoriosView {
     }
 
     /**
-     * Add comprehensive orders report section to PDF
-     */
-    private void addHistoricalOrdersReport(Document document, PdfFont fontBold, PdfFont fontRegular,
-            DeviceRgb primaryColor, DeviceRgb lightGray) {
-        // Section title
-        Paragraph sectionTitle = new Paragraph("Relatório de Pedidos - Timeline Completa")
-                .setFont(fontBold)
-                .setFontSize(16)
-                .setFontColor(primaryColor);
-        document.add(sectionTitle);
-
-        document.add(new Paragraph("\n")); // Space
-
-        if (!dailyOrdersData.isEmpty()) {
-            // Create detailed orders table
-            Table ordersTable = new Table(UnitValue.createPercentArray(new float[] { 2, 2, 2, 2 }))
-                    .useAllAvailableWidth();
-
-            // Header row
-            ordersTable.addHeaderCell(new Cell().add(new Paragraph("Data")
-                    .setFont(fontBold).setFontColor(primaryColor)));
-            ordersTable.addHeaderCell(new Cell().add(new Paragraph("Total Pedidos")
-                    .setFont(fontBold).setFontColor(primaryColor)));
-            ordersTable.addHeaderCell(new Cell().add(new Paragraph("Pedidos Atendidos")
-                    .setFont(fontBold).setFontColor(primaryColor)));
-            ordersTable.addHeaderCell(new Cell().add(new Paragraph("Tempo Médio (min)")
-                    .setFont(fontBold).setFontColor(primaryColor)));
-
-            // Sort dates and add data
-            List<String> sortedDates = new ArrayList<>(dailyOrdersData.keySet());
-            Collections.sort(sortedDates);
-
-            int totalOrdersAll = 0;
-            int totalAttended = 0;
-            double totalTime = 0.0;
-            int daysWithData = 0;
-
-            for (String dateStr : sortedDates) {
-                JsonNode dayData = dailyOrdersData.get(dateStr);
-
-                int totalPedidos = dayData.has("totalPedidos") ? dayData.get("totalPedidos").asInt() : 0;
-                int pedidosAtendidos = dayData.has("pedidosAtendidos") ? dayData.get("pedidosAtendidos").asInt() : 0;
-                double tempoMedio = dayData.has("tempoMedioAtendimento")
-                        ? dayData.get("tempoMedioAtendimento").asDouble()
-                        : 0.0;
-
-                // Format date for display
-                try {
-                    LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                    String displayDate = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-
-                    ordersTable.addCell(new Cell().add(new Paragraph(displayDate).setFont(fontRegular)));
-                } catch (Exception e) {
-                    ordersTable.addCell(new Cell().add(new Paragraph(dateStr).setFont(fontRegular)));
-                }
-
-                ordersTable.addCell(new Cell().add(new Paragraph(String.valueOf(totalPedidos)).setFont(fontRegular)));
-                ordersTable
-                        .addCell(new Cell().add(new Paragraph(String.valueOf(pedidosAtendidos)).setFont(fontRegular)));
-                ordersTable
-                        .addCell(new Cell().add(new Paragraph(String.format("%.1f", tempoMedio)).setFont(fontRegular)));
-
-                // Update totals
-                totalOrdersAll += totalPedidos;
-                totalAttended += pedidosAtendidos;
-                totalTime += tempoMedio;
-                daysWithData++;
-            }
-
-            document.add(ordersTable);
-
-            // Add summary statistics
-            document.add(new Paragraph("\n"));
-
-            Paragraph summaryTitle = new Paragraph("Resumo de Eficiência")
-                    .setFont(fontBold)
-                    .setFontSize(14)
-                    .setFontColor(primaryColor);
-            document.add(summaryTitle);
-
-            Table summaryTable = new Table(UnitValue.createPercentArray(2)).useAllAvailableWidth();
-
-            summaryTable.addCell(new Cell().add(new Paragraph("Total de Pedidos").setFont(fontBold)));
-            summaryTable.addCell(new Cell().add(new Paragraph(String.valueOf(totalOrdersAll)).setFont(fontRegular)));
-
-            summaryTable.addCell(new Cell().add(new Paragraph("Total Atendidos").setFont(fontBold)));
-            summaryTable.addCell(new Cell().add(new Paragraph(String.valueOf(totalAttended)).setFont(fontRegular)));
-
-            if (totalOrdersAll > 0) {
-                double attendanceRate = (double) totalAttended / totalOrdersAll * 100;
-                summaryTable.addCell(new Cell().add(new Paragraph("Taxa de Atendimento").setFont(fontRegular)));
-                summaryTable.addCell(
-                        new Cell().add(new Paragraph(String.format("%.1f%%", attendanceRate)).setFont(fontRegular)));
-            }
-
-            if (daysWithData > 0) {
-                double avgTime = totalTime / daysWithData;
-                summaryTable.addCell(new Cell().add(new Paragraph("Tempo Médio de Atendimento").setFont(fontRegular)));
-                summaryTable.addCell(
-                        new Cell().add(new Paragraph(String.format("%.1f min", avgTime)).setFont(fontRegular)));
-            }
-
-            document.add(summaryTable);
-        } else {
-            document.add(
-                    new Paragraph("Dados de pedidos não disponíveis para o período selecionado").setFont(fontRegular));
-        }
-
-        document.add(new Paragraph("\n\n")); // Space
-    }
-
-    /**
      * Add products profit analysis report section to PDF
      */
     private void addProductsProfitReport(Document document, PdfFont fontBold, PdfFont fontRegular,
@@ -1058,7 +1012,7 @@ public class RelatoriosView {
 
         if (!allItems.isEmpty()) {
             // Create products table
-            Table productsTable = new Table(UnitValue.createPercentArray(new float[] { 4, 2, 2, 2 }))
+            Table productsTable = new Table(UnitValue.createPercentArray(new float[] { 4, 2, 2 }))
                     .useAllAvailableWidth();
 
             // Header row
@@ -1067,8 +1021,6 @@ public class RelatoriosView {
             productsTable.addHeaderCell(new Cell().add(new Paragraph("Preço (€)")
                     .setFont(fontBold).setFontColor(primaryColor)));
             productsTable.addHeaderCell(new Cell().add(new Paragraph("Stock Atual")
-                    .setFont(fontBold).setFontColor(primaryColor)));
-            productsTable.addHeaderCell(new Cell().add(new Paragraph("Performance")
                     .setFont(fontBold).setFontColor(primaryColor)));
 
             // Add products data
@@ -1085,13 +1037,6 @@ public class RelatoriosView {
                 int stock = item.getStockAtual();
                 String stockText = stock > 0 ? String.valueOf(stock) : "N/A";
                 productsTable.addCell(new Cell().add(new Paragraph(stockText).setFont(fontRegular)));
-
-                // Add performance indicator based on profit data availability
-                String performance = "Sem dados";
-                if (itemProfitData.containsKey(item.getId()) && !itemProfitData.get(item.getId()).isEmpty()) {
-                    performance = "Com vendas";
-                }
-                productsTable.addCell(new Cell().add(new Paragraph(performance).setFont(fontRegular)));
             }
 
             document.add(productsTable);

@@ -55,6 +55,8 @@
     -fx-font-family: 'Segoe UI', 'Roboto', sans-serif;
     font-family: 'Segoe UI', 'Roboto', sans-serif;
     -fx-smooth: true;
+    -fx-text-alignment: center;
+    text-align: center;
 }
 
 /* Tagline with elegant styling */
