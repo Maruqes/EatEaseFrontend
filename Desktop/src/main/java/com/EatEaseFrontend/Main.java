@@ -9,6 +9,8 @@ import com.EatEaseFrontend.SideBarViews.MesasView;
 import com.EatEaseFrontend.SideBarViews.PedidosView;
 import com.EatEaseFrontend.SideBarViews.PopUp;
 import com.EatEaseFrontend.SideBarViews.QRCodesView;
+import com.EatEaseFrontend.SideBarViews.RelatoriosView;
+
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -51,6 +53,7 @@ public class Main extends Application {
     private MesasView mesasView;
     private PedidosView pedidosView;
     private QRCodesView qrCodesView;
+    private RelatoriosView relatoriosView;
 
     @Override
     public void start(Stage stage) {
@@ -93,7 +96,6 @@ public class Main extends Application {
                     return http.sendAsync(getFuncReq, HttpResponse.BodyHandlers.ofString());
                 })
                 .thenAccept(resp -> {
-                    System.out.println("Funcionários -> " + resp.body());
                     // troca de cena tem de correr no FX Thread
                     Platform.runLater(() -> mostrarAdminPanel(username));
                 })
@@ -133,6 +135,7 @@ public class Main extends Application {
         mesasView = new MesasView(contentArea, http);
         pedidosView = new PedidosView(contentArea, http);
         qrCodesView = new QRCodesView(contentArea, http);
+        relatoriosView = new RelatoriosView(contentArea, http);
 
         // **Cria a cena com tamanho fixo inicial**
         Scene dashboardScene = new Scene(root, 1024, 768);
@@ -207,7 +210,6 @@ public class Main extends Application {
         Button qrCodesBtn = createMenuButton("QR Codes", MaterialDesign.MDI_QRCODE);
         Button workersBtn = createMenuButton("Funcionários", MaterialDesign.MDI_ACCOUNT_MULTIPLE);
         Button reportsBtn = createMenuButton("Relatórios", MaterialDesign.MDI_CHART_BAR);
-        Button settingsBtn = createMenuButton("Configurações", MaterialDesign.MDI_SETTINGS);
 
         // Update actions for menu items
         dashboardBtn.setOnAction(e -> showDashboardView());
@@ -218,6 +220,7 @@ public class Main extends Application {
         tablesBtn.setOnAction(e -> showMesasView());
         ordersBtn.setOnAction(e -> showPedidosView());
         qrCodesBtn.setOnAction(e -> showQRCodesView());
+        reportsBtn.setOnAction(e -> showRelatoriosView());
 
         // Add menu items to sidebar
         sidebar.getChildren().addAll(
@@ -230,9 +233,7 @@ public class Main extends Application {
                 tablesBtn,
                 qrCodesBtn,
                 workersBtn,
-                reportsBtn,
-                settingsBtn);
-
+                reportsBtn);
         return sidebar;
     }
 
@@ -355,6 +356,15 @@ public class Main extends Application {
         qrCodesView.show();
     }
 
+    /**
+     * Show the reports view with analytics and statistics
+     */
+    private void showRelatoriosView() {
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
+        relatoriosView.show();
+    }
+
     private void logout() {
         // Desativar todas as atualizações automáticas antes do logout
         disposeAllViews();
@@ -394,6 +404,10 @@ public class Main extends Application {
 
         if (qrCodesView != null) {
             qrCodesView.dispose();
+        }
+
+        if (dashboardView != null) {
+            dashboardView.dispose();
         }
 
         // Adicione outras views aqui se elas tiverem um método dispose()

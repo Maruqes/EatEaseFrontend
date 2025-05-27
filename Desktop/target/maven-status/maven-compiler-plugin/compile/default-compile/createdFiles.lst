@@ -30,6 +30,7 @@ com/EatEaseFrontend/SideBarViews/EmployeeView.class
 com/EatEaseFrontend/Ingredient.class
 com/EatEaseFrontend/SideBarViews/ItemView$3.class
 com/EatEaseFrontend/SideBarViews/MenuView$2.class
+com/EatEaseFrontend/SideBarViews/RelatoriosView.class
 com/EatEaseFrontend/Cargo.class
 com/EatEaseFrontend/LoadingStateManager.class
 com/EatEaseFrontend/TipoMenu.class

@@ -1,6 +1,5 @@
 package com.EatEaseFrontend;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,9 +19,6 @@ public class Item {
     private int tipoPratoId;
 
     private double preco;
-
-    /** String bruta vinda do back-end, útil para debug. */
-    private transient String ingredientesJson;
 
     @JsonProperty("eComposto")
     private boolean eComposto;
@@ -65,7 +61,6 @@ public class Item {
     /* ---------- Deserialização dos ingredientes ---------- */
     @JsonProperty("ingredientesJson")
     private void unpackIngredientes(String raw) {
-        this.ingredientesJson = raw;
         if (raw == null || raw.isBlank())
             return;
 
@@ -78,6 +73,18 @@ public class Item {
         } catch (Exception ex) {
             System.err.println("Falha a ler ingredientes do item id " + id + ": " + ex.getMessage());
         }
+    }
+
+    /* ---------- Constructors ---------- */
+    public Item() {
+        // Default constructor needed for Jackson deserialization
+    }
+
+    public Item(int id, String nome, double preco, int tipoPratoId) {
+        this.id = id;
+        this.nome = nome;
+        this.preco = preco;
+        this.tipoPratoId = tipoPratoId;
     }
 
     /* ---------- Getters / setters ---------- */
@@ -135,5 +142,25 @@ public class Item {
 
     public void setFoto(String foto) {
         this.foto = foto;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public void setPreco(double preco) {
+        this.preco = preco;
+    }
+
+    public void setTipoPratoId(int tipoPratoId) {
+        this.tipoPratoId = tipoPratoId;
+    }
+
+    public void setStock(int stock) {
+        this.stockAtual = stock;
     }
 }
