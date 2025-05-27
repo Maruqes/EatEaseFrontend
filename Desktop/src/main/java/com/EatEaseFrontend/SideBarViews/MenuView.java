@@ -204,7 +204,12 @@ public class MenuView {
                 deleteButton.setGraphic(deleteIcon);
                 deleteButton.getStyleClass().add("icon-button");
                 deleteButton.setOnAction(e -> {
-                    confirmDeleteMenu(m);
+                    PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                            "Confirmação de Exclusão",
+                            "Tem certeza que deseja excluir este menu?",
+                            "Esta ação não pode ser desfeita.", () -> {
+                                deleteMenu(m.getId());
+                            });
                 });
 
                 buttonsBox.getChildren().addAll(editButton, deleteButton);
@@ -537,7 +542,8 @@ public class MenuView {
         // Construir o JSON para o corpo da requisição com formatação mais robusta
         StringBuilder itemsArray = new StringBuilder("[");
         for (int i = 0; i < itemsIds.size(); i++) {
-            if (i > 0) itemsArray.append(", ");
+            if (i > 0)
+                itemsArray.append(", ");
             itemsArray.append(itemsIds.get(i));
         }
         itemsArray.append("]");
@@ -584,74 +590,6 @@ public class MenuView {
             ex.printStackTrace();
             showError("Falha ao criar menu", ex.getMessage());
         }
-    }
-
-    /**
-     * Confirma a exclusão de um menu
-     * 
-     * @param menu Menu a ser excluído
-     */
-    private void confirmDeleteMenu(Menu menu) {
-        // Get primary stage for positioning
-        javafx.stage.Stage primary = StageManager.getPrimaryStage();
-        double centerX = primary.getX() + primary.getWidth() / 2;
-        double centerY = primary.getY() + primary.getHeight() / 2;
-
-        // Create popup
-        javafx.stage.Popup popup = new javafx.stage.Popup();
-        popup.setAutoHide(true);
-
-        // Create content
-        VBox popupContent = new VBox(10);
-        popupContent.setPadding(new Insets(20));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-
-        // Warning icon
-        FontIcon warningIcon = new FontIcon(MaterialDesign.MDI_ALERT);
-        warningIcon.setIconSize(32);
-        warningIcon.setIconColor(Color.ORANGE);
-
-        // Title and message
-        Label titleLabel = new Label("Confirmar Exclusão");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        titleLabel.setTextFill(Color.ORANGE);
-
-        Label messageLabel = new Label("Excluir Menu: " + menu.getNome());
-        messageLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
-        messageLabel.setWrapText(true);
-        messageLabel.setMaxWidth(300);
-
-        Label detailLabel = new Label("Tem certeza que deseja excluir este menu? Esta ação não pode ser desfeita.");
-        detailLabel.setWrapText(true);
-        detailLabel.setMaxWidth(300);
-
-        // Buttons
-        Button yesButton = new Button("Sim");
-        Button noButton = new Button("Não");
-
-        HBox buttonBox = new HBox(10, yesButton, noButton);
-        buttonBox.setPadding(new Insets(10, 0, 0, 0));
-        buttonBox.setAlignment(Pos.CENTER_RIGHT);
-
-        // Add all elements to the popup content
-        popupContent.getChildren().addAll(warningIcon, titleLabel, messageLabel, detailLabel, buttonBox);
-        popupContent.setAlignment(Pos.CENTER);
-
-        popup.getContent().add(popupContent);
-
-        // Position popup
-        popup.show(primary, centerX - 170, centerY - 120);
-
-        // Button actions
-        noButton.setOnAction(e -> popup.hide());
-        yesButton.setOnAction(e -> {
-            deleteMenu(menu.getId());
-            popup.hide();
-        });
     }
 
     /**

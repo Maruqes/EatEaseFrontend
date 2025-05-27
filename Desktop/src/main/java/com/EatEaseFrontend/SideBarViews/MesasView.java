@@ -6,7 +6,6 @@ import com.EatEaseFrontend.Mesa;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.EatEaseFrontend.JsonParser;
-
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -438,7 +437,7 @@ public class MesasView {
                             Button ocuparButton = new Button("Ocupar");
                             ocuparButton.getStyleClass().add("red-button");
                             ocuparButton.setOnAction(e -> {
-                                showConfirmDialog("Ocupar Mesa",
+                                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Ocupar Mesa", "",
                                         "Tem certeza que deseja marcar a Mesa " + updatedMesa.getNumero()
                                                 + " como ocupada?",
                                         () -> {
@@ -451,7 +450,7 @@ public class MesasView {
                             Button liberarButton = new Button("Desocupar");
                             liberarButton.getStyleClass().add("green-button");
                             liberarButton.setOnAction(e -> {
-                                showConfirmDialog("Liberar Mesa",
+                                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Liberar Mesa", "",
                                         "Tem certeza que deseja desocupar a Mesa " + updatedMesa.getNumero() + "?",
                                         () -> {
                                             liberarMesa(updatedMesa.getId());
@@ -768,7 +767,7 @@ public class MesasView {
             Button ocuparButton = new Button("Ocupar");
             ocuparButton.getStyleClass().add("red-button");
             ocuparButton.setOnAction(e -> {
-                showConfirmDialog("Ocupar Mesa",
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Ocupar Mesa", "",
                         "Tem certeza que deseja marcar a Mesa " + mesa.getNumero() + " como ocupada?", () -> {
                             ocuparMesa(mesa.getId());
                         });
@@ -779,7 +778,8 @@ public class MesasView {
             Button liberarButton = new Button("Desocupar");
             liberarButton.getStyleClass().add("green-button");
             liberarButton.setOnAction(e -> {
-                showConfirmDialog("Liberar Mesa", "Tem certeza que deseja desocupar a Mesa " + mesa.getNumero() + "?",
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Liberar Mesa", "",
+                        "Tem certeza que deseja desocupar a Mesa " + mesa.getNumero() + "?",
                         () -> {
                             liberarMesa(mesa.getId());
                         });
@@ -794,65 +794,6 @@ public class MesasView {
 
         mesaBox.getChildren().add(layout);
         return mesaBox;
-    }
-
-    /**
-     * Exibe uma caixa de diálogo de confirmação
-     * 
-     * @param title     Título da caixa de diálogo
-     * @param message   Mensagem a ser exibida
-     * @param onConfirm Ação a ser executada ao confirmar
-     */
-    private void showConfirmDialog(String title, String message, Runnable onConfirm) {
-        // Create popup
-        Popup popup = new Popup();
-        popup.setAutoHide(false);
-
-        // Create main container
-        VBox container = new VBox(20);
-        container.setPadding(new Insets(20));
-        container.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        container.setPrefWidth(400);
-        container.setAlignment(Pos.CENTER);
-
-        // Title
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        titleLabel.setAlignment(Pos.CENTER);
-
-        // Message
-        Label messageLabel = new Label(message);
-        messageLabel.setWrapText(true);
-        messageLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
-        messageLabel.setAlignment(Pos.CENTER);
-
-        // Buttons
-        Button confirmButton = new Button("Confirmar");
-        confirmButton.getStyleClass().add("login-button");
-        confirmButton.setOnAction(e -> {
-            popup.hide();
-            onConfirm.run();
-        });
-
-        Button cancelButton = new Button("Cancelar");
-        cancelButton.getStyleClass().add("login-button");
-        cancelButton.setOnAction(e -> popup.hide());
-
-        HBox buttonBox = new HBox(10);
-        buttonBox.setAlignment(Pos.CENTER);
-        buttonBox.getChildren().addAll(confirmButton, cancelButton);
-
-        container.getChildren().addAll(titleLabel, messageLabel, buttonBox);
-        popup.getContent().add(container);
-
-        // Show popup centered
-        double centerX = contentArea.getScene().getWindow().getX() + contentArea.getScene().getWindow().getWidth() / 2;
-        double centerY = contentArea.getScene().getWindow().getY() + contentArea.getScene().getWindow().getHeight() / 2;
-        popup.show(contentArea.getScene().getWindow(), centerX - 200, centerY - 100);
     }
 
     /**

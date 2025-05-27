@@ -7,6 +7,7 @@ import com.EatEaseFrontend.SideBarViews.ItemView;
 import com.EatEaseFrontend.SideBarViews.MenuView;
 import com.EatEaseFrontend.SideBarViews.MesasView;
 import com.EatEaseFrontend.SideBarViews.PedidosView;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import com.EatEaseFrontend.SideBarViews.QRCodesView;
 import javafx.application.Application;
 import javafx.application.Platform;

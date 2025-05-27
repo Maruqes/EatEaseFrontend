@@ -230,7 +230,12 @@ public class EmployeeView {
         deleteIcon.setIconColor(Color.RED);
         deleteButton.setGraphic(deleteIcon);
         deleteButton.getStyleClass().add("icon-button");
-        deleteButton.setOnAction(e -> confirmDeleteEmployee(employee));
+        deleteButton.setOnAction(e -> PopUp.showConfirmationPopup(
+                Alert.AlertType.CONFIRMATION,
+                "Excluir Funcionário",
+                "Você tem certeza que deseja excluir este funcionário?",
+                "Esta ação não pode ser desfeita.",
+                () -> deleteEmployee(employee.getId())));
 
         // Add buttons to container
         buttonsBox.getChildren().addAll(editButton, deleteButton);
@@ -611,68 +616,6 @@ public class EmployeeView {
 
         popup.getContent().add(popupContent);
         popup.show(primary, centerX - 225, centerY - 275);
-    }
-
-    /**
-     * Confirma a exclusão de um funcionário
-     */
-    private void confirmDeleteEmployee(Employee employee) {
-        // Get primary stage for positioning
-        Stage primary = StageManager.getPrimaryStage();
-        double centerX = primary.getX() + primary.getWidth() / 2;
-        double centerY = primary.getY() + primary.getHeight() / 2;
-
-        // Create popup
-        Popup popup = new Popup();
-        popup.setAutoHide(false);
-
-        // Create content
-        VBox popupContent = new VBox(20);
-        popupContent.setPadding(new Insets(30));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        popupContent.setPrefWidth(400);
-        popupContent.setAlignment(Pos.CENTER);
-
-        // Title
-        Label titleLabel = new Label("Confirmar Exclusão");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
-        titleLabel.setTextFill(Color.web("#d9534f"));
-
-        // Message
-        Label messageLabel = new Label("Tem certeza que deseja excluir o funcionário:");
-        Label nameLabel = new Label("\"" + employee.getNome() + "\"?");
-        nameLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
-
-        Label warningLabel = new Label("Esta ação não pode ser desfeita.");
-        warningLabel.setTextFill(Color.web("#f0ad4e"));
-        warningLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
-
-        // Buttons
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        Button deleteButton = new Button("Excluir");
-        deleteButton.setStyle("-fx-background-color: #d9534f; -fx-text-fill: white; -fx-font-weight: bold;");
-        deleteButton.setOnAction(e -> {
-            deleteEmployee(employee.getId());
-            popup.hide();
-        });
-
-        Button cancelButton = new Button("Cancelar");
-        cancelButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold;");
-        cancelButton.setOnAction(e -> popup.hide());
-
-        buttonBox.getChildren().addAll(deleteButton, cancelButton);
-
-        // Add all components to popup content
-        popupContent.getChildren().addAll(titleLabel, messageLabel, nameLabel, warningLabel, buttonBox);
-
-        popup.getContent().add(popupContent);
-        popup.show(primary, centerX - 200, centerY - 150);
     }
 
     /**

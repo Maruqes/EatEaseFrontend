@@ -375,7 +375,7 @@ public class ItemView {
         Platform.runLater(() -> {
             // 1. Pega no primaryStage para posicionar o popup ao centro
             Stage primary = StageManager.getPrimaryStage();
-            
+
             // 2. Calcular o centro exato da aplicação
             double centerX = primary.getX() + (primary.getWidth() / 2);
             double centerY = primary.getY() + (primary.getHeight() / 2);
@@ -383,8 +383,9 @@ public class ItemView {
             // 3. Definir tamanhos responsivos baseados no tamanho da aplicação
             double appWidth = primary.getWidth();
             double appHeight = primary.getHeight();
-            
-            // Popup será 70% da largura e 80% da altura da aplicação, com limites mínimos e máximos
+
+            // Popup será 70% da largura e 80% da altura da aplicação, com limites mínimos e
+            // máximos
             double popupWidth = Math.max(400, Math.min(800, appWidth * 0.7));
             double popupHeight = Math.max(300, Math.min(600, appHeight * 0.8));
 
@@ -396,11 +397,11 @@ public class ItemView {
             Image img = new Image(url, true);
             ImageView iv = new ImageView(img);
             iv.setPreserveRatio(true);
-            
+
             // Tamanho da imagem será 90% do popup menos padding
             double maxImageWidth = popupWidth * 0.9 - 40; // 40 para padding total
             double maxImageHeight = popupHeight * 0.85 - 80; // 80 para título e botão
-            
+
             iv.setFitWidth(maxImageWidth);
             iv.setFitHeight(maxImageHeight);
 
@@ -408,12 +409,12 @@ public class ItemView {
             VBox imageContainer = new VBox(10);
             imageContainer.setPadding(new Insets(20));
             imageContainer.setStyle(
-                "-fx-background-color: white;" +
-                "-fx-border-color: #ccc;" +
-                "-fx-border-width: 1;" +
-                "-fx-border-radius: 5;" +
-                "-fx-background-radius: 5;" +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+                    "-fx-background-color: white;" +
+                            "-fx-border-color: #ccc;" +
+                            "-fx-border-width: 1;" +
+                            "-fx-border-radius: 5;" +
+                            "-fx-background-radius: 5;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
             imageContainer.setAlignment(Pos.CENTER);
             imageContainer.setPrefWidth(popupWidth);
             imageContainer.setPrefHeight(popupHeight);
@@ -1411,7 +1412,7 @@ public class ItemView {
      * @param item Item a ser excluído
      */
     private void confirmDeleteItem(Item item) {
-        showConfirmationPopup("Confirmar Exclusão", "Excluir Item",
+        PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Confirmar Exclusão", "Excluir Item",
                 "Tem certeza que deseja excluir o item \"" + item.getNome() + "\"?",
                 () -> deleteItem(item.getId()));
     }
@@ -1875,67 +1876,6 @@ public class ItemView {
                     });
                     return null;
                 });
-    }
-
-    /**
-     * Creates and shows a confirmation popup dialog
-     * 
-     * @param title     The title of the dialog
-     * @param header    The header text of the dialog
-     * @param content   The content text of the dialog
-     * @param onConfirm The action to execute when user confirms
-     */
-    private void showConfirmationPopup(String title, String header, String content, Runnable onConfirm) {
-        Stage primaryStage = StageManager.getPrimaryStage();
-        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2;
-        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2;
-
-        Popup popup = new Popup();
-        popup.setAutoHide(true);
-
-        // Create content
-        VBox popupContent = new VBox(10);
-        popupContent.setPadding(new Insets(20));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-
-        // Title
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        titleLabel.setTextFill(Color.RED);
-
-        // Header
-        Label headerLabel = new Label(header);
-        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
-        headerLabel.setWrapText(true);
-
-        // Content
-        Label contentLabel = new Label(content);
-        contentLabel.setWrapText(true);
-        contentLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
-
-        // Buttons
-        Button confirmButton = new Button("Confirmar");
-        confirmButton.setOnAction(e -> {
-            popup.hide();
-            onConfirm.run();
-        });
-
-        Button cancelButton = new Button("Cancelar");
-        cancelButton.setOnAction(e -> popup.hide());
-
-        HBox buttonBox = new HBox(10);
-        buttonBox.setAlignment(Pos.CENTER_RIGHT);
-        buttonBox.getChildren().addAll(confirmButton, cancelButton);
-
-        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, buttonBox);
-        popup.getContent().add(popupContent);
-
-        // Show popup centered
-        popup.show(primaryStage, centerX - 175, centerY - 100);
     }
 
     /**
