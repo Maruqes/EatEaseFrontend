@@ -405,27 +405,27 @@ public class ItemView {
             iv.setFitWidth(maxImageWidth);
             iv.setFitHeight(maxImageHeight);
 
-            // 6. Container para a imagem com estilo
-            VBox imageContainer = new VBox(10);
-            imageContainer.setPadding(new Insets(20));
+            // 6. Container para a imagem com estilo moderno
+            VBox imageContainer = new VBox(15);
+            imageContainer.setPadding(new Insets(30));
+            imageContainer.getStyleClass().add("popup-container");
             imageContainer.setStyle(
                     "-fx-background-color: white;" +
-                            "-fx-border-color: #ccc;" +
-                            "-fx-border-width: 1;" +
-                            "-fx-border-radius: 5;" +
-                            "-fx-background-radius: 5;" +
-                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+                            "-fx-background-radius: 12;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 8);" +
+                            "-fx-border-radius: 12;");
             imageContainer.setAlignment(Pos.CENTER);
             imageContainer.setPrefWidth(popupWidth);
             imageContainer.setPrefHeight(popupHeight);
 
-            // 7. Título
+            // 7. Título estilizado
             Label titleLabel = new Label("Foto de " + item.getNome());
-            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+            titleLabel.getStyleClass().add("popup-title");
+            titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #FB8C00;");
 
-            // 8. Botão para fechar
+            // 8. Botão para fechar estilizado
             Button closeButton = new Button("Fechar");
-            closeButton.getStyleClass().add("login-button");
+            closeButton.getStyleClass().add("popup-primary-button");
             closeButton.setOnAction(e -> popup.hide());
 
             imageContainer.getChildren().addAll(titleLabel, iv, closeButton);
@@ -600,18 +600,24 @@ public class ItemView {
 
         // 2) Cria o Popup
         Popup popup = new Popup();
-        popup.setAutoHide(true);
+        popup.setAutoHide(false); // Don't close automatically
 
         // 3) Campos do formulário
         TextField nameField = new TextField();
         nameField.setPromptText("Nome do item");
+        nameField.getStyleClass().add("popup-input-field");
+        nameField.setPrefHeight(40);
 
         ComboBox<String> tipoPratoCombo = new ComboBox<>();
         tipoPratoCombo.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
         tipoPratoCombo.setPromptText("Tipo de prato");
+        tipoPratoCombo.getStyleClass().add("popup-combo-box");
+        tipoPratoCombo.setPrefHeight(40);
 
         TextField precoField = new TextField();
         precoField.setPromptText("Preço (ex.: 12.99)");
+        precoField.getStyleClass().add("popup-input-field");
+        precoField.setPrefHeight(40);
         // valida só números e ponto
         precoField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*(\\.\\d*)?"))
@@ -619,10 +625,12 @@ public class ItemView {
         });
 
         CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
+        compostoCheck.getStyleClass().add("popup-check-box");
 
         // tabela de ingredientes
         TableView<IngredientRowData> table = new TableView<>();
         table.setPrefHeight(200);
+        table.getStyleClass().add("popup-table-view");
         TableColumn<IngredientRowData, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getId()).asObject());
         idCol.setPrefWidth(40);
@@ -682,6 +690,7 @@ public class ItemView {
 
         // seleção de ingredientes
         ComboBox<Ingredient> ingCombo = new ComboBox<>();
+        ingCombo.getStyleClass().add("popup-combo-box");
         ingCombo.setCellFactory(lv -> new ListCell<Ingredient>() {
             @Override
             protected void updateItem(Ingredient i, boolean empty) {
@@ -694,6 +703,7 @@ public class ItemView {
 
         // Campo de busca para filtrar ingredientes
         TextField searchField = new TextField();
+        searchField.getStyleClass().add("popup-input-field");
         searchField.setPromptText("Buscar ingrediente...");
         searchField.setPrefWidth(150);
 
@@ -701,6 +711,7 @@ public class ItemView {
         List<Ingredient> originalList = new ArrayList<>();
 
         Button addIngBtn = new Button("Adicionar");
+        addIngBtn.getStyleClass().add("popup-secondary-button");
         addIngBtn.setDisable(true);
         ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
         addIngBtn.setOnAction(e -> {
@@ -710,7 +721,9 @@ public class ItemView {
                         .add(new IngredientRowData(sel.getId(), sel.getNome(), getUnidadeName(sel.getUnidade_id()), 1));
             }
         });
+
         Button loadBtn = new Button("Recarregar");
+        loadBtn.getStyleClass().add("popup-secondary-button");
 
         // Campo de busca para filtrar ingredientes
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
@@ -788,7 +801,11 @@ public class ItemView {
 
         // 4) Botões principais
         Button submit = new Button("Adicionar");
+        submit.getStyleClass().addAll("login-button", "popup-primary-button");
         Button cancel = new Button("Cancelar");
+        cancel.getStyleClass().add("popup-secondary-button");
+        cancel.setStyle(
+                "-fx-background-color: #F5F5F5; -fx-text-fill: #666666; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand; -fx-min-width: 100;");
         submit.setDisable(true);
 
         // validador geral
@@ -809,42 +826,103 @@ public class ItemView {
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
 
-        // 5) Layout
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setStyle(
+        // 5) Layout moderno com dimensões apropriadas
+        VBox popupContent = new VBox(25);
+        popupContent.setPadding(new Insets(30));
+        popupContent.getStyleClass().add("popup-container");
+        popupContent.setStyle(
                 "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        grid.add(new Label("Nome:"), 0, 0);
+                        "-fx-background-radius: 12;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 8);" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-min-width: 800;" +
+                        "-fx-min-height: 750;");
+
+        // Title and header
+        Label titleLabel = new Label("Adicionar Item");
+        titleLabel.getStyleClass().add("popup-title");
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #FB8C00;");
+
+        Label headerLabel = new Label("Preencha os detalhes do novo item");
+        headerLabel.getStyleClass().add("popup-subtitle");
+        headerLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #666666;");
+
+        // Form grid
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(20);
+        grid.setPadding(new Insets(15));
+
+        // Labels estilizadas
+        Label nomeLabel = new Label("Nome:");
+        nomeLabel.getStyleClass().add("popup-label");
+        nomeLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        Label tipoLabel = new Label("Tipo de Prato:");
+        tipoLabel.getStyleClass().add("popup-label");
+        tipoLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        Label precoLabel = new Label("Preço:");
+        precoLabel.getStyleClass().add("popup-label");
+        precoLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        grid.add(nomeLabel, 0, 0);
         grid.add(nameField, 1, 0);
-        grid.add(new Label("Tipo de Prato:"), 0, 1);
+        grid.add(tipoLabel, 0, 1);
         grid.add(tipoPratoCombo, 1, 1);
-        grid.add(new Label("Preço:"), 0, 2);
+        grid.add(precoLabel, 0, 2);
         grid.add(precoField, 1, 2);
-        grid.add(compostoCheck, 0, 4, 2, 1);
+        grid.add(compostoCheck, 0, 3, 2, 1);
+
+        // Seção de ingredientes
+        TitledPane ingredientsPane = new TitledPane();
+        ingredientsPane.setText("Ingredientes do Item");
+        ingredientsPane.setExpanded(false);
+        ingredientsPane.setPrefHeight(350);
+
+        VBox ingredientsContainer = new VBox(10);
+        ingredientsContainer.setPadding(new Insets(10));
 
         // Layout para pesquisa e seleção de ingredientes
-        HBox searchBox = new HBox(10, new Label("Buscar:"), searchField);
-        searchBox.setPadding(new Insets(0, 0, 5, 0));
+        HBox searchBox = new HBox(10);
         searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 5, 0));
+
+        Label searchLabel = new Label("Buscar:");
+        searchLabel.getStyleClass().add("popup-label");
+        searchLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+        searchBox.getChildren().addAll(searchLabel, searchField);
 
         HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
         ingLoadBox.setAlignment(Pos.CENTER_LEFT);
 
-        VBox ingSelectionBox = new VBox(5, searchBox, ingLoadBox);
-        ingSelectionBox.setPadding(new Insets(5, 0, 5, 0));
+        VBox ingSelectionBox = new VBox(10, searchBox, ingLoadBox);
+        ingSelectionBox.setPadding(new Insets(5, 0, 10, 0));
 
-        VBox ingVBox = new VBox(10, ingSelectionBox, table);
-        ingVBox.setPadding(new Insets(10));
+        ingredientsContainer.getChildren().addAll(ingSelectionBox, table);
+        ingredientsPane.setContent(ingredientsContainer);
 
-        VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, submit, cancel));
-        popup.getContent().add(mainVBox);
+        grid.add(ingredientsPane, 0, 4, 2, 1);
+        GridPane.setVgrow(ingredientsPane, Priority.ALWAYS);
+        GridPane.setHgrow(ingredientsPane, Priority.ALWAYS);
+
+        // Buttons section
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.getStyleClass().add("popup-button-section");
+        buttonBox.setPadding(new Insets(20, 0, 0, 0));
+        buttonBox.setStyle("-fx-border-color: #E8E8E8 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+        buttonBox.getChildren().addAll(cancel, submit);
+
+        // Add all components to popup content
+        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+        popup.getContent().add(popupContent);
 
         // 6) Mostra o popup centrado
-        popup.show(primary, centerX - 250, centerY - 300);
+        popup.show(primary, centerX - 400, centerY - 350);
+
+        // Focus on name field when opened
+        Platform.runLater(() -> nameField.requestFocus());
 
         // 7) Ações
         cancel.setOnAction(e -> popup.hide());
@@ -1009,18 +1087,45 @@ public class ItemView {
 
         // 2) Cria o Popup
         Popup popup = new Popup();
-        popup.setAutoHide(true);
+        popup.setAutoHide(false); // Don't close automatically
 
-        // 3) Campos do formulário pré-preenchidos
+        // 3) Main container with modern styling
+        VBox popupContent = new VBox(25);
+        popupContent.setPadding(new Insets(30));
+        popupContent.getStyleClass().add("popup-container");
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 20, 0, 0, 8);" +
+                        "-fx-border-radius: 12;" +
+                        "-fx-min-width: 750;" +
+                        "-fx-min-height: 750;");
+
+        // Title and header
+        Label titleLabel = new Label("Editar Item");
+        titleLabel.getStyleClass().add("popup-title");
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #FB8C00;");
+
+        Label headerLabel = new Label("Atualize as informações do item");
+        headerLabel.getStyleClass().add("popup-subtitle");
+        headerLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #666666;");
+
+        // 4) Campos do formulário pré-preenchidos
         TextField nameField = new TextField(item.getNome());
         nameField.setPromptText("Nome do item");
+        nameField.getStyleClass().add("popup-input-field");
+        nameField.setPrefHeight(40);
 
         ComboBox<String> tipoPratoCombo = new ComboBox<>();
         tipoPratoCombo.getItems().addAll("Entrada", "Prato Principal", "Sobremesa", "Bebida");
         tipoPratoCombo.getSelectionModel().select(item.getTipoPratoId() - 1);
+        tipoPratoCombo.getStyleClass().add("popup-combo-box");
+        tipoPratoCombo.setPrefHeight(40);
 
         TextField precoField = new TextField(String.format("%.2f", item.getPreco()));
         precoField.setPromptText("Preço (ex.: 12.99)");
+        precoField.getStyleClass().add("popup-input-field");
+        precoField.setPrefHeight(40);
         precoField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*(\\.\\d*)?")) {
                 precoField.setText(o);
@@ -1028,12 +1133,41 @@ public class ItemView {
         });
 
         CheckBox compostoCheck = new CheckBox("Item composto por ingredientes");
+        compostoCheck.getStyleClass().add("popup-check-box");
         System.out.println("DEBUG: Item " + item.getNome() + " - isEComposto: " + item.isEComposto());
         compostoCheck.setSelected(item.isEComposto());
 
-        // 4) Tabela de ingredientes
+        // Form grid with modern styling
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(20);
+        grid.setPadding(new Insets(15));
+
+        // Labels estilizadas
+        Label nomeLabel = new Label("Nome:");
+        nomeLabel.getStyleClass().add("popup-label");
+        nomeLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        Label tipoLabel = new Label("Tipo de Prato:");
+        tipoLabel.getStyleClass().add("popup-label");
+        tipoLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        Label precoLabel = new Label("Preço:");
+        precoLabel.getStyleClass().add("popup-label");
+        precoLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+
+        grid.add(nomeLabel, 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(tipoLabel, 0, 1);
+        grid.add(tipoPratoCombo, 1, 1);
+        grid.add(precoLabel, 0, 2);
+        grid.add(precoField, 1, 2);
+        grid.add(compostoCheck, 0, 3, 2, 1);
+
+        // 5) Tabela de ingredientes
         TableView<IngredientRowData> table = new TableView<>();
         table.setPrefHeight(200);
+        table.getStyleClass().add("popup-table-view");
         TableColumn<IngredientRowData, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(cd -> new SimpleIntegerProperty(cd.getValue().getId()).asObject());
         idCol.setPrefWidth(40);
@@ -1087,8 +1221,9 @@ public class ItemView {
         });
         table.getColumns().addAll(idCol, nameCol, medidaCol, qtyCol, actCol);
 
-        // 5) ComboBox para adicionar ingredientes
+        // 6) ComboBox para adicionar ingredientes
         ComboBox<Ingredient> ingCombo = new ComboBox<>();
+        ingCombo.getStyleClass().add("popup-combo-box");
         ingCombo.setCellFactory(lv -> new ListCell<Ingredient>() {
             @Override
             protected void updateItem(Ingredient i, boolean empty) {
@@ -1101,6 +1236,7 @@ public class ItemView {
 
         // Campo de busca para filtrar ingredientes
         TextField searchField = new TextField();
+        searchField.getStyleClass().add("popup-input-field");
         searchField.setPromptText("Buscar ingrediente...");
         searchField.setPrefWidth(150);
 
@@ -1108,6 +1244,7 @@ public class ItemView {
         List<Ingredient> originalList = new ArrayList<>();
 
         Button addIngBtn = new Button("Adicionar");
+        addIngBtn.getStyleClass().add("popup-secondary-button");
         addIngBtn.setDisable(true);
         ingCombo.getSelectionModel().selectedItemProperty().addListener((obs, o, n) -> addIngBtn.setDisable(n == null));
         addIngBtn.setOnAction(e -> {
@@ -1117,7 +1254,9 @@ public class ItemView {
                         .add(new IngredientRowData(sel.getId(), sel.getNome(), getUnidadeName(sel.getUnidade_id()), 1));
             }
         });
+
         Button loadBtn = new Button("Recarregar");
+        loadBtn.getStyleClass().add("popup-secondary-button");
 
         // Campo de busca para filtrar ingredientes
         searchField.textProperty().addListener((obs, oldValue, newValue) -> {
@@ -1230,12 +1369,14 @@ public class ItemView {
                     });
         });
 
-        // 6) Botões Salvar e Cancelar
-        Button saveBtn = new Button("Salvar");
+        // 7) Botões Salvar e Cancelar
+        Button saveBtn = new Button("Salvar Alterações");
+        saveBtn.getStyleClass().add("popup-primary-button");
         Button cancelBtn = new Button("Cancelar");
+        cancelBtn.getStyleClass().add("popup-secondary-button");
         saveBtn.setDisable(true);
 
-        // 7) Validação geral
+        // 8) Validação geral
         ChangeListener<Object> validator = (obs, o, n) -> {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             boolean tipoOk = tipoPratoCombo.getValue() != null;
@@ -1255,40 +1396,49 @@ public class ItemView {
         // Chama o validador uma vez para avaliar o estado inicial
         validator.changed(null, null, null);
 
-        // 8) Layout principal
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        grid.add(new Label("Nome:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Tipo de Prato:"), 0, 1);
-        grid.add(tipoPratoCombo, 1, 1);
-        grid.add(new Label("Preço:"), 0, 2);
-        grid.add(precoField, 1, 2);
-        grid.add(compostoCheck, 0, 4, 2, 1);
+        // Seção de ingredientes
+        TitledPane ingredientsPane = new TitledPane();
+        ingredientsPane.setText("Ingredientes do Item");
+        ingredientsPane.setExpanded(false);
+        ingredientsPane.setPrefHeight(350);
+
+        VBox ingredientsContainer = new VBox(10);
+        ingredientsContainer.setPadding(new Insets(10));
 
         // Layout para pesquisa e seleção de ingredientes
-        HBox searchBox = new HBox(10, new Label("Buscar:"), searchField);
-        searchBox.setPadding(new Insets(0, 0, 5, 0));
+        HBox searchBox = new HBox(10);
         searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 5, 0));
+
+        Label searchLabel = new Label("Buscar:");
+        searchLabel.getStyleClass().add("popup-label");
+        searchLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #444444;");
+        searchBox.getChildren().addAll(searchLabel, searchField);
 
         HBox ingLoadBox = new HBox(10, loadBtn, ingCombo, addIngBtn);
         ingLoadBox.setAlignment(Pos.CENTER_LEFT);
 
-        VBox ingSelectionBox = new VBox(5, searchBox, ingLoadBox);
-        ingSelectionBox.setPadding(new Insets(5, 0, 5, 0));
+        VBox ingSelectionBox = new VBox(10, searchBox, ingLoadBox);
+        ingSelectionBox.setPadding(new Insets(5, 0, 10, 0));
 
-        VBox ingVBox = new VBox(10, ingSelectionBox, table);
-        ingVBox.setPadding(new Insets(10));
+        ingredientsContainer.getChildren().addAll(ingSelectionBox, table);
+        ingredientsPane.setContent(ingredientsContainer);
 
-        VBox mainVBox = new VBox(15, grid, ingVBox, new HBox(10, saveBtn, cancelBtn));
-        mainVBox.setPadding(new Insets(10));
-        popup.getContent().add(mainVBox);
+        grid.add(ingredientsPane, 0, 4, 2, 1);
+        GridPane.setVgrow(ingredientsPane, Priority.ALWAYS);
+        GridPane.setHgrow(ingredientsPane, Priority.ALWAYS);
+
+        // Buttons section
+        HBox buttonBox = new HBox(15);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.getStyleClass().add("popup-button-section");
+        buttonBox.setPadding(new Insets(20, 0, 0, 0));
+        buttonBox.setStyle("-fx-border-color: #E8E8E8 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+        buttonBox.getChildren().addAll(cancelBtn, saveBtn);
+
+        // Add all components to popup content
+        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+        popup.getContent().add(popupContent);
 
         // 9) Ações finais
         cancelBtn.setOnAction(e -> popup.hide());
@@ -1309,7 +1459,10 @@ public class ItemView {
         });
 
         // 10) Mostra o popup centrado
-        popup.show(primary, centerX - 300, centerY - 350);
+        popup.show(primary, centerX - 375, centerY - 375);
+
+        // Focus on name field when opened
+        Platform.runLater(() -> nameField.requestFocus());
     }
 
     /**

@@ -29,6 +29,8 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -63,6 +65,11 @@ public class DashboardView {
     private NumberAxis ordersXAxis;
     private NumberAxis ordersYAxis;
 
+    // Componentes dos alertas de stock
+    private GridPane stockAlertsGrid;
+    private VBox criticalStockCard;
+    private VBox lowStockCard;
+
     public DashboardView(StackPane contentArea, HttpClient httpClient) {
         this.contentArea = contentArea;
         this.httpClient = httpClient;
@@ -83,6 +90,9 @@ public class DashboardView {
         // Create metrics grid
         createMetricsGrid();
 
+        // Create stock alerts section
+        createStockAlertsSection();
+
         // Create top items grid
         createTopItemsGrid();
 
@@ -96,6 +106,8 @@ public class DashboardView {
         mainContainer.getChildren().addAll(
                 createHeaderSection(),
                 metricsGrid,
+                createSectionHeader("Alertas de Stock"),
+                stockAlertsGrid,
                 createSectionHeader("Produtos Mais Vendidos"),
                 itemsGrid,
                 createSectionHeader("Vendas e Pedidos por Dia"),
@@ -117,6 +129,9 @@ public class DashboardView {
 
         // Load dashboard data
         loadDashboardMetrics();
+
+        // Load stock alerts data
+        loadStockAlerts();
 
         // Load top items data
         loadTopItems();
@@ -789,11 +804,6 @@ public class DashboardView {
         profitValue.setFont(Font.font("System", FontWeight.BOLD, 14));
         profitValue.setTextFill(Color.valueOf("#4CAF50"));
 
-        // Lucro por unidade
-        Label unitProfitTitle = new Label("Lucro/Unidade:");
-        unitProfitTitle.setFont(Font.font("System", FontWeight.NORMAL, 12));
-        unitProfitTitle.setTextFill(Color.valueOf("#666666"));
-
         double unitProfit = quantity > 0 ? profit / quantity : 0;
         Label unitProfitValue = new Label(currencyFormat.format(unitProfit));
         unitProfitValue.setFont(Font.font("System", FontWeight.BOLD, 14));
@@ -804,7 +814,6 @@ public class DashboardView {
         statsGrid.add(qtdValue, 1, 0);
         statsGrid.add(profitTitle, 0, 1);
         statsGrid.add(profitValue, 1, 1);
-        statsGrid.add(unitProfitTitle, 0, 2);
         statsGrid.add(unitProfitValue, 1, 2);
 
         // Montar o card
@@ -1247,5 +1256,266 @@ public class DashboardView {
         if (contentArea != null) {
             contentArea.getChildren().clear();
         }
+    }
+
+    /**
+     * Creates the stock alerts section showing critical and low stock items
+     */
+    private void createStockAlertsSection() {
+        // Create the main grid container for stock alerts
+        stockAlertsGrid = new GridPane();
+        stockAlertsGrid.setHgap(20);
+        stockAlertsGrid.setVgap(20);
+        stockAlertsGrid.setAlignment(Pos.CENTER);
+        stockAlertsGrid.setPadding(new Insets(10, 0, 20, 0));
+
+        // Create placeholder cards for critical and low stock
+        criticalStockCard = createStockAlertCard("Crítico", Color.RED);
+        lowStockCard = createStockAlertCard("Baixo", Color.ORANGE);
+
+        // Add cards to the grid
+        stockAlertsGrid.add(criticalStockCard, 0, 0);
+        stockAlertsGrid.add(lowStockCard, 1, 0);
+    }
+
+    /**
+     * Creates a card to display stock alerts for a specific level
+     *
+     * @param level Alert level label (Critical/Low)
+     * @param color Alert color indicator
+     * @return VBox containing the stock alert card
+     */
+    private VBox createStockAlertCard(String level, Color color) {
+        VBox card = new VBox(15);
+        card.getStyleClass().add("dashboard-card");
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setPrefWidth(400);
+        card.setPrefHeight(300);
+        card.setPadding(new Insets(20));
+
+        // Header with icon and title
+        HBox header = new HBox(15);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        // Stock indicator circle
+        Circle stockIndicator = new Circle(10);
+        stockIndicator.setFill(color);
+        stockIndicator.setStroke(Color.valueOf("#FFFFFF"));
+        stockIndicator.setStrokeWidth(1);
+        stockIndicator.setEffect(new DropShadow(5, Color.valueOf("#00000044")));
+
+        // Card title
+        Label titleLabel = new Label("Stock " + level);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setTextFill(Color.valueOf("#333333"));
+
+        header.getChildren().addAll(stockIndicator, titleLabel);
+
+        // Stock count indicator
+        Label countLabel = new Label("Carregando...");
+        countLabel.setFont(Font.font("System", FontWeight.BOLD, 36));
+        countLabel.setTextFill(color);
+
+        // Description text
+        String description = level.equals("Crítico") ? "Itens com stock ≤ 5 unidades"
+                : "Itens com stock entre 6 e 10 unidades";
+
+        Label descLabel = new Label(description);
+        descLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+        descLabel.setTextFill(Color.valueOf("#666666"));
+
+        // Scroll pane for the list of items
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent;");
+        scrollPane.setPrefHeight(160);
+
+        // Container for item list
+        VBox itemsList = new VBox(5);
+        itemsList.setPadding(new Insets(5, 0, 5, 0));
+        scrollPane.setContent(itemsList);
+
+        // Initial loading indicator
+        ProgressIndicator progress = new ProgressIndicator();
+        progress.setPrefSize(30, 30);
+
+        itemsList.getChildren().add(progress);
+
+        // Store the item list VBox as a property in the card for later updating
+        card.getProperties().put("itemsList", itemsList);
+        card.getProperties().put("countLabel", countLabel);
+
+        // Add all components to card
+        card.getChildren().addAll(header, countLabel, descLabel, scrollPane);
+
+        return card;
+    }
+
+    /**
+     * Loads and displays items with critical and low stock levels
+     */
+    private void loadStockAlerts() {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.getApiEndpoint("/item/getAll")))
+                .GET()
+                .build();
+
+        httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    if (response.statusCode() == 200) {
+                        try {
+                            // Parse items from response
+                            JsonNode itemsNode = objectMapper.readTree(response.body());
+                            if (itemsNode.isArray()) {
+                                // Process items and update UI
+                                Platform.runLater(() -> processStockItems(itemsNode));
+                            }
+                        } catch (Exception e) {
+                            Platform.runLater(() -> showStockAlertError("Erro ao processar dados: " + e.getMessage()));
+                        }
+                    } else {
+                        Platform.runLater(() -> showStockAlertError("Erro na API: " + response.statusCode()));
+                    }
+                })
+                .exceptionally(ex -> {
+                    Platform.runLater(() -> showStockAlertError("Erro de conexão: " + ex.getMessage()));
+                    return null;
+                });
+    }
+
+    /**
+     * Process items from API and update the stock alert cards
+     *
+     * @param itemsNode JsonNode array of items
+     */
+    private void processStockItems(JsonNode itemsNode) {
+        // Lists to store items with critical and low stock
+        List<com.EatEaseFrontend.Item> criticalItems = new ArrayList<>();
+        List<com.EatEaseFrontend.Item> lowStockItems = new ArrayList<>();
+
+        // Parse each item and categorize it
+        try {
+            for (JsonNode node : itemsNode) {
+                com.EatEaseFrontend.Item item = objectMapper.treeToValue(node, com.EatEaseFrontend.Item.class);
+
+                // Check stock level
+                if (item.getStockAtual() <= 5) {
+                    criticalItems.add(item);
+                } else if (item.getStockAtual() <= 10) {
+                    lowStockItems.add(item);
+                }
+            }
+
+            // Update UI with the results
+            updateStockAlertCard(criticalStockCard, criticalItems);
+            updateStockAlertCard(lowStockCard, lowStockItems);
+
+        } catch (Exception e) {
+            showStockAlertError("Erro ao processar itens: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Updates a stock alert card with the list of items
+     *
+     * @param card  The card to update
+     * @param items List of items to display
+     */
+    private void updateStockAlertCard(VBox card, List<com.EatEaseFrontend.Item> items) {
+        // Get references to the components we need to update
+        VBox itemsList = (VBox) card.getProperties().get("itemsList");
+        Label countLabel = (Label) card.getProperties().get("countLabel");
+
+        // Clear previous content
+        itemsList.getChildren().clear();
+
+        // Update count label
+        countLabel.setText(String.valueOf(items.size()));
+
+        if (items.isEmpty()) {
+            // Show "No items" message if list is empty
+            Label emptyLabel = new Label("Nenhum item neste nível de stock");
+            emptyLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+            emptyLabel.setTextFill(Color.valueOf("#999999"));
+            itemsList.getChildren().add(emptyLabel);
+        } else {
+            // Add each item to the list
+            for (com.EatEaseFrontend.Item item : items) {
+                HBox itemRow = createStockItemRow(item);
+                itemsList.getChildren().add(itemRow);
+
+                // Add separator between items
+                if (items.indexOf(item) < items.size() - 1) {
+                    Separator separator = new Separator();
+                    separator.setPadding(new Insets(2, 0, 2, 0));
+                    itemsList.getChildren().add(separator);
+                }
+            }
+        }
+    }
+
+    /**
+     * Creates a row displaying an item's stock information
+     *
+     * @param item The item to display
+     * @return HBox containing the item info row
+     */
+    private HBox createStockItemRow(com.EatEaseFrontend.Item item) {
+        HBox row = new HBox(10);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(5));
+
+        // Stock indicator circle
+        Circle stockCircle = new Circle(6);
+        Color indicatorColor = item.getStockAtual() <= 5 ? Color.RED : Color.ORANGE;
+        stockCircle.setFill(indicatorColor);
+
+        // Item name
+        Label nameLabel = new Label(item.getNome());
+        nameLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        nameLabel.setTextFill(Color.valueOf("#333333"));
+        HBox.setHgrow(nameLabel, Priority.ALWAYS);
+
+        // Stock quantity
+        Label stockLabel = new Label(item.getStockAtual() + " un.");
+        stockLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        stockLabel.setTextFill(indicatorColor);
+
+        row.getChildren().addAll(stockCircle, nameLabel, stockLabel);
+        return row;
+    }
+
+    /**
+     * Shows error message in the stock alerts section
+     */
+    private void showStockAlertError(String errorMessage) {
+        // Clear both cards
+        VBox criticalItems = (VBox) criticalStockCard.getProperties().get("itemsList");
+        VBox lowStockItems = (VBox) lowStockCard.getProperties().get("itemsList");
+
+        criticalItems.getChildren().clear();
+        lowStockItems.getChildren().clear();
+
+        // Add error message to both cards
+        Label errorLabel = new Label("Erro: " + errorMessage);
+        errorLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        errorLabel.setTextFill(Color.RED);
+        errorLabel.setWrapText(true);
+
+        Button retryButton = new Button("Tentar Novamente");
+        retryButton.getStyleClass().add("login-button");
+        retryButton.setOnAction(e -> loadStockAlerts());
+
+        VBox errorBox = new VBox(10, errorLabel, retryButton);
+        errorBox.setAlignment(Pos.CENTER);
+
+        criticalItems.getChildren().add(errorBox);
+
+        // Update count labels
+        Label criticalCountLabel = (Label) criticalStockCard.getProperties().get("countLabel");
+        Label lowStockCountLabel = (Label) lowStockCard.getProperties().get("countLabel");
+
+        criticalCountLabel.setText("-");
+        lowStockCountLabel.setText("-");
     }
 }

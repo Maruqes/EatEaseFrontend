@@ -35,17 +35,12 @@ public class PopUp {
 
         // Create the popup content
         VBox popupContent = new VBox(15);
-        popupContent.setPadding(new Insets(20));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        popupContent.getStyleClass().add("popup-container");
         popupContent.setPrefWidth(350);
 
         // Title
         Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        titleLabel.getStyleClass().add("popup-title");
 
         // Set title color based on type
         Color titleColor = Color.BLACK;

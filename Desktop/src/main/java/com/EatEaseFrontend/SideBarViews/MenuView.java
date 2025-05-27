@@ -241,43 +241,55 @@ public class MenuView {
         popup.setAutoHide(false); // Don't close automatically
 
         // Create content
-        VBox popupContent = new VBox(15);
-        popupContent.setPadding(new Insets(20));
+        VBox popupContent = new VBox(20);
+        popupContent.setPadding(new Insets(30));
+        popupContent.getStyleClass().add("popup-container");
         popupContent.setStyle(
                 "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
+                        "-fx-border-color: #E0E0E0;" +
                         "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        popupContent.setPrefWidth(700);
-        popupContent.setPrefHeight(700);
+                        "-fx-border-radius: 12;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 15,0,0,5);");
+        popupContent.setPrefWidth(750);
+        popupContent.setPrefHeight(750);
 
         // Title
         Label titleLabel = new Label("Adicionar Menu");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
+        titleLabel.getStyleClass().add("popup-title");
+        titleLabel.setStyle("-fx-text-fill: #333333; -fx-padding: 0 0 10 0;");
 
         // Header
         Label headerLabel = new Label("Preencha os detalhes do novo menu");
-        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 15));
+        headerLabel.getStyleClass().add("popup-subtitle");
+        headerLabel.setStyle("-fx-text-fill: #666666; -fx-padding: 0 0 20 0;");
 
         // Create form grid
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10));
+        grid.setHgap(15);
+        grid.setVgap(20);
+        grid.setPadding(new Insets(15));
 
         // Campo para nome do menu
         TextField nomeField = new TextField();
         nomeField.setPromptText("Nome do menu");
+        nomeField.getStyleClass().add("popup-input-field");
+        nomeField.setPrefHeight(42);
 
         // Campo para descrição do menu
         TextArea descricaoField = new TextArea();
         descricaoField.setPromptText("Descrição do menu");
         descricaoField.setPrefRowCount(3);
         descricaoField.setWrapText(true);
+        descricaoField.getStyleClass().add("popup-text-area");
 
         // Dropdown para tipo de menu
         ComboBox<TipoMenu> tipoMenuComboBox = new ComboBox<>();
         tipoMenuComboBox.getItems().addAll(tiposMenu);
+        tipoMenuComboBox.getStyleClass().add("popup-combo-box");
+        tipoMenuComboBox.setPrefHeight(40);
         tipoMenuComboBox.setCellFactory(lv -> new ListCell<TipoMenu>() {
             @Override
             protected void updateItem(TipoMenu item, boolean empty) {
@@ -313,14 +325,22 @@ public class MenuView {
         itemsPane.setContent(itemsContainer);
 
         // Lista observável de IDs dos itens selecionados
-        ObservableList<Integer> selectedItemsIds = FXCollections.observableArrayList();
+        ObservableList<Integer> selectedItemsIds = FXCollections.observableArrayList(); // Adicionar campos ao grid com
+                                                                                        // labels estilizadas
+        Label nomeLabel = new Label("Nome:");
+        nomeLabel.getStyleClass().add("popup-field-label");
 
-        // Adicionar campos ao grid
-        grid.add(new Label("Nome:"), 0, 0);
+        Label descLabel = new Label("Descrição:");
+        descLabel.getStyleClass().add("popup-field-label");
+
+        Label tipoLabel = new Label("Tipo de Menu:");
+        tipoLabel.getStyleClass().add("popup-field-label");
+
+        grid.add(nomeLabel, 0, 0);
         grid.add(nomeField, 1, 0);
-        grid.add(new Label("Descrição:"), 0, 1);
+        grid.add(descLabel, 0, 1);
         grid.add(descricaoField, 1, 1);
-        grid.add(new Label("Tipo de Menu:"), 0, 2);
+        grid.add(tipoLabel, 0, 2);
         grid.add(tipoMenuComboBox, 1, 2);
         grid.add(itemsPane, 0, 3, 2, 1);
 
@@ -329,15 +349,20 @@ public class MenuView {
         GridPane.setHgrow(itemsPane, Priority.ALWAYS);
 
         // Buttons
-        HBox buttonBox = new HBox(10);
+        HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
-        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+        buttonBox.getStyleClass().add("popup-button-section");
+        buttonBox.setPadding(new Insets(20, 0, 0, 0));
+        buttonBox.setStyle("-fx-border-color: #E8E8E8 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
 
         Button cancelButton = new Button("Cancelar");
+        cancelButton.getStyleClass().add("popup-secondary-button");
+        cancelButton.setStyle(
+                "-fx-background-color: #F5F5F5; -fx-text-fill: #666666; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand; -fx-min-width: 100;");
         cancelButton.setOnAction(e -> popup.hide());
 
         Button saveButton = new Button("Salvar");
-        saveButton.getStyleClass().add("login-button");
+        saveButton.getStyleClass().addAll("login-button", "popup-primary-button");
         saveButton.setDisable(true);
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);
@@ -437,17 +462,22 @@ public class MenuView {
 
                         Label headerLabel = new Label("Selecione os itens para incluir no menu:");
                         headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+                        headerLabel.getStyleClass().add("popup-label");
+                        headerLabel.setStyle("-fx-text-fill: #444444; -fx-padding: 0 0 10 0;");
 
                         // Criar lista de checkboxes para os itens
-                        VBox checkBoxContainer = new VBox(5);
+                        VBox checkBoxContainer = new VBox(8);
+                        checkBoxContainer.setPadding(new Insets(5));
                         ScrollPane scrollPane = new ScrollPane(checkBoxContainer);
                         scrollPane.setFitToWidth(true);
-                        scrollPane.setPrefHeight(400);
+                        scrollPane.setPrefHeight(300);
+                        scrollPane.getStyleClass().add("popup-scroll-pane");
 
                         for (Item item : items) {
                             CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
                                     item.getTipoPratoName() + " (€" + item.getPreco() + ")");
                             cb.setUserData(item.getId());
+                            cb.getStyleClass().add("popup-check-box");
 
                             // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
                             boolean isPreSelected = selectedItemsIds.contains(item.getId());
@@ -655,42 +685,54 @@ public class MenuView {
         popup.setAutoHide(false); // Don't close automatically
 
         // Create content
-        VBox popupContent = new VBox(15);
-        popupContent.setPadding(new Insets(20));
+        VBox popupContent = new VBox(20);
+        popupContent.setPadding(new Insets(30));
+        popupContent.getStyleClass().add("popup-container");
         popupContent.setStyle(
                 "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
+                        "-fx-border-color: #E0E0E0;" +
                         "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        popupContent.setPrefWidth(700);
-        popupContent.setPrefHeight(700);
+                        "-fx-border-radius: 12;" +
+                        "-fx-background-radius: 12;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 15,0,0,5);");
+        popupContent.setPrefWidth(750);
+        popupContent.setPrefHeight(750);
 
         // Title
         Label titleLabel = new Label("Editar Menu");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
+        titleLabel.getStyleClass().add("popup-title");
+        titleLabel.setStyle("-fx-text-fill: #333333; -fx-padding: 0 0 10 0;");
 
         // Header
         Label headerLabel = new Label("Editar detalhes do menu: " + menu.getNome());
-        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 14));
+        headerLabel.setFont(Font.font("System", FontWeight.NORMAL, 15));
+        headerLabel.getStyleClass().add("popup-subtitle");
+        headerLabel.setStyle("-fx-text-fill: #666666; -fx-padding: 0 0 20 0;");
 
         // Create form grid
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10));
+        grid.setHgap(15);
+        grid.setVgap(20);
+        grid.setPadding(new Insets(15));
 
         // Campo para nome do menu
         TextField nomeField = new TextField(menu.getNome());
         nomeField.setPromptText("Nome do menu");
+        nomeField.getStyleClass().add("popup-text-field");
+        nomeField.setPrefHeight(40);
 
         // Campo para descrição do menu
         TextArea descricaoField = new TextArea(menu.getDescricao());
         descricaoField.setPromptText("Descrição do menu");
         descricaoField.setPrefRowCount(3);
         descricaoField.setWrapText(true);
+        descricaoField.getStyleClass().add("popup-text-area");
 
         // Dropdown para tipo de menu
         ComboBox<TipoMenu> tipoMenuComboBox = new ComboBox<>();
+        tipoMenuComboBox.getStyleClass().add("popup-combo-box");
+        tipoMenuComboBox.setPrefHeight(40);
         tipoMenuComboBox.getItems().addAll(tiposMenu);
 
         // Selecionar o tipo de menu atual
@@ -760,15 +802,20 @@ public class MenuView {
         GridPane.setHgrow(itemsPane, Priority.ALWAYS);
 
         // Buttons
-        HBox buttonBox = new HBox(10);
+        HBox buttonBox = new HBox(15);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
-        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+        buttonBox.getStyleClass().add("popup-button-section");
+        buttonBox.setPadding(new Insets(20, 0, 0, 0));
+        buttonBox.setStyle("-fx-border-color: #E8E8E8 transparent transparent transparent; -fx-border-width: 1 0 0 0;");
 
         Button cancelButton = new Button("Cancelar");
+        cancelButton.getStyleClass().add("popup-secondary-button");
+        cancelButton.setStyle(
+                "-fx-background-color: #F5F5F5; -fx-text-fill: #666666; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand; -fx-min-width: 100;");
         cancelButton.setOnAction(e -> popup.hide());
 
         Button saveButton = new Button("Salvar");
-        saveButton.getStyleClass().add("login-button");
+        saveButton.getStyleClass().addAll("login-button", "popup-primary-button");
         saveButton.setDisable(false); // Não desabilitar inicialmente porque já temos valores válidos
 
         buttonBox.getChildren().addAll(cancelButton, saveButton);

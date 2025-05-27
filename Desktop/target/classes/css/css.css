@@ -1,0 +1,575 @@
+/* Desktop Application Modern Styling */
+
+/* Global styles and fonts */
+.root {
+    -fx-font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    -fx-font-size: 14px;
+    font-size: 14px;
+    -fx-background-color: white;
+    background-color: white;
+}
+
+/* ============ LOGIN PAGE STYLING ============ */
+
+.login-root {
+    -fx-background-color: white;
+    background-color: white;
+}
+
+/* Left panel with gradient and brand */
+.left-panel {
+    -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0.0, 0.0, 3.0);
+    -fx-background-color: #FB8C00;
+    background-color: #FB8C00;
+}
+
+.pattern-overlay {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.05);
+    -fx-opacity: 0.5;
+    opacity: 0.5;
+}
+
+.branding-container {
+    -fx-spacing: 20px;
+}
+
+/* Logo styling with enhanced effects */
+.logo-image {
+    -fx-effect: dropshadow(gaussian, rgba(255, 255, 255, 0.7), 15, 0.5, 0, 0);
+    -fx-opacity: 0.95;
+    opacity: 0.95;
+}
+
+/* App name with modern styling */
+.app-name {
+    -fx-font-size: 52px;
+    font-size: 52px;
+    -fx-font-weight: bold;
+    font-weight: bold;
+    -fx-fill: white;
+    fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 12, 0.5, 0, 2);
+    -fx-font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    -fx-smooth: true;
+}
+
+/* Tagline with elegant styling */
+.tagline {
+    -fx-text-fill: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.9);
+    -fx-font-size: 18px;
+    font-size: 18px;
+    -fx-font-style: italic;
+    font-style: italic;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 5, 0.0, 0.0, 1.0);
+    -fx-padding: 5 0 0 0;
+    padding: 5px 0 0 0;
+}
+
+/* Right panel wrapper */
+.right-panel-wrapper {
+    -fx-background-color: #f8f9fa;
+    background-color: #f8f9fa;
+    -fx-alignment: center;
+}
+
+/* Right panel with card effect */
+.right-panel {
+    -fx-background-color: white;
+    background-color: white;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    border-radius: 10px;
+    -fx-padding: 30px;
+    padding: 30px;
+    -fx-spacing: 20px;
+    -fx-alignment: center;
+}
+
+/* Welcome text */
+.welcome-text {
+    -fx-font-size: 22px;
+    font-size: 22px;
+    -fx-font-weight: bold;
+    font-weight: bold;
+    -fx-text-fill: #FB8C00;
+    color: #FB8C00;
+    -fx-opacity: 0.8;
+    opacity: 0.8;
+}
+
+/* Login title */
+.login-title {
+    -fx-font-size: 28px;
+    font-size: 28px;
+    -fx-font-weight: bold;
+    font-weight: bold;
+    -fx-text-fill: #333333;
+    color: #333333;
+    -fx-padding: 0 0 20 0;
+    padding: 0 0 20px 0;
+}
+
+/* Input field labels */
+.input-label {
+    -fx-font-size: 14px;
+    font-size: 14px;
+    -fx-font-weight: bold;
+    font-weight: bold;
+    -fx-text-fill: #555555;
+    color: #555555;
+}
+
+/* Input fields with modern design */
+.input-field {
+    -fx-pref-height: 45px;
+    -fx-font-size: 15px;
+    font-size: 15px;
+    -fx-background-color: #f8f9fa;
+    background-color: #f8f9fa;
+    -fx-border-color: #e0e0e0;
+    border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    border-width: 1px;
+    -fx-border-radius: 6px;
+    border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 10 15;
+    padding: 10px 15px;
+    -fx-prompt-text-fill: #aab0b5;
+}
+
+.input-field:focused {
+    -fx-background-color: white;
+    background-color: white;
+    -fx-border-color: #FB8C00;
+    border-color: #FB8C00;
+    -fx-border-width: 2px;
+    border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.3), 8, 0.0, 0.0, 0.0);
+}
+
+/* Forgot password link */
+.forgot-password {
+    -fx-text-fill: #FB8C00;
+    color: #FB8C00;
+    -fx-font-size: 13px;
+    font-size: 13px;
+    -fx-cursor: hand;
+    cursor: pointer;
+    -fx-underline: false;
+}
+
+.forgot-password:hover {
+    -fx-underline: true;
+    text-decoration: underline;
+}
+
+/* Modern gradient login button */
+.login-button {
+    -fx-background-color: linear-gradient(to right, #E65100, #FB8C00);
+    background-image: linear-gradient(to right, #E65100, #FB8C00);
+    background-color: #FB8C00;
+    -fx-text-fill: white;
+    color: white;
+    -fx-font-size: 16px;
+    font-size: 16px;
+    -fx-font-weight: bold;
+    font-weight: bold;
+    -fx-padding: 12px 25px;
+    padding: 12px 25px;
+    -fx-background-radius: 6px;
+    border-radius: 6px;
+    -fx-cursor: hand;
+    cursor: pointer;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0.0, 0.0, 2.0);
+    -fx-min-width: 200px;
+    min-width: 200px;
+    -fx-min-height: 48px;
+    min-height: 48px;
+    -fx-alignment: center;
+    text-align: center;
+}
+
+.login-button:hover {
+    -fx-background-color: linear-gradient(to right, #F57C00, #FFB74D);
+    background-image: linear-gradient(to right, #F57C00, #FFB74D);
+    background-color: #F57C00;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0.0, 0.0, 3.0);
+}
+
+.login-button:pressed {
+    -fx-background-color: linear-gradient(to right, #BF360C, #E65100);
+    background-image: linear-gradient(to right, #BF360C, #E65100);
+    background-color: #BF360C;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 5, 0.0, 0.0, 1.0);
+    -fx-translate-y: 1px;
+}
+
+/* ======= Abaixo mantendo o resto do CSS original ======= */
+
+/* Admin Dashboard Styling */
+
+/* Top Bar */
+.top-bar {
+    -fx-background-color: linear-gradient(to right, #E65100, #FB8C00);
+    -fx-padding: 8px 15px;
+    -fx-spacing: 10px;
+}
+
+.top-bar .label {
+    -fx-text-fill: white;
+}
+
+.brand-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.user-label {
+    -fx-font-size: 14px;
+    -fx-padding: 0 15 0 0;
+}
+
+.logout-button {
+    -fx-background-color: #f44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4px;
+}
+
+.logout-button:hover {
+    -fx-background-color: #e53935;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #263238;
+    -fx-padding: 10px;
+}
+
+.sidebar-header {
+    -fx-text-fill: #90a4ae;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 15 0 5 5;
+}
+
+.sidebar-menu-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 10 15;
+    -fx-cursor: hand;
+}
+
+.sidebar-menu-button:hover {
+    -fx-background-color: #455a64;
+}
+
+.sidebar-menu-button:pressed {
+    -fx-background-color: #607d8b;
+}
+
+/* Content area */
+.content-area {
+    -fx-background-color: #f5f5f5;
+    -fx-padding: 20px;
+}
+
+.welcome-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-fill: #37474f;
+}
+
+/* Card styling for dashboard widgets */
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 1);
+    -fx-padding: 15px;
+}
+
+.card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #455a64;
+}
+
+/* Table styling */
+.table-view {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header {
+    -fx-background-color: #2a5298;
+    -fx-text-fill: white;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: #f0f0f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #bbdefb;
+}
+
+/* Icon button styling */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.icon-button:hover {
+    -fx-background-color: #f0f0f0;
+}
+
+.icon-button:pressed {
+    -fx-background-color: #dadada;
+}
+
+/* Mesa view styles */
+.green-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.green-button:hover {
+    -fx-background-color: #45a049;
+}
+
+.green-button:pressed {
+    -fx-background-color: #388e3c;
+}
+
+.green-button:disabled {
+    -fx-background-color: #c8e6c9;
+    -fx-text-fill: #a5d6a7;
+}
+
+.red-button {
+    -fx-background-color: #F44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 15;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.red-button:hover {
+    -fx-background-color: #e53935;
+}
+
+.red-button:pressed {
+    -fx-background-color: #d32f2f;
+}
+
+.red-button:disabled {
+    -fx-background-color: #ffcdd2;
+    -fx-text-fill: #ef9a9a;
+}
+
+/* Admin Dashboard Styling */
+
+/* Top Bar */
+.top-bar {
+    -fx-background-color: linear-gradient(to right, #1e3c72, #2a5298);
+    -fx-padding: 8px 15px;
+    -fx-spacing: 10px;
+}
+
+.top-bar .label {
+    -fx-text-fill: white;
+}
+
+.brand-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.user-label {
+    -fx-font-size: 14px;
+    -fx-padding: 0 15 0 0;
+}
+
+.logout-button {
+    -fx-background-color: #f44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4px;
+}
+
+.logout-button:hover {
+    -fx-background-color: #e53935;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #263238;
+    -fx-padding: 10px;
+}
+
+.sidebar-header {
+    -fx-text-fill: #90a4ae;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 15 0 5 5;
+}
+
+.sidebar-menu-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 10 15;
+    -fx-cursor: hand;
+}
+
+.sidebar-menu-button:hover {
+    -fx-background-color: #455a64;
+}
+
+.sidebar-menu-button:pressed {
+    -fx-background-color: #607d8b;
+}
+
+/* Content area */
+.content-area {
+    -fx-background-color: #f5f5f5;
+    -fx-padding: 20px;
+}
+
+.welcome-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-fill: #37474f;
+}
+
+/* Card styling for dashboard widgets */
+.dashboard-card {
+    -fx-background-color: white;
+    -fx-background-radius: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 1);
+    -fx-padding: 15px;
+}
+
+.card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #455a64;
+}
+
+/* Table styling */
+.table-view {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header {
+    -fx-background-color: #2a5298;
+    -fx-text-fill: white;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: #f0f0f0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f9f9f9;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #bbdefb;
+}
+
+/* Icon button styling */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.icon-button:hover {
+    -fx-background-color: #f0f0f0;
+}
+
+.icon-button:pressed {
+    -fx-background-color: #dadada;
+}
+
+/* Mesa view styles */
+.green-button {
+    -fx-background-color: #4CAF50;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 6 12;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.green-button:hover {
+    -fx-background-color: #45a049;
+}
+
+.green-button:pressed {
+    -fx-background-color: #388e3c;
+}
+
+.green-button:disabled {
+    -fx-background-color: #c8e6c9;
+    -fx-text-fill: #a5d6a7;
+}
+
+.red-button {
+    -fx-background-color: #F44336;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 6 12;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.red-button:hover {
+    -fx-background-color: #e53935;
+}
+
+.red-button:pressed {
+    -fx-background-color: #d32f2f;
+}
+
+.red-button:disabled {
+    -fx-background-color: #ffcdd2;
+    -fx-text-fill: #ef9a9a;
+}
