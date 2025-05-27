@@ -6,7 +6,6 @@ import com.EatEaseFrontend.Mesa;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.EatEaseFrontend.JsonParser;
-
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -57,7 +56,7 @@ public class MesasView {
     // Temporizador para atualizações automáticas
     private Timer autoUpdateTimer;
     // Intervalo de atualização em segundos (facilmente ajustável)
-    private static final int UPDATE_INTERVAL_SECONDS = 10; // Configuração global do intervalo de atualização
+    private static final int UPDATE_INTERVAL_SECONDS = 5; // Configuração global do intervalo de atualização
     // Flag para controlar se a view está ativa
     private boolean isViewActive = false;
 
@@ -421,14 +420,44 @@ public class MesasView {
                             statusText.setText(updatedMesa.isEstadoLivre() ? "Livre" : "Ocupada");
                         }
 
+                        // Atualizar texto da capacidade se existir
+                        if (infoContainer.getChildren().size() > 3) {
+                            Text capacidadeText = (Text) infoContainer.getChildren().get(3);
+                            capacidadeText.setText("Capacidade: " + updatedMesa.getCapacidade());
+                        }
+
                         // CORREÇÃO: Atualizar também os botões baseados no novo estado
                         HBox buttonContainer = (HBox) layout.getChildren().get(1);
-                        Button liberarButton = (Button) buttonContainer.getChildren().get(0);
-                        Button ocuparButton = (Button) buttonContainer.getChildren().get(1);
 
-                        // Atualizar estado dos botões conforme o estado da mesa
-                        liberarButton.setDisable(updatedMesa.isEstadoLivre());
-                        ocuparButton.setDisable(!updatedMesa.isEstadoLivre());
+                        // Clear existing buttons and add the appropriate one
+                        buttonContainer.getChildren().clear();
+
+                        if (updatedMesa.isEstadoLivre()) {
+                            // Mesa is free - show only "Ocupar" button
+                            Button ocuparButton = new Button("Ocupar");
+                            ocuparButton.getStyleClass().add("red-button");
+                            ocuparButton.setOnAction(e -> {
+                                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Ocupar Mesa", "",
+                                        "Tem certeza que deseja marcar a Mesa " + updatedMesa.getNumero()
+                                                + " como ocupada?",
+                                        () -> {
+                                            ocuparMesa(updatedMesa.getId());
+                                        });
+                            });
+                            buttonContainer.getChildren().add(ocuparButton);
+                        } else {
+                            // Mesa is occupied - show only "Desocupar" button
+                            Button liberarButton = new Button("Desocupar");
+                            liberarButton.getStyleClass().add("green-button");
+                            liberarButton.setOnAction(e -> {
+                                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Liberar Mesa", "",
+                                        "Tem certeza que deseja desocupar a Mesa " + updatedMesa.getNumero() + "?",
+                                        () -> {
+                                            liberarMesa(updatedMesa.getId());
+                                        });
+                            });
+                            buttonContainer.getChildren().add(liberarButton);
+                        }
 
                         // NOVA CORREÇÃO: Atualizar posição da mesa se houver nova posição do servidor
                         Double[] updatedPosition = mesaPositions.get(updatedMesa.getId());
@@ -714,43 +743,49 @@ public class MesasView {
         statusText.setFill(Color.WHITE);
         statusText.setFont(Font.font("System", 14));
 
+        // Mesa capacity
+        Text capacidadeText = new Text("Capacidade: " + mesa.getCapacidade());
+        capacidadeText.setFill(Color.WHITE);
+        capacidadeText.setFont(Font.font("System", FontWeight.NORMAL, 12));
+
         // Stack information on top of rectangle
         StackPane stackedInfo = new StackPane();
         stackedInfo.getChildren().add(mesaRect);
 
         VBox infoBox = new VBox(5);
         infoBox.setAlignment(Pos.CENTER);
-        infoBox.getChildren().addAll(idText, mesaNumber, statusText);
+        infoBox.getChildren().addAll(idText, mesaNumber, statusText, capacidadeText);
         stackedInfo.getChildren().add(infoBox);
 
         // Button Container
         HBox buttonContainer = new HBox(10);
         buttonContainer.setAlignment(Pos.CENTER);
 
-        // Action buttons
-        Button liberarButton = new Button("Liberar");
-        liberarButton.getStyleClass().add("green-button");
-        liberarButton.setDisable(mesa.isEstadoLivre());
-
-        Button ocuparButton = new Button("Ocupar");
-        ocuparButton.getStyleClass().add("red-button");
-        ocuparButton.setDisable(!mesa.isEstadoLivre());
-
-        buttonContainer.getChildren().addAll(liberarButton, ocuparButton);
-
-        // Button actions
-        liberarButton.setOnAction(e -> {
-            showConfirmDialog("Liberar Mesa", "Tem certeza que deseja liberar a Mesa " + mesa.getNumero() + "?", () -> {
-                liberarMesa(mesa.getId());
+        // Show only the appropriate button based on mesa state
+        if (mesa.isEstadoLivre()) {
+            // Mesa is free - show only "Ocupar" button
+            Button ocuparButton = new Button("Ocupar");
+            ocuparButton.getStyleClass().add("red-button");
+            ocuparButton.setOnAction(e -> {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Ocupar Mesa", "",
+                        "Tem certeza que deseja marcar a Mesa " + mesa.getNumero() + " como ocupada?", () -> {
+                            ocuparMesa(mesa.getId());
+                        });
             });
-        });
-
-        ocuparButton.setOnAction(e -> {
-            showConfirmDialog("Ocupar Mesa",
-                    "Tem certeza que deseja marcar a Mesa " + mesa.getNumero() + " como ocupada?", () -> {
-                        ocuparMesa(mesa.getId());
-                    });
-        });
+            buttonContainer.getChildren().add(ocuparButton);
+        } else {
+            // Mesa is occupied - show only "Desocupar" button
+            Button liberarButton = new Button("Desocupar");
+            liberarButton.getStyleClass().add("green-button");
+            liberarButton.setOnAction(e -> {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Liberar Mesa", "",
+                        "Tem certeza que deseja desocupar a Mesa " + mesa.getNumero() + "?",
+                        () -> {
+                            liberarMesa(mesa.getId());
+                        });
+            });
+            buttonContainer.getChildren().add(liberarButton);
+        }
 
         // Arrange elements vertically
         VBox layout = new VBox(15);
@@ -759,65 +794,6 @@ public class MesasView {
 
         mesaBox.getChildren().add(layout);
         return mesaBox;
-    }
-
-    /**
-     * Exibe uma caixa de diálogo de confirmação
-     * 
-     * @param title     Título da caixa de diálogo
-     * @param message   Mensagem a ser exibida
-     * @param onConfirm Ação a ser executada ao confirmar
-     */
-    private void showConfirmDialog(String title, String message, Runnable onConfirm) {
-        // Create popup
-        Popup popup = new Popup();
-        popup.setAutoHide(false);
-
-        // Create main container
-        VBox container = new VBox(20);
-        container.setPadding(new Insets(20));
-        container.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-        container.setPrefWidth(400);
-        container.setAlignment(Pos.CENTER);
-
-        // Title
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        titleLabel.setAlignment(Pos.CENTER);
-
-        // Message
-        Label messageLabel = new Label(message);
-        messageLabel.setWrapText(true);
-        messageLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
-        messageLabel.setAlignment(Pos.CENTER);
-
-        // Buttons
-        Button confirmButton = new Button("Confirmar");
-        confirmButton.getStyleClass().add("login-button");
-        confirmButton.setOnAction(e -> {
-            popup.hide();
-            onConfirm.run();
-        });
-
-        Button cancelButton = new Button("Cancelar");
-        cancelButton.getStyleClass().add("login-button");
-        cancelButton.setOnAction(e -> popup.hide());
-
-        HBox buttonBox = new HBox(10);
-        buttonBox.setAlignment(Pos.CENTER);
-        buttonBox.getChildren().addAll(confirmButton, cancelButton);
-
-        container.getChildren().addAll(titleLabel, messageLabel, buttonBox);
-        popup.getContent().add(container);
-
-        // Show popup centered
-        double centerX = contentArea.getScene().getWindow().getX() + contentArea.getScene().getWindow().getWidth() / 2;
-        double centerY = contentArea.getScene().getWindow().getY() + contentArea.getScene().getWindow().getHeight() / 2;
-        popup.show(contentArea.getScene().getWindow(), centerX - 200, centerY - 100);
     }
 
     /**
@@ -939,6 +915,12 @@ public class MesasView {
         grid.add(new Label("Número:"), 0, 0);
         grid.add(numeroField, 1, 0);
 
+        // Add the capacidade field
+        TextField capacidadeField = new TextField();
+        capacidadeField.setPromptText("Capacidade de Pessoas");
+        grid.add(new Label("Capacidade:"), 0, 1);
+        grid.add(capacidadeField, 1, 1);
+
         // Buttons
         Button saveButton = new Button("Salvar");
         saveButton.getStyleClass().add("login-button");
@@ -949,24 +931,29 @@ public class MesasView {
         cancelButton.setOnAction(e -> popup.hide());
 
         // Validate input - only numbers allowed
-        numeroField.textProperty().addListener((observable, oldValue, newValue) -> {
+        Runnable validateFields = () -> {
             boolean isValid = false;
             try {
-                if (!newValue.isEmpty()) {
-                    int numero = Integer.parseInt(newValue);
-                    isValid = numero > 0;
+                if (!numeroField.getText().isEmpty() && !capacidadeField.getText().isEmpty()) {
+                    int numero = Integer.parseInt(numeroField.getText());
+                    int capacidade = Integer.parseInt(capacidadeField.getText());
+                    isValid = numero > 0 && capacidade > 0;
                 }
             } catch (NumberFormatException e) {
                 isValid = false;
             }
             saveButton.setDisable(!isValid);
-        });
+        };
+
+        numeroField.textProperty().addListener((observable, oldValue, newValue) -> validateFields.run());
+        capacidadeField.textProperty().addListener((observable, oldValue, newValue) -> validateFields.run());
 
         saveButton.setOnAction(e -> {
             try {
                 int numero = Integer.parseInt(numeroField.getText());
+                int capacidade = Integer.parseInt(capacidadeField.getText());
                 popup.hide();
-                createMesa(numero);
+                createMesa(numero, capacidade);
             } catch (NumberFormatException ex) {
                 // Should not happen due to validation
             }
@@ -991,11 +978,13 @@ public class MesasView {
     /**
      * Envia requisição para criar uma nova mesa
      * 
-     * @param numero Número da nova mesa
+     * @param numero     Número da nova mesa
+     * @param capacidade Capacidade da mesa
      */
-    private void createMesa(int numero) {
+    private void createMesa(int numero, int capacidade) {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(AppConfig.getApiEndpoint("/mesa/create?numero=" + numero)))
+                .uri(URI.create(
+                        AppConfig.getApiEndpoint("/mesa/create?numero=" + numero + "&capacidade=" + capacidade)))
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
 
@@ -1106,7 +1095,7 @@ public class MesasView {
             // This is a simplified approach - in a real implementation you'd want to store
             // mesa references properly
             // For now, we assume mesa ID matches mesa number
-            return new Mesa(mesaNumber, mesaNumber, true); // Dummy mesa for ID lookup
+            return new Mesa(mesaNumber, mesaNumber, true, 4); // Dummy mesa for ID lookup with default capacity
         } catch (Exception e) {
             System.err.println("Error finding mesa for box: " + e.getMessage());
             return null;

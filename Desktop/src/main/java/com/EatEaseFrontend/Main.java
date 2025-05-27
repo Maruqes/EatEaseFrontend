@@ -1,11 +1,13 @@
 package com.EatEaseFrontend;
 
+import com.EatEaseFrontend.SideBarViews.DashboardView;
 import com.EatEaseFrontend.SideBarViews.EmployeeView;
 import com.EatEaseFrontend.SideBarViews.IngredientsView;
 import com.EatEaseFrontend.SideBarViews.ItemView;
 import com.EatEaseFrontend.SideBarViews.MenuView;
 import com.EatEaseFrontend.SideBarViews.MesasView;
 import com.EatEaseFrontend.SideBarViews.PedidosView;
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import com.EatEaseFrontend.SideBarViews.QRCodesView;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -41,6 +43,7 @@ public class Main extends Application {
     private StackPane contentArea;
 
     // Views
+    private DashboardView dashboardView;
     private EmployeeView employeeView;
     private IngredientsView ingredientsView;
     private ItemView itemView;
@@ -122,6 +125,7 @@ public class Main extends Application {
         root.setCenter(contentArea);
 
         // 2) Inicializa todas as views AQUI, antes de criar os botões
+        dashboardView = new DashboardView(contentArea, http);
         employeeView = new EmployeeView(contentArea, http);
         ingredientsView = new IngredientsView(contentArea, http);
         itemView = new ItemView(contentArea, http);
@@ -206,6 +210,7 @@ public class Main extends Application {
         Button settingsBtn = createMenuButton("Configurações", MaterialDesign.MDI_SETTINGS);
 
         // Update actions for menu items
+        dashboardBtn.setOnAction(e -> showDashboardView());
         workersBtn.setOnAction(e -> showEmployeesView());
         ingredientesBtn.setOnAction(e -> showIngredientsView());
         itemBtn.setOnAction(e -> showItemView());
@@ -276,6 +281,15 @@ public class Main extends Application {
         Text placeholderText = new Text("Página " + section + " em desenvolvimento");
         placeholderText.getStyleClass().add("welcome-text");
         contentArea.getChildren().add(placeholderText);
+    }
+
+    /**
+     * Show the dashboard view with statistics and quick actions
+     */
+    private void showDashboardView() {
+        // Desativar a atualização automática das views quando sair da tela
+        disposeAllViews();
+        dashboardView.show();
     }
 
     /**

@@ -323,6 +323,13 @@ public class JsonParser {
             mesa.setEstadoLivre(Boolean.parseBoolean(estadoMatcher.group(1)));
         }
 
+        // Extract capacidade
+        Pattern capacidadePattern = Pattern.compile("\"capacidade\"\\s*:\\s*(\\d+)");
+        Matcher capacidadeMatcher = capacidadePattern.matcher(json);
+        if (capacidadeMatcher.find()) {
+            mesa.setCapacidade(Integer.parseInt(capacidadeMatcher.group(1)));
+        }
+
         return mesa;
     }
 

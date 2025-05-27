@@ -96,11 +96,8 @@ public class PedidosView {
                         return JsonParser.parsePedidos(response.body());
                     } else {
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar pedidos");
-                            alert.setContentText("Erro: Código " + response.statusCode());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar pedidos",
+                                    "Erro: Código " + response.statusCode());
                         });
                         return List.<Pedido>of();
                     }
@@ -114,11 +111,8 @@ public class PedidosView {
                 .exceptionally(e -> {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar pedidos");
-                        alert.setContentText("Erro: " + e.getMessage());
-                        alert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar pedidos",
+                                "Erro: " + e.getMessage());
                     });
                     return null;
                 });
@@ -363,8 +357,18 @@ public class PedidosView {
      * @param pedidoId       ID do pedido a atualizar
      * @param estadoPedidoId Novo estado do pedido (5=Pendente, 1=Em preparo,
      *                       2=Pronto, 3=Entregue, 4=Cancelado)
+     * @param currentEstado  Estado atual do pedido para verificação
      */
-    private void atualizarEstadoPedido(int pedidoId, int estadoPedidoId) {
+    private void atualizarEstadoPedido(int pedidoId, int estadoPedidoId, int currentEstado) {
+        // Verificar se o pedido atual está cancelado (estado 4)
+        if (currentEstado == 4) {
+            Platform.runLater(() -> {
+                PopUp.showPopupDialog(Alert.AlertType.WARNING, "Operação Não Permitida", "Pedido Cancelado",
+                        "Não é possível alterar o estado de um pedido que foi cancelado.");
+            });
+            return;
+        }
+
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig
                         .getApiEndpoint("/pedido/setEstado?id=" + pedidoId + "&estadoPedido_id=" + estadoPedidoId)))
@@ -381,11 +385,8 @@ public class PedidosView {
                     } else {
                         System.err.println("Erro ao atualizar estado do pedido: " + response.statusCode());
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao atualizar estado do pedido");
-                            alert.setContentText("Erro: Código " + response.statusCode());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar estado do pedido",
+                                    "Erro: Código " + response.statusCode());
                         });
                         return false;
                     }
@@ -393,11 +394,8 @@ public class PedidosView {
                 .exceptionally(e -> {
                     e.printStackTrace();
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao atualizar estado do pedido");
-                        alert.setContentText("Erro: " + e.getMessage());
-                        alert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao atualizar estado do pedido",
+                                "Erro: " + e.getMessage());
                     });
                     return false;
                 });
@@ -500,31 +498,36 @@ public class PedidosView {
         Button btnPendente = new Button("Pendente");
         btnPendente.getStyleClass().add("icon-button");
         btnPendente.setStyle("-fx-background-color: #777777; -fx-text-fill: white;");
-        btnPendente.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 5));
+        btnPendente.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 5, pedido.getEstadoPedido_id()));
 
         // Botão para estado Em Preparo (1)
         Button btnEmPreparo = new Button("Em Preparo");
         btnEmPreparo.getStyleClass().add("icon-button");
         btnEmPreparo.setStyle("-fx-background-color: #f0ad4e; -fx-text-fill: white;");
-        btnEmPreparo.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 1));
+        btnEmPreparo.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 1, pedido.getEstadoPedido_id()));
 
         // Botão para estado Pronto (2)
         Button btnPronto = new Button("Pronto");
         btnPronto.getStyleClass().add("icon-button");
         btnPronto.setStyle("-fx-background-color: #5cb85c; -fx-text-fill: white;");
-        btnPronto.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 2));
+        btnPronto.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 2, pedido.getEstadoPedido_id()));
 
         // Botão para estado Entregue (3)
         Button btnEntregue = new Button("Entregue");
         btnEntregue.getStyleClass().add("icon-button");
         btnEntregue.setStyle("-fx-background-color: #5bc0de; -fx-text-fill: white;");
-        btnEntregue.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 3));
+        btnEntregue.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 3, pedido.getEstadoPedido_id()));
 
         // Botão para estado Cancelado (4)
         Button btnCancelado = new Button("Cancelado");
         btnCancelado.getStyleClass().add("icon-button");
         btnCancelado.setStyle("-fx-background-color: #d9534f; -fx-text-fill: white;");
-        btnCancelado.setOnAction(e -> atualizarEstadoPedido(pedido.getId(), 4));
+        btnCancelado.setOnAction(e -> {
+            // Mostrar popup de confirmação para cancelamento
+            PopUp.showConfirmationPopup(Alert.AlertType.WARNING, "Confirmar Cancelamento", "Cancelar Pedido",
+                    "Tem a certeza que quer cancelar o pedido #" + pedido.getId() + "?\n\nEsta ação é irreversível.",
+                    () -> atualizarEstadoPedido(pedido.getId(), 4, pedido.getEstadoPedido_id()));
+        });
 
         // Adicionar os botões ao container
         VBox estadoBotoesContainer = new VBox(10);

@@ -4,7 +4,6 @@ import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Ingredient;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
-import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
@@ -77,21 +76,6 @@ public class IngredientsView {
      */
     private String getUnidadeName(int unidadeId) {
         return UNIDADE_MAP.getOrDefault(unidadeId, "Desconhecido");
-    }
-
-    /**
-     * Get the unit ID from its name
-     * 
-     * @param unidadeName Name of the unit
-     * @return ID of the unit or 1 (Quilos) if not found
-     */
-    private int getUnidadeId(String unidadeName) {
-        for (Map.Entry<Integer, String> entry : UNIDADE_MAP.entrySet()) {
-            if (entry.getValue().equals(unidadeName)) {
-                return entry.getKey();
-            }
-        }
-        return 1; // Default to Quilos if not found
     }
 
     /**
@@ -382,7 +366,10 @@ public class IngredientsView {
         deleteIcon.setIconColor(Color.RED);
         deleteButton.setGraphic(deleteIcon);
         deleteButton.getStyleClass().add("icon-button");
-        deleteButton.setOnAction(e -> confirmDeleteIngredient(ingredient));
+        deleteButton.setOnAction(e -> PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                "Confirmar Exclusão", "Excluir Ingrediente",
+                "Você tem certeza que deseja excluir este ingrediente?",
+                () -> deleteIngredient(ingredient.getId())));
 
         buttonsBox.getChildren().addAll(editButton, deleteButton);
 
@@ -405,76 +392,212 @@ public class IngredientsView {
         Popup popup = new Popup();
         popup.setAutoHide(true); // fecha ao clicar fora
 
-        // 3) Campos do formulário
+        // 3) Conteúdo principal da popup
+        VBox popupContent = new VBox(20);
+        popupContent.setPadding(new Insets(25));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12,0,0,4);");
+        popupContent.setPrefWidth(450);
+        popupContent.setMaxWidth(450);
+
+        // 4) Header com ícone e título
+        HBox headerBox = new HBox(10);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+
+        FontIcon headerIcon = new FontIcon(MaterialDesign.MDI_PLUS_CIRCLE);
+        headerIcon.setIconColor(Color.valueOf("#FB8C00"));
+        headerIcon.setIconSize(24);
+
+        Label titleLabel = new Label("Adicionar Ingrediente");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setTextFill(Color.valueOf("#333333"));
+
+        headerBox.getChildren().addAll(headerIcon, titleLabel);
+
+        // 5) Seção de campos do formulário
+        VBox formSection = new VBox(15);
+
+        // Campo Nome
+        VBox nameSection = new VBox(5);
+        Label nameLabel = new Label("Nome do Ingrediente");
+        nameLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        nameLabel.setTextFill(Color.valueOf("#666666"));
+
         TextField nameField = new TextField();
-        nameField.setPromptText("Nome do ingrediente");
+        nameField.setPromptText("Digite o nome do ingrediente...");
+        nameField.setPrefHeight(40);
+        nameField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
+        nameSection.getChildren().addAll(nameLabel, nameField);
+
+        // Campo Stock
+        VBox stockSection = new VBox(5);
+        Label stockLabel = new Label("Quantidade em Stock");
+        stockLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        stockLabel.setTextFill(Color.valueOf("#666666"));
 
         TextField stockField = new TextField();
-        stockField.setPromptText("Quantidade em stock");
+        stockField.setPromptText("Digite a quantidade inicial...");
+        stockField.setPrefHeight(40);
+        stockField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
         stockField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*"))
                 stockField.setText(n.replaceAll("[^\\d]", ""));
         });
+        stockSection.getChildren().addAll(stockLabel, stockField);
+
+        // Campo Stock Mínimo
+        VBox stockMinSection = new VBox(5);
+        Label stockMinLabel = new Label("Stock Mínimo");
+        stockMinLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        stockMinLabel.setTextFill(Color.valueOf("#666666"));
 
         TextField stockMinField = new TextField();
-        stockMinField.setPromptText("Stock mínimo");
+        stockMinField.setPromptText("Digite o stock mínimo...");
+        stockMinField.setPrefHeight(40);
+        stockMinField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
         stockMinField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*"))
                 stockMinField.setText(n.replaceAll("[^\\d]", ""));
         });
+        stockMinSection.getChildren().addAll(stockMinLabel, stockMinField);
+
+        // Campo Unidade
+        VBox unidadeSection = new VBox(5);
+        Label unidadeLabel = new Label("Unidade de Medida");
+        unidadeLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        unidadeLabel.setTextFill(Color.valueOf("#666666"));
 
         ComboBox<String> unidadeCombo = new ComboBox<>();
         unidadeCombo.getItems().addAll(UNIDADE_NAMES.subList(1, UNIDADE_NAMES.size()));
-        unidadeCombo.setPromptText("Unidade de medida");
-        unidadeCombo.setPrefWidth(200);
+        unidadeCombo.setPromptText("Selecione a unidade...");
+        unidadeCombo.setPrefHeight(40);
+        unidadeCombo.setPrefWidth(Double.MAX_VALUE);
+        unidadeCombo.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;");
+        unidadeSection.getChildren().addAll(unidadeLabel, unidadeCombo);
 
-        // 4) Botões e validação
-        Button addBtn = new Button("Adicionar");
+        formSection.getChildren().addAll(nameSection, stockSection, stockMinSection, unidadeSection);
+
+        // 6) Botões com styling melhorado
+        HBox buttonBox = new HBox(12);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+
         Button cancelBtn = new Button("Cancelar");
-        addBtn.setDisable(true);
+        cancelBtn.setPrefWidth(100);
+        cancelBtn.setPrefHeight(40);
+        cancelBtn.setStyle(
+                "-fx-background-color: #6C757D;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
 
+        Button addBtn = new Button("Adicionar");
+        addBtn.setPrefWidth(100);
+        addBtn.setPrefHeight(40);
+        addBtn.setDisable(true);
+        addBtn.setStyle(
+                "-fx-background-color: #FB8C00;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
+
+        // Hover effects
+        cancelBtn.setOnMouseEntered(e -> {
+            cancelBtn.setStyle(cancelBtn.getStyle() + "-fx-background-color: #5A6268;");
+        });
+        cancelBtn.setOnMouseExited(e -> {
+            cancelBtn.setStyle(
+                    "-fx-background-color: #6C757D;" +
+                            "-fx-text-fill: white;" +
+                            "-fx-font-weight: bold;" +
+                            "-fx-background-radius: 6;" +
+                            "-fx-cursor: hand;");
+        });
+
+        addBtn.setOnMouseEntered(e -> {
+            if (!addBtn.isDisabled()) {
+                addBtn.setStyle(
+                        "-fx-background-color: #F57C00;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+        addBtn.setOnMouseExited(e -> {
+            if (!addBtn.isDisabled()) {
+                addBtn.setStyle(
+                        "-fx-background-color: #FB8C00;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+
+        buttonBox.getChildren().addAll(cancelBtn, addBtn);
+
+        // 7) Validação em tempo real com feedback visual
         ChangeListener<String> valida = (obs, o, n) -> {
-            boolean ok = !nameField.getText().trim().isEmpty()
-                    && !stockField.getText().trim().isEmpty()
-                    && !stockMinField.getText().trim().isEmpty()
-                    && unidadeCombo.getValue() != null;
-            addBtn.setDisable(!ok);
+            boolean nameOk = !nameField.getText().trim().isEmpty();
+            boolean stockOk = !stockField.getText().trim().isEmpty();
+            boolean stockMinOk = !stockMinField.getText().trim().isEmpty();
+            boolean unidadeOk = unidadeCombo.getValue() != null;
+
+            boolean allOk = nameOk && stockOk && stockMinOk && unidadeOk;
+            addBtn.setDisable(!allOk);
+
+            // Feedback visual nos campos
+            updateFieldStyle(nameField, nameOk || nameField.getText().trim().isEmpty());
+            updateFieldStyle(stockField, stockOk || stockField.getText().trim().isEmpty());
+            updateFieldStyle(stockMinField, stockMinOk || stockMinField.getText().trim().isEmpty());
         };
+
         nameField.textProperty().addListener(valida);
         stockField.textProperty().addListener(valida);
         stockMinField.textProperty().addListener(valida);
         unidadeCombo.valueProperty().addListener((o, ov, nv) -> valida.changed(null, null, null));
 
-        // 5) Layout no GridPane
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setVgap(10);
-        grid.setHgap(10);
-        grid.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        // 8) Montar o layout
+        popupContent.getChildren().addAll(headerBox, formSection, buttonBox);
 
-        grid.add(new Label("Nome:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Stock:"), 0, 1);
-        grid.add(stockField, 1, 1);
-        grid.add(new Label("Stock Mínimo:"), 0, 2);
-        grid.add(stockMinField, 1, 2);
-        grid.add(new Label("Unidade:"), 0, 3);
-        grid.add(unidadeCombo, 1, 3);
-        HBox buttons = new HBox(10, addBtn, cancelBtn);
-        grid.add(buttons, 1, 4);
+        // 9) Adiciona o conteúdo à popup
+        popup.getContent().add(popupContent);
 
-        // 6) Adiciona o grid à popup
-        popup.getContent().add(grid);
+        // 10) Mostra a popup centrada
+        popup.show(primary, centerX - 225, centerY - 200);
 
-        // 7) Mostra a popup centrada
-        // (ajusta 200x150 se mudares o tamanho do grid)
-        popup.show(primary, centerX - 200, centerY - 150);
-
-        // 8) Ações dos botões
+        // 11) Ações dos botões
         cancelBtn.setOnAction(e -> popup.hide());
         addBtn.setOnAction(e -> {
             String nome = nameField.getText().trim();
@@ -484,6 +607,24 @@ public class IngredientsView {
             createIngredient(nome, stock, stockMin, unidade);
             popup.hide();
         });
+
+        // 12) Focus no primeiro campo
+        Platform.runLater(() -> nameField.requestFocus());
+    }
+
+    // Método auxiliar para atualizar estilo dos campos
+    private void updateFieldStyle(TextField field, boolean isValid) {
+        String baseStyle = "-fx-font-size: 14px;" +
+                "-fx-border-width: 2;" +
+                "-fx-border-radius: 6;" +
+                "-fx-background-radius: 6;" +
+                "-fx-padding: 8 12;";
+
+        if (isValid) {
+            field.setStyle(baseStyle + "-fx-border-color: #E0E0E0;");
+        } else {
+            field.setStyle(baseStyle + "-fx-border-color: #F44336;");
+        }
     }
 
     /**
@@ -568,83 +709,239 @@ public class IngredientsView {
         Popup popup = new Popup();
         popup.setAutoHide(true); // fecha ao clicar fora
 
-        // 3) Campos do formulário já preenchidos
+        // 3) Conteúdo principal da popup
+        VBox popupContent = new VBox(20);
+        popupContent.setPadding(new Insets(25));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12,0,0,4);");
+        popupContent.setPrefWidth(450);
+        popupContent.setMaxWidth(450);
+
+        // 4) Header com ícone e título
+        HBox headerBox = new HBox(10);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+
+        FontIcon headerIcon = new FontIcon(MaterialDesign.MDI_PENCIL);
+        headerIcon.setIconColor(Color.valueOf("#FB8C00"));
+        headerIcon.setIconSize(24);
+
+        Label titleLabel = new Label("Editar Ingrediente");
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setTextFill(Color.valueOf("#333333"));
+
+        headerBox.getChildren().addAll(headerIcon, titleLabel);
+
+        // 5) Informação do ingrediente atual
+        VBox currentInfoCard = new VBox(8);
+        currentInfoCard.setPadding(new Insets(15));
+        currentInfoCard.setStyle(
+                "-fx-background-color: #F8F9FA;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;");
+
+        Label currentInfoLabel = new Label("Editando: " + ingredient.getNome());
+        currentInfoLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        currentInfoLabel.setTextFill(Color.valueOf("#333333"));
+
+        Label currentIdLabel = new Label("ID: " + ingredient.getId());
+        currentIdLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        currentIdLabel.setTextFill(Color.valueOf("#666666"));
+
+        currentInfoCard.getChildren().addAll(currentInfoLabel, currentIdLabel);
+
+        // 6) Seção de campos do formulário
+        VBox formSection = new VBox(15);
+
+        // Campo Nome
+        VBox nameSection = new VBox(5);
+        Label nameLabel = new Label("Nome do Ingrediente");
+        nameLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        nameLabel.setTextFill(Color.valueOf("#666666"));
+
         TextField nameField = new TextField(ingredient.getNome());
+        nameField.setPrefHeight(40);
+        nameField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
+        nameSection.getChildren().addAll(nameLabel, nameField);
+
+        // Campo Stock
+        VBox stockSection = new VBox(5);
+        Label stockLabel = new Label("Quantidade em Stock");
+        stockLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        stockLabel.setTextFill(Color.valueOf("#666666"));
+
         TextField stockField = new TextField(String.valueOf(ingredient.getStock()));
-        TextField stockMinField = new TextField(String.valueOf(ingredient.getStock_min()));
-
-        // Use ComboBox para unidades de medida
-        ComboBox<String> unidadeCombo = new ComboBox<>();
-        unidadeCombo.getItems().addAll(UNIDADE_NAMES.subList(1, UNIDADE_NAMES.size()));
-        unidadeCombo.setValue(getUnidadeName(ingredient.getUnidade_id()));
-        unidadeCombo.setPrefWidth(200);
-
-        // só números em stock e stock mínimo
+        stockField.setPrefHeight(40);
+        stockField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
         stockField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*"))
                 stockField.setText(n.replaceAll("[^\\d]", ""));
         });
+        stockSection.getChildren().addAll(stockLabel, stockField);
+
+        // Campo Stock Mínimo
+        VBox stockMinSection = new VBox(5);
+        Label stockMinLabel = new Label("Stock Mínimo");
+        stockMinLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        stockMinLabel.setTextFill(Color.valueOf("#666666"));
+
+        TextField stockMinField = new TextField(String.valueOf(ingredient.getStock_min()));
+        stockMinField.setPrefHeight(40);
+        stockMinField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
         stockMinField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*"))
                 stockMinField.setText(n.replaceAll("[^\\d]", ""));
         });
+        stockMinSection.getChildren().addAll(stockMinLabel, stockMinField);
 
-        // 4) Botões e validação
-        Button saveBtn = new Button("Salvar");
+        // Campo Unidade
+        VBox unidadeSection = new VBox(5);
+        Label unidadeLabel = new Label("Unidade de Medida");
+        unidadeLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        unidadeLabel.setTextFill(Color.valueOf("#666666"));
+
+        ComboBox<String> unidadeCombo = new ComboBox<>();
+        unidadeCombo.getItems().addAll(UNIDADE_NAMES.subList(1, UNIDADE_NAMES.size()));
+        unidadeCombo.setValue(getUnidadeName(ingredient.getUnidade_id()));
+        unidadeCombo.setPrefHeight(40);
+        unidadeCombo.setPrefWidth(Double.MAX_VALUE);
+        unidadeCombo.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;");
+        unidadeSection.getChildren().addAll(unidadeLabel, unidadeCombo);
+
+        formSection.getChildren().addAll(nameSection, stockSection, stockMinSection, unidadeSection);
+
+        // 7) Botões com styling melhorado
+        HBox buttonBox = new HBox(12);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+
         Button cancelBtn = new Button("Cancelar");
-        saveBtn.setDisable(true);
+        cancelBtn.setPrefWidth(100);
+        cancelBtn.setPrefHeight(40);
+        cancelBtn.setStyle(
+                "-fx-background-color: #6C757D;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
 
+        Button saveBtn = new Button("Salvar");
+        saveBtn.setPrefWidth(100);
+        saveBtn.setPrefHeight(40);
+        saveBtn.setDisable(true);
+        saveBtn.setStyle(
+                "-fx-background-color: #FB8C00;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
+
+        // Hover effects
+        cancelBtn.setOnMouseEntered(e -> {
+            cancelBtn.setStyle(cancelBtn.getStyle() + "-fx-background-color: #5A6268;");
+        });
+        cancelBtn.setOnMouseExited(e -> {
+            cancelBtn.setStyle(
+                    "-fx-background-color: #6C757D;" +
+                            "-fx-text-fill: white;" +
+                            "-fx-font-weight: bold;" +
+                            "-fx-background-radius: 6;" +
+                            "-fx-cursor: hand;");
+        });
+
+        saveBtn.setOnMouseEntered(e -> {
+            if (!saveBtn.isDisabled()) {
+                saveBtn.setStyle(
+                        "-fx-background-color: #F57C00;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+        saveBtn.setOnMouseExited(e -> {
+            if (!saveBtn.isDisabled()) {
+                saveBtn.setStyle(
+                        "-fx-background-color: #FB8C00;" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+
+        buttonBox.getChildren().addAll(cancelBtn, saveBtn);
+
+        // 8) Validação em tempo real com feedback visual
         ChangeListener<String> valida = (obs, o, n) -> {
-            boolean ok = !nameField.getText().trim().isEmpty()
-                    && !stockField.getText().trim().isEmpty()
-                    && !stockMinField.getText().trim().isEmpty()
-                    && unidadeCombo.getValue() != null;
-            saveBtn.setDisable(!ok);
+            boolean nameOk = !nameField.getText().trim().isEmpty();
+            boolean stockOk = !stockField.getText().trim().isEmpty();
+            boolean stockMinOk = !stockMinField.getText().trim().isEmpty();
+            boolean unidadeOk = unidadeCombo.getValue() != null;
+
+            boolean allOk = nameOk && stockOk && stockMinOk && unidadeOk;
+            saveBtn.setDisable(!allOk);
+
+            // Feedback visual nos campos
+            updateFieldStyle(nameField, nameOk || nameField.getText().trim().isEmpty());
+            updateFieldStyle(stockField, stockOk || stockField.getText().trim().isEmpty());
+            updateFieldStyle(stockMinField, stockMinOk || stockMinField.getText().trim().isEmpty());
         };
+
         nameField.textProperty().addListener(valida);
         stockField.textProperty().addListener(valida);
         stockMinField.textProperty().addListener(valida);
         unidadeCombo.valueProperty().addListener((o, ov, nv) -> valida.changed(null, null, null));
 
-        // 5) Layout no GridPane
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setVgap(10);
-        grid.setHgap(10);
-        grid.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        // 9) Montar o layout
+        popupContent.getChildren().addAll(headerBox, currentInfoCard, formSection, buttonBox);
 
-        grid.add(new Label("Nome:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Stock:"), 0, 1);
-        grid.add(stockField, 1, 1);
-        grid.add(new Label("Stock Mínimo:"), 0, 2);
-        grid.add(stockMinField, 1, 2);
-        grid.add(new Label("Unidade de Medida:"), 0, 3);
-        grid.add(unidadeCombo, 1, 3);
-        HBox buttons = new HBox(10, saveBtn, cancelBtn);
-        grid.add(buttons, 1, 4);
+        // 10) Adiciona o conteúdo à popup
+        popup.getContent().add(popupContent);
 
-        // 6) Adiciona o grid à popup
-        popup.getContent().add(grid);
+        // 11) Mostra a popup centrada
+        popup.show(primary, centerX - 225, centerY - 220);
 
-        // 7) Mostra a popup centrada (ajusta se necessário)
-        popup.show(primary, centerX - 200, centerY - 150);
-
-        // 8) Ações dos botões
+        // 12) Ações dos botões
         cancelBtn.setOnAction(e -> popup.hide());
         saveBtn.setOnAction(e -> {
             String nome = nameField.getText().trim();
             int stock = Integer.parseInt(stockField.getText());
             int stockMin = Integer.parseInt(stockMinField.getText());
             String unidade = unidadeCombo.getValue();
-            // chama o teu método de update
             updateIngredient(ingredient.getId(), nome, stock, stockMin, unidade);
             popup.hide();
         });
+
+        // 13) Focus no primeiro campo
+        Platform.runLater(() -> nameField.requestFocus());
     }
 
     /**
@@ -712,68 +1009,6 @@ public class IngredientsView {
                     });
                     return null;
                 });
-    }
-
-    /**
-     * Exibe diálogo de confirmação para excluir um ingrediente
-     * 
-     * @param ingredient Ingrediente a ser excluído
-     */
-    private void confirmDeleteIngredient(Ingredient ingredient) {
-        // Get primary stage for positioning
-        Stage primary = StageManager.getPrimaryStage();
-        double centerX = primary.getX() + primary.getWidth() / 2;
-        double centerY = primary.getY() + primary.getHeight() / 2;
-
-        // Create popup
-        Popup popup = new Popup();
-        popup.setAutoHide(true);
-
-        // Create content
-        VBox popupContent = new VBox(10);
-        popupContent.setPadding(new Insets(20));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-
-        // Warning icon
-        FontIcon warningIcon = new FontIcon(MaterialDesign.MDI_ALERT);
-        warningIcon.setIconSize(32);
-        warningIcon.setIconColor(Color.ORANGE);
-
-        // Title and message
-        Label titleLabel = new Label("Excluir Ingrediente");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-
-        Label messageLabel = new Label("Tem certeza que deseja excluir o ingrediente '" + ingredient.getNome() + "'?");
-        messageLabel.setWrapText(true);
-        messageLabel.setMaxWidth(300);
-
-        // Buttons
-        Button yesButton = new Button("Sim");
-        Button noButton = new Button("Não");
-
-        HBox buttonBox = new HBox(10, yesButton, noButton);
-        buttonBox.setPadding(new Insets(10, 0, 0, 0));
-        buttonBox.setAlignment(Pos.CENTER_RIGHT);
-
-        // Add all elements to the popup content
-        popupContent.getChildren().addAll(warningIcon, titleLabel, messageLabel, buttonBox);
-        popupContent.setAlignment(Pos.CENTER);
-
-        popup.getContent().add(popupContent);
-
-        // Position popup
-        popup.show(primary, centerX - 170, centerY - 100);
-
-        // Button actions
-        noButton.setOnAction(e -> popup.hide());
-        yesButton.setOnAction(e -> {
-            deleteIngredient(ingredient.getId());
-            popup.hide();
-        });
     }
 
     /**
@@ -848,70 +1083,235 @@ public class IngredientsView {
         Popup popup = new Popup();
         popup.setAutoHide(true); // fecha ao clicar fora
 
-        // 3) Campos do formulário
+        // 3) Conteúdo principal da popup
+        VBox popupContent = new VBox(15);
+        popupContent.setPadding(new Insets(25));
+        popupContent.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 1;" +
+                        "-fx-border-radius: 8;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12,0,0,4);");
+        popupContent.setPrefWidth(400);
+        popupContent.setMaxWidth(400);
+
+        // 4) Header com ícone e título
+        String actionText = isIncrease ? "Adicionar" : "Remover";
+        String titleText = isIncrease ? "Adicionar Stock" : "Remover Stock";
+
+        HBox headerBox = new HBox(10);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Ícone baseado na ação
+        FontIcon headerIcon = new FontIcon(
+                isIncrease ? MaterialDesign.MDI_PLUS_CIRCLE : MaterialDesign.MDI_MINUS_CIRCLE);
+        headerIcon.setIconColor(isIncrease ? Color.valueOf("#4CAF50") : Color.valueOf("#F44336"));
+        headerIcon.setIconSize(24);
+
+        Label titleLabel = new Label(titleText);
+        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
+        titleLabel.setTextFill(Color.valueOf("#333333"));
+
+        headerBox.getChildren().addAll(headerIcon, titleLabel);
+
+        // 5) Informações do ingrediente em um card
+        VBox ingredientInfoCard = new VBox(8);
+        ingredientInfoCard.setPadding(new Insets(15));
+        ingredientInfoCard.setStyle(
+                "-fx-background-color: #F8F9FA;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;");
+
+        Label ingredientLabel = new Label("Ingrediente");
+        ingredientLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+        ingredientLabel.setTextFill(Color.valueOf("#666666"));
+
+        Label ingredientNameLabel = new Label(ingredient.getNome());
+        ingredientNameLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+        ingredientNameLabel.setTextFill(Color.valueOf("#333333"));
+
+        // Stock atual com indicador visual
+        HBox stockInfoBox = new HBox(10);
+        stockInfoBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label stockLabel = new Label("Stock Atual:");
+        stockLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+        stockLabel.setTextFill(Color.valueOf("#666666"));
+
+        Label stockValueLabel = new Label(ingredient.getStock() + " " + getUnidadeName(ingredient.getUnidade_id()));
+        stockValueLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+        // Indicador visual do nível de stock
+        Region stockIndicator = new Region();
+        stockIndicator.setPrefWidth(12);
+        stockIndicator.setPrefHeight(12);
+
+        Color indicatorColor;
+        if (ingredient.getStock() <= ingredient.getStock_min() * 0.5) {
+            indicatorColor = Color.valueOf("#F44336"); // Crítico - Vermelho
+        } else if (ingredient.getStock() <= ingredient.getStock_min()) {
+            indicatorColor = Color.valueOf("#FF9800"); // Baixo - Laranja
+        } else {
+            indicatorColor = Color.valueOf("#4CAF50"); // Bom - Verde
+        }
+
+        stockIndicator.setBackground(new Background(new BackgroundFill(
+                indicatorColor, new CornerRadii(6), Insets.EMPTY)));
+        stockValueLabel.setTextFill(indicatorColor);
+
+        stockInfoBox.getChildren().addAll(stockIndicator, stockLabel, stockValueLabel);
+
+        ingredientInfoCard.getChildren().addAll(ingredientLabel, ingredientNameLabel, stockInfoBox);
+
+        // 6) Campo de quantidade com melhor styling
+        VBox quantitySection = new VBox(8);
+
+        Label quantityTitleLabel = new Label("Quantidade a " + (isIncrease ? "adicionar" : "remover") + ":");
+        quantityTitleLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        quantityTitleLabel.setTextFill(Color.valueOf("#333333"));
+
         TextField quantityField = new TextField();
-        quantityField.setPromptText("Quantidade");
+        quantityField.setPromptText("Digite a quantidade...");
+        quantityField.setPrefHeight(40);
+        quantityField.setStyle(
+                "-fx-font-size: 14px;" +
+                        "-fx-border-color: #E0E0E0;" +
+                        "-fx-border-width: 2;" +
+                        "-fx-border-radius: 6;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-padding: 8 12;");
+
+        // Validação apenas números
         quantityField.textProperty().addListener((obs, o, n) -> {
             if (!n.matches("\\d*"))
                 quantityField.setText(n.replaceAll("[^\\d]", ""));
         });
 
-        // 4) Botões e validação
-        String actionText = isIncrease ? "Adicionar" : "Remover";
-        String titleText = isIncrease ? "Adicionar Stock" : "Remover Stock";
+        quantitySection.getChildren().addAll(quantityTitleLabel, quantityField);
+
+        // 7) Botões com styling melhorado
+        HBox buttonBox = new HBox(12);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonBox.setPadding(new Insets(10, 0, 0, 0));
+
+        Button cancelBtn = new Button("Cancelar");
+        cancelBtn.setPrefWidth(100);
+        cancelBtn.setPrefHeight(40);
+        cancelBtn.setStyle(
+                "-fx-background-color: #6C757D;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
 
         Button actionBtn = new Button(actionText);
-        Button cancelBtn = new Button("Cancelar");
+        actionBtn.setPrefWidth(100);
+        actionBtn.setPrefHeight(40);
         actionBtn.setDisable(true);
 
+        // Estilo do botão de ação baseado no tipo
+        String actionButtonColor = isIncrease ? "#4CAF50" : "#F44336";
+        actionBtn.setStyle(
+                "-fx-background-color: " + actionButtonColor + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 6;" +
+                        "-fx-cursor: hand;");
+
+        // Hover effects
+        cancelBtn.setOnMouseEntered(e -> {
+            cancelBtn.setStyle(cancelBtn.getStyle() + "-fx-background-color: #5A6268;");
+        });
+        cancelBtn.setOnMouseExited(e -> {
+            cancelBtn.setStyle(
+                    "-fx-background-color: #6C757D;" +
+                            "-fx-text-fill: white;" +
+                            "-fx-font-weight: bold;" +
+                            "-fx-background-radius: 6;" +
+                            "-fx-cursor: hand;");
+        });
+
+        String hoverColor = isIncrease ? "#45A049" : "#E53935";
+        actionBtn.setOnMouseEntered(e -> {
+            if (!actionBtn.isDisabled()) {
+                actionBtn.setStyle(
+                        "-fx-background-color: " + hoverColor + ";" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+        actionBtn.setOnMouseExited(e -> {
+            if (!actionBtn.isDisabled()) {
+                actionBtn.setStyle(
+                        "-fx-background-color: " + actionButtonColor + ";" +
+                                "-fx-text-fill: white;" +
+                                "-fx-font-weight: bold;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-cursor: hand;");
+            }
+        });
+
+        buttonBox.getChildren().addAll(cancelBtn, actionBtn);
+
+        // 8) Validação em tempo real
         ChangeListener<String> valida = (obs, o, n) -> {
             try {
                 boolean ok = !quantityField.getText().trim().isEmpty() &&
                         Integer.parseInt(quantityField.getText()) > 0;
                 actionBtn.setDisable(!ok);
+
+                // Mudar cor da borda baseado na validação
+                if (ok) {
+                    quantityField.setStyle(
+                            "-fx-font-size: 14px;" +
+                                    "-fx-border-color: #FB8C00;" +
+                                    "-fx-border-width: 2;" +
+                                    "-fx-border-radius: 6;" +
+                                    "-fx-background-radius: 6;" +
+                                    "-fx-padding: 8 12;");
+                } else if (!quantityField.getText().trim().isEmpty()) {
+                    quantityField.setStyle(
+                            "-fx-font-size: 14px;" +
+                                    "-fx-border-color: #F44336;" +
+                                    "-fx-border-width: 2;" +
+                                    "-fx-border-radius: 6;" +
+                                    "-fx-background-radius: 6;" +
+                                    "-fx-padding: 8 12;");
+                } else {
+                    quantityField.setStyle(
+                            "-fx-font-size: 14px;" +
+                                    "-fx-border-color: #E0E0E0;" +
+                                    "-fx-border-width: 2;" +
+                                    "-fx-border-radius: 6;" +
+                                    "-fx-background-radius: 6;" +
+                                    "-fx-padding: 8 12;");
+                }
             } catch (NumberFormatException e) {
                 actionBtn.setDisable(true);
+                quantityField.setStyle(
+                        "-fx-font-size: 14px;" +
+                                "-fx-border-color: #F44336;" +
+                                "-fx-border-width: 2;" +
+                                "-fx-border-radius: 6;" +
+                                "-fx-background-radius: 6;" +
+                                "-fx-padding: 8 12;");
             }
         };
         quantityField.textProperty().addListener(valida);
 
-        // 5) Layout no GridPane
-        GridPane grid = new GridPane();
-        grid.setPadding(new Insets(20));
-        grid.setVgap(10);
-        grid.setHgap(10);
-        grid.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+        // 9) Montar o layout
+        popupContent.getChildren().addAll(headerBox, ingredientInfoCard, quantitySection, buttonBox);
 
-        // Title
-        Label titleLabel = new Label(titleText);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        grid.add(titleLabel, 0, 0, 2, 1);
+        // 10) Adiciona o conteúdo à popup
+        popup.getContent().add(popupContent);
 
-        // Ingredient info
-        Label ingredientLabel = new Label("Ingrediente: " + ingredient.getNome());
-        grid.add(ingredientLabel, 0, 1, 2, 1);
+        // 11) Mostra a popup centrada
+        popup.show(primary, centerX - 200, centerY - 180);
 
-        Label currentStockLabel = new Label(
-                "Stock atual: " + ingredient.getStock() + " " + getUnidadeName(ingredient.getUnidade_id()));
-        grid.add(currentStockLabel, 0, 2, 2, 1);
-
-        grid.add(new Label("Quantidade:"), 0, 3);
-        grid.add(quantityField, 1, 3);
-
-        HBox buttons = new HBox(10, actionBtn, cancelBtn);
-        grid.add(buttons, 1, 4);
-
-        // 6) Adiciona o grid à popup
-        popup.getContent().add(grid);
-
-        // 7) Mostra a popup centrada
-        popup.show(primary, centerX - 200, centerY - 150);
-
-        // 8) Ações dos botões
+        // 12) Ações dos botões
         cancelBtn.setOnAction(e -> popup.hide());
         actionBtn.setOnAction(e -> {
             int quantity = Integer.parseInt(quantityField.getText());
@@ -922,6 +1322,9 @@ public class IngredientsView {
             moveStock(ingredient.getId(), quantity);
             popup.hide();
         });
+
+        // 13) Focus no campo de quantidade
+        Platform.runLater(() -> quantityField.requestFocus());
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.EatEaseFrontend;
 
+import com.EatEaseFrontend.SideBarViews.PopUp;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -66,22 +67,16 @@ public class EmployeeView {
                         });
                     } else {
                         Platform.runLater(() -> {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Erro");
-                            alert.setHeaderText("Falha ao carregar funcionários");
-                            alert.setContentText("Status code: " + resp.statusCode());
-                            alert.showAndWait();
+                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar funcionários",
+                                    "Status code: " + resp.statusCode());
                         });
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Erro");
-                        alert.setHeaderText("Falha ao carregar funcionários");
-                        alert.setContentText("Erro: " + ex.getMessage());
-                        alert.showAndWait();
+                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar funcionários",
+                                "Erro: " + ex.getMessage());
                     });
                     return null;
                 });

@@ -14,24 +14,35 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Popup;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
 
+import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -283,6 +294,152 @@ public class ItemView {
         }
     }
 
+    private void uploadFotoFunc(Item item) {
+        // 1. Abre diálogo de ficheiro sem ownerWindow
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Escolhe a foto para o item " + item.getNome());
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        File file = fileChooser.showOpenDialog(null);
+        if (file == null)
+            return; // utilizador cancelou
+
+        try {
+            // 2. Prepara multipart body
+            String boundary = "----EatEaseBoundary" + System.currentTimeMillis();
+            Path path = file.toPath();
+            String mimeType = Files.probeContentType(path);
+            if (mimeType == null)
+                mimeType = "application/octet-stream";
+
+            List<byte[]> byteArrays = new ArrayList<>();
+            String partHeader = "--" + boundary + "\r\n" +
+                    "Content-Disposition: form-data; name=\"file\"; filename=\"" + file.getName() + "\"\r\n" +
+                    "Content-Type: " + mimeType + "\r\n\r\n";
+            byteArrays.add(partHeader.getBytes());
+            byteArrays.add(Files.readAllBytes(path));
+            byteArrays.add(("\r\n--" + boundary + "--\r\n").getBytes());
+
+            var bodyPublisher = HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
+
+            // 3. Cria e envia a request
+            String url = AppConfig.getApiEndpoint("/item/setFoto?itemId=" + item.getId());
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .POST(bodyPublisher)
+                    .build();
+
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> {
+                        Platform.runLater(() -> {
+                            if (resp.statusCode() == 200) {
+                                PopUp.showPopupDialog(
+                                        Alert.AlertType.INFORMATION,
+                                        "Sucesso", "Foto Carregada",
+                                        "A foto foi enviada com sucesso para o item “" + item.getNome() + "”.");
+                                show(); // recarrega a lista ou detalhe
+                            } else {
+                                PopUp.showPopupDialog(
+                                        Alert.AlertType.ERROR,
+                                        "Erro", "Falha no Upload",
+                                        "Status: " + resp.statusCode() +
+                                                "\nResposta: " + resp.body());
+                            }
+                        });
+                    })
+                    .exceptionally(ex -> {
+                        Platform.runLater(() -> {
+                            PopUp.showPopupDialog(
+                                    Alert.AlertType.ERROR,
+                                    "Erro", "Exceção no Upload",
+                                    ex.getMessage());
+                        });
+                        return null;
+                    });
+
+        } catch (Exception e) {
+            Platform.runLater(() -> {
+                PopUp.showPopupDialog(
+                        Alert.AlertType.ERROR,
+                        "Erro", "Não foi possível ler o ficheiro",
+                        e.getMessage());
+            });
+        }
+    }
+
+    private void seeUploadedFoto(Item item) {
+        String filename = item.getFoto();
+        String url = AppConfig.getApiEndpoint("/uploads/items/" + filename);
+
+        Platform.runLater(() -> {
+            // 1. Pega no primaryStage para posicionar o popup ao centro
+            Stage primary = StageManager.getPrimaryStage();
+
+            // 2. Calcular o centro exato da aplicação
+            double centerX = primary.getX() + (primary.getWidth() / 2);
+            double centerY = primary.getY() + (primary.getHeight() / 2);
+
+            // 3. Definir tamanhos responsivos baseados no tamanho da aplicação
+            double appWidth = primary.getWidth();
+            double appHeight = primary.getHeight();
+
+            // Popup será 70% da largura e 80% da altura da aplicação, com limites mínimos e
+            // máximos
+            double popupWidth = Math.max(400, Math.min(800, appWidth * 0.7));
+            double popupHeight = Math.max(300, Math.min(600, appHeight * 0.8));
+
+            // 4. Cria o Popup
+            Popup popup = new Popup();
+            popup.setAutoHide(true);
+
+            // 5. Preparar ImageView com tamanhos responsivos
+            Image img = new Image(url, true);
+            ImageView iv = new ImageView(img);
+            iv.setPreserveRatio(true);
+
+            // Tamanho da imagem será 90% do popup menos padding
+            double maxImageWidth = popupWidth * 0.9 - 40; // 40 para padding total
+            double maxImageHeight = popupHeight * 0.85 - 80; // 80 para título e botão
+
+            iv.setFitWidth(maxImageWidth);
+            iv.setFitHeight(maxImageHeight);
+
+            // 6. Container para a imagem com estilo
+            VBox imageContainer = new VBox(10);
+            imageContainer.setPadding(new Insets(20));
+            imageContainer.setStyle(
+                    "-fx-background-color: white;" +
+                            "-fx-border-color: #ccc;" +
+                            "-fx-border-width: 1;" +
+                            "-fx-border-radius: 5;" +
+                            "-fx-background-radius: 5;" +
+                            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
+            imageContainer.setAlignment(Pos.CENTER);
+            imageContainer.setPrefWidth(popupWidth);
+            imageContainer.setPrefHeight(popupHeight);
+
+            // 7. Título
+            Label titleLabel = new Label("Foto de " + item.getNome());
+            titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
+
+            // 8. Botão para fechar
+            Button closeButton = new Button("Fechar");
+            closeButton.getStyleClass().add("login-button");
+            closeButton.setOnAction(e -> popup.hide());
+
+            imageContainer.getChildren().addAll(titleLabel, iv, closeButton);
+            popup.getContent().add(imageContainer);
+
+            // 9. Calcular posição para centralizar o popup
+            double popupX = centerX - (popupWidth / 2);
+            double popupY = centerY - (popupHeight / 2);
+
+            // 10. Mostra o popup centrado
+            popup.show(primary, popupX, popupY);
+        });
+    }
+
     /**
      * Cria um card para um item
      * 
@@ -392,22 +549,42 @@ public class ItemView {
         deleteButton.getStyleClass().add("icon-button");
         deleteButton.setOnAction(e -> confirmDeleteItem(item));
 
-        // View ingredients button (only for composed items) - Keeping for showing
-        // extended details
-        Button viewIngredientsButton = new Button("");
-        viewIngredientsButton.setTooltip(new Tooltip("Ver Detalhes Completos dos Ingredientes"));
-        FontIcon ingredientsIcon = new FontIcon(MaterialDesign.MDI_FORMAT_LIST_BULLETED);
-        ingredientsIcon.setIconColor(Color.GREEN);
-        viewIngredientsButton.setGraphic(ingredientsIcon);
-        viewIngredientsButton.getStyleClass().add("icon-button");
-        viewIngredientsButton.setOnAction(e -> showItemIngredients(item));
-        viewIngredientsButton.setDisable(!item.isEComposto());
+        // upload foto button
+        Button uploadFotoButton = new Button("");
+        uploadFotoButton.setTooltip(new Tooltip("Carregar Foto do Item"));
+        FontIcon uploadIcon = new FontIcon(MaterialDesign.MDI_UPLOAD);
+        if (item.getFoto() != null && !item.getFoto().isEmpty()) {
+            uploadIcon.setIconColor(Color.GREEN);
+        } else {
+            uploadIcon.setIconColor(Color.GRAY);
+        }
+        uploadFotoButton.setGraphic(uploadIcon);
+        uploadFotoButton.getStyleClass().add("icon-button");
+        uploadFotoButton.setOnAction(e -> {
+            uploadFotoFunc(item);
+        });
 
-        buttonsBox.getChildren().addAll(viewIngredientsButton, editButton, deleteButton);
+        Button seeUploadedFotoButton = new Button("");
+        seeUploadedFotoButton.setTooltip(new Tooltip("Ver Foto do Item"));
+        FontIcon seeFotoIcon = new FontIcon(MaterialDesign.MDI_IMAGE);
+        seeFotoIcon.setIconColor(Color.BLUE);
+        seeUploadedFotoButton.setGraphic(seeFotoIcon);
+        seeUploadedFotoButton.getStyleClass().add("icon-button");
+        seeUploadedFotoButton.setOnAction(e -> {
+            seeUploadedFoto(item);
+        });
+
+        buttonsBox.getChildren().addAll(editButton, deleteButton, uploadFotoButton);
 
         // Add all elements to card
         card.getChildren().addAll(nameLabel, idLabel, tipoLabel, precoLabel, stockBox, mainIngredientsContainer,
                 buttonsBox);
+
+        if (item.getFoto() != null && !item.getFoto().isEmpty()) {
+            buttonsBox.getChildren().add(seeUploadedFotoButton);
+        } else {
+            seeUploadedFotoButton.setDisable(true);
+        }
 
         return card;
     }
@@ -484,6 +661,7 @@ public class ItemView {
         TableColumn<IngredientRowData, Void> actCol = new TableColumn<>("Ações");
         actCol.setCellFactory(col -> {
             return new TableCell<IngredientRowData, Void>() {
+
                 private final Button delBtn = new Button();
                 {
                     FontIcon icon = new FontIcon(MaterialDesign.MDI_DELETE);
@@ -1234,7 +1412,7 @@ public class ItemView {
      * @param item Item a ser excluído
      */
     private void confirmDeleteItem(Item item) {
-        showConfirmationPopup("Confirmar Exclusão", "Excluir Item",
+        PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION, "Confirmar Exclusão", "Excluir Item",
                 "Tem certeza que deseja excluir o item \"" + item.getNome() + "\"?",
                 () -> deleteItem(item.getId()));
     }
@@ -1698,67 +1876,6 @@ public class ItemView {
                     });
                     return null;
                 });
-    }
-
-    /**
-     * Creates and shows a confirmation popup dialog
-     * 
-     * @param title     The title of the dialog
-     * @param header    The header text of the dialog
-     * @param content   The content text of the dialog
-     * @param onConfirm The action to execute when user confirms
-     */
-    private void showConfirmationPopup(String title, String header, String content, Runnable onConfirm) {
-        Stage primaryStage = StageManager.getPrimaryStage();
-        double centerX = primaryStage.getX() + primaryStage.getWidth() / 2;
-        double centerY = primaryStage.getY() + primaryStage.getHeight() / 2;
-
-        Popup popup = new Popup();
-        popup.setAutoHide(true);
-
-        // Create content
-        VBox popupContent = new VBox(10);
-        popupContent.setPadding(new Insets(20));
-        popupContent.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-color: #ccc;" +
-                        "-fx-border-width: 1;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10,0,0,4);");
-
-        // Title
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 16));
-        titleLabel.setTextFill(Color.RED);
-
-        // Header
-        Label headerLabel = new Label(header);
-        headerLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
-        headerLabel.setWrapText(true);
-
-        // Content
-        Label contentLabel = new Label(content);
-        contentLabel.setWrapText(true);
-        contentLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
-
-        // Buttons
-        Button confirmButton = new Button("Confirmar");
-        confirmButton.setOnAction(e -> {
-            popup.hide();
-            onConfirm.run();
-        });
-
-        Button cancelButton = new Button("Cancelar");
-        cancelButton.setOnAction(e -> popup.hide());
-
-        HBox buttonBox = new HBox(10);
-        buttonBox.setAlignment(Pos.CENTER_RIGHT);
-        buttonBox.getChildren().addAll(confirmButton, cancelButton);
-
-        popupContent.getChildren().addAll(titleLabel, headerLabel, contentLabel, buttonBox);
-        popup.getContent().add(popupContent);
-
-        // Show popup centered
-        popup.show(primaryStage, centerX - 175, centerY - 100);
     }
 
     /**
