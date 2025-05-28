@@ -185,21 +185,34 @@ public class RelatoriosView {
 
         // Add listener to reload data when start date changes
         startDate.setOnAction(e -> {
-            // Ensure end date is always today
-            endDate.setValue(LocalDate.now());
+            // Validate that start date is not after end date
+            if (startDate.getValue() != null && endDate.getValue() != null &&
+                    startDate.getValue().isAfter(endDate.getValue())) {
+                endDate.setValue(startDate.getValue());
+            }
             // Reload data for the new date range
             loadInitialData();
         });
 
         startDateBox.getChildren().addAll(startDateLabel, startDate);
 
-        // End date (fixed to today, not editable)
+        // End date (now editable)
         VBox endDateBox = new VBox(5);
         endDateBox.setAlignment(Pos.CENTER_LEFT);
-        Label endDateLabel = new Label("Data Final (Hoje):");
+        Label endDateLabel = new Label("Data Final:");
         endDate = new DatePicker(LocalDate.now());
-        endDate.setDisable(true); // Make it non-editable
-        endDate.setStyle("-fx-opacity: 0.6;"); // Visual indication that it's disabled
+
+        // Add listener to reload data when end date changes
+        endDate.setOnAction(e -> {
+            // Validate that end date is not before start date
+            if (startDate.getValue() != null && endDate.getValue() != null &&
+                    endDate.getValue().isBefore(startDate.getValue())) {
+                startDate.setValue(endDate.getValue());
+            }
+            // Reload data for the new date range
+            loadInitialData();
+        });
+
         endDateBox.getChildren().addAll(endDateLabel, endDate);
 
         dateControls.getChildren().addAll(startDateBox, endDateBox);
@@ -345,9 +358,6 @@ public class RelatoriosView {
      * Loads initial data for reports
      */
     private void loadInitialData() {
-        // Ensure end date is always today
-        endDate.setValue(LocalDate.now());
-
         loadHistoricalSalesData();
         loadHistoricalOrdersData();
         loadAllItemsData();
@@ -856,6 +866,48 @@ public class RelatoriosView {
     }
 
     /**
+     * Filters data by the selected date range
+     */
+    private boolean isDateInRange(String dateStr) {
+        try {
+            LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            LocalDate start = startDate.getValue();
+            LocalDate end = endDate.getValue();
+
+            return !date.isBefore(start) && !date.isAfter(end);
+        } catch (Exception e) {
+            System.out.println("Error parsing date: " + dateStr);
+            return false;
+        }
+    }
+
+    /**
+     * Gets filtered sales data within the selected date range
+     */
+    private Map<String, JsonNode> getFilteredSalesData() {
+        Map<String, JsonNode> filteredData = new HashMap<>();
+        for (Map.Entry<String, JsonNode> entry : dailySalesData.entrySet()) {
+            if (isDateInRange(entry.getKey())) {
+                filteredData.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return filteredData;
+    }
+
+    /**
+     * Gets filtered orders data within the selected date range
+     */
+    private Map<String, JsonNode> getFilteredOrdersData() {
+        Map<String, JsonNode> filteredData = new HashMap<>();
+        for (Map.Entry<String, JsonNode> entry : dailyOrdersData.entrySet()) {
+            if (isDateInRange(entry.getKey())) {
+                filteredData.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return filteredData;
+    }
+
+    /**
      * Add comprehensive sales report section to PDF
      */
     private void addHistoricalSalesReport(Document document, PdfFont fontBold, PdfFont fontRegular,
@@ -869,7 +921,11 @@ public class RelatoriosView {
 
         document.add(new Paragraph("\n")); // Space
 
-        if (!dailySalesData.isEmpty()) {
+        // Get filtered data for the selected date range
+        Map<String, JsonNode> filteredSalesData = getFilteredSalesData();
+        Map<String, JsonNode> filteredOrdersData = getFilteredOrdersData();
+
+        if (!filteredSalesData.isEmpty()) {
             // Calculate totals
             double totalSales = 0.0;
             int totalOrders = 0;
@@ -890,12 +946,12 @@ public class RelatoriosView {
                     .setFont(fontBold).setFontColor(primaryColor)));
 
             // Sort dates and add data
-            List<String> sortedDates = new ArrayList<>(dailySalesData.keySet());
+            List<String> sortedDates = new ArrayList<>(filteredSalesData.keySet());
             Collections.sort(sortedDates);
 
             for (String dateStr : sortedDates) {
-                JsonNode salesData = dailySalesData.get(dateStr);
-                JsonNode ordersData = dailyOrdersData.get(dateStr);
+                JsonNode salesData = filteredSalesData.get(dateStr);
+                JsonNode ordersData = filteredOrdersData.get(dateStr);
 
                 double dayVendas = salesData.has("vendasDia") ? salesData.get("vendasDia").asDouble() : 0.0;
 

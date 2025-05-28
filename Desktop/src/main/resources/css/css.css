@@ -1,575 +1,559 @@
-/* Desktop Application Modern Styling */
+/* Desktop Application Modern Styling - 2025 Design System */
 
-/* Global styles and fonts */
+/* CSS Custom Properties for 2025 Design System */
 .root {
-    -fx-font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    -fx-font-size: 14px;
-    font-size: 14px;
-    -fx-background-color: white;
-    background-color: white;
+    /* Color Palette - Warm Orange Theme */
+    --primary-50: #FFF3E0;
+    --primary-100: #FFE0B2;
+    --primary-200: #FFCC80;
+    --primary-300: #FFB74D;
+    --primary-400: #FFA726;
+    --primary-500: #FF9800;
+    --primary-600: #FB8C00;
+    --primary-700: #F57C00;
+    --primary-800: #EF6C00;
+    --primary-900: #E65100;
+
+    /* Neutral Colors - Enhanced 2025 */
+    --neutral-0: #FFFFFF;
+    --neutral-50: #FAFBFC;
+    --neutral-100: #F4F6F8;
+    --neutral-200: #E5E7EB;
+    --neutral-300: #D1D5DB;
+    --neutral-400: #9CA3AF;
+    --neutral-500: #6B7280;
+    --neutral-600: #4B5563;
+    --neutral-700: #374151;
+    --neutral-800: #1F2937;
+    --neutral-900: #111827;
+
+    /* Advanced Shadow System */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --shadow-glow: 0 0 20px rgba(251, 140, 0, 0.4);
+
+    /* Glassmorphism Properties */
+    --glass-bg: rgba(255, 255, 255, 0.25);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --blur-sm: blur(8px);
+    --blur-md: blur(16px);
+    --blur-lg: blur(24px);
+
+    /* Typography Scale - 2025 Fluid */
+    --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+    --text-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+    --text-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+    --text-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+    --text-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+    --text-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+    --text-3xl: clamp(1.875rem, 1.6rem + 1.375vw, 2.5rem);
+    --text-4xl: clamp(2.25rem, 1.9rem + 1.75vw, 3.5rem);
+
+    /* Animation Easing - 2025 */
+    --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    --ease-in-out-back: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* ============ LOGIN PAGE STYLING ============ */
+/* Global styles and fonts - 2025 Modern Design */
+.root {
+    -fx-font-family: 'Inter Variable', 'SF Pro Display', 'Segoe UI Variable', 'Roboto Flex', system-ui, sans-serif;
+    font-family: 'Inter Variable', 'SF Pro Display', 'Segoe UI Variable', 'Roboto Flex', system-ui, sans-serif;
+    -fx-font-size: var(--text-base);
+    font-size: var(--text-base);
+    -fx-background-color: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 50%, var(--neutral-200) 100%);
+    background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 50%, var(--neutral-200) 100%);
+    -fx-font-smoothing-type: lcd;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "liga" 1, "kern" 1;
+    font-variation-settings: "wght" 400, "slnt" 0;
+}
+
+/* ============ LOGIN PAGE STYLING - 2025 ENHANCED ============ */
 
 .login-root {
-    -fx-background-color: white;
-    background-color: white;
+    -fx-background-color: linear-gradient(135deg, #FAFBFC 0%, #F4F6F8 50%, #E5E7EB 100%);
 }
 
-/* Left panel with gradient and brand */
+/* Left panel with advanced glassmorphism and mesh gradient */
 .left-panel {
     -fx-alignment: center;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0.0, 0.0, 3.0);
-    -fx-background-color: #FB8C00;
-    background-color: #FB8C00;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 32, 0.0, 0.0, 16.0);
+    -fx-background-color: linear-gradient(135deg, #FF8F00 0%, #FB8C00 15%, #F57C00 35%, #EF6C00 65%, #E65100 85%, #BF360C 100%);
+    -fx-background-size: 400% 400%;
+    -fx-animation: gradientFlow 12s ease-in-out infinite;
 }
 
+/* Enhanced pattern overlay with modern glassmorphism */
 .pattern-overlay {
-    -fx-background-color: rgba(255, 255, 255, 0.05);
-    background-color: rgba(255, 255, 255, 0.05);
-    -fx-opacity: 0.5;
-    opacity: 0.5;
+    -fx-background-color: radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+    -fx-opacity: 0.8;
 }
 
 .branding-container {
-    -fx-spacing: 20px;
+    -fx-spacing: 32px;
+    -fx-alignment: center;
 }
 
-/* Logo styling with enhanced effects */
+/* Logo styling with advanced glow and 3D effects */
 .logo-image {
-    -fx-effect: dropshadow(gaussian, rgba(255, 255, 255, 0.7), 15, 0.5, 0, 0);
-    -fx-opacity: 0.95;
-    opacity: 0.95;
+    -fx-effect: dropshadow(gaussian, rgba(255, 255, 255, 0.9), 40, 0.8, 0, 0),
+        innershadow(gaussian, rgba(255, 140, 0, 0.3), 20, 0.6, 0, 0);
+    -fx-opacity: 0.98;
+    -fx-scale-x: 1.0;
+    -fx-scale-y: 1.0;
 }
 
-/* App name with modern styling */
+.logo-image:hover {
+    -fx-scale-x: 1.08;
+    -fx-scale-y: 1.08;
+    -fx-effect: dropshadow(gaussian, rgba(255, 255, 255, 1.0), 50, 0.9, 0, 0),
+        innershadow(gaussian, rgba(255, 140, 0, 0.5), 25, 0.8, 0, 0);
+}
+
+/* App name with advanced typography and effects */
 .app-name {
-    -fx-font-size: 52px;
-    font-size: 52px;
-    -fx-font-weight: bold;
-    font-weight: bold;
-    -fx-fill: white;
-    fill: white;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 12, 0.5, 0, 2);
-    -fx-font-family: 'Segoe UI', 'Roboto', sans-serif;
-    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    -fx-font-size: 72px;
+    -fx-font-weight: 900;
+    -fx-fill: linear-gradient(45deg, #FFFFFF 0%, #FFFDE7 50%, #FFFFFF 100%);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 20, 0.8, 0, 4),
+        innershadow(gaussian, rgba(255, 179, 77, 0.4), 10, 0.0, 0, 0);
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
     -fx-smooth: true;
+    -fx-text-alignment: center;
+    -fx-font-style: normal;
 }
 
-/* Tagline with elegant styling */
+/* Enhanced tagline with modern effects */
 .tagline {
-    -fx-text-fill: rgba(255, 255, 255, 0.9);
-    color: rgba(255, 255, 255, 0.9);
-    -fx-font-size: 18px;
-    font-size: 18px;
+    -fx-text-fill: rgba(255, 255, 255, 0.95);
+    -fx-font-size: 20px;
     -fx-font-style: italic;
-    font-style: italic;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 5, 0.0, 0.0, 1.0);
-    -fx-padding: 5 0 0 0;
-    padding: 5px 0 0 0;
+    -fx-font-weight: 500;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 8, 0.0, 0.0, 2.0);
+    -fx-padding: 8 0 0 0;
 }
 
-/* Right panel wrapper */
+/* Right panel wrapper with advanced gradient */
 .right-panel-wrapper {
-    -fx-background-color: #f8f9fa;
-    background-color: #f8f9fa;
+    -fx-background-color: linear-gradient(135deg, #FAFBFC 0%, #F4F6F8 30%, #E5E7EB 70%, #D1D5DB 100%);
     -fx-alignment: center;
 }
 
-/* Right panel with card effect */
+/* Right panel with enhanced glassmorphism card effect */
 .right-panel {
-    -fx-background-color: white;
-    background-color: white;
-    -fx-background-radius: 10px;
-    -fx-border-radius: 10px;
-    border-radius: 10px;
-    -fx-padding: 30px;
-    padding: 30px;
-    -fx-spacing: 20px;
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-background-radius: 28px;
+    -fx-border-color: rgba(255, 255, 255, 0.4);
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 28px;
+    -fx-padding: 48px;
+    -fx-spacing: 28px;
     -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 32, 0.0, 0.0, 12.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.8), 2, 0.0, 0.0, 1.0);
 }
 
-/* Welcome text */
+/* Welcome text with enhanced styling */
 .welcome-text {
-    -fx-font-size: 22px;
-    font-size: 22px;
-    -fx-font-weight: bold;
-    font-weight: bold;
-    -fx-text-fill: #FB8C00;
-    color: #FB8C00;
-    -fx-opacity: 0.8;
-    opacity: 0.8;
+    -fx-font-size: 24px;
+    -fx-font-weight: 700;
+    -fx-text-fill: linear-gradient(45deg, #FB8C00, #F57C00);
+    -fx-opacity: 0.9;
 }
 
-/* Login title */
+/* Login title with modern typography */
 .login-title {
-    -fx-font-size: 28px;
-    font-size: 28px;
-    -fx-font-weight: bold;
-    font-weight: bold;
-    -fx-text-fill: #333333;
-    color: #333333;
-    -fx-padding: 0 0 20 0;
-    padding: 0 0 20px 0;
+    -fx-font-size: 32px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #1F2937;
+    -fx-padding: 0 0 24 0;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
-/* Input field labels */
+/* Input field labels with enhanced styling */
 .input-label {
-    -fx-font-size: 14px;
-    font-size: 14px;
-    -fx-font-weight: bold;
-    font-weight: bold;
-    -fx-text-fill: #555555;
-    color: #555555;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #374151;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
-/* Input fields with modern design */
+/* Input fields with modern floating design and advanced effects */
 .input-field {
-    -fx-pref-height: 45px;
-    -fx-font-size: 15px;
-    font-size: 15px;
-    -fx-background-color: #f8f9fa;
-    background-color: #f8f9fa;
-    -fx-border-color: #e0e0e0;
-    border-color: #e0e0e0;
-    -fx-border-width: 1px;
-    border-width: 1px;
-    -fx-border-radius: 6px;
-    border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-padding: 10 15;
-    padding: 10px 15px;
-    -fx-prompt-text-fill: #aab0b5;
+    -fx-pref-height: 56px;
+    -fx-font-size: 16px;
+    -fx-background-color: rgba(248, 250, 252, 0.95);
+    -fx-border-color: rgba(209, 213, 219, 0.6);
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 16px;
+    -fx-background-radius: 16px;
+    -fx-padding: 16 20;
+    -fx-prompt-text-fill: rgba(156, 163, 175, 0.8);
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.02), 1, 0.0, 0.0, 1.0);
 }
 
 .input-field:focused {
-    -fx-background-color: white;
-    background-color: white;
+    -fx-background-color: rgba(255, 255, 255, 0.98);
     -fx-border-color: #FB8C00;
-    border-color: #FB8C00;
-    -fx-border-width: 2px;
-    border-width: 2px;
-    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.3), 8, 0.0, 0.0, 0.0);
+    -fx-border-width: 2.5px;
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.25), 16, 0.0, 0.0, 0.0),
+        innershadow(gaussian, rgba(251, 140, 0, 0.1), 2, 0.0, 0.0, 1.0);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
 }
 
-/* Forgot password link */
+/* Forgot password link with modern styling */
 .forgot-password {
     -fx-text-fill: #FB8C00;
-    color: #FB8C00;
-    -fx-font-size: 13px;
-    font-size: 13px;
+    -fx-font-size: 14px;
     -fx-cursor: hand;
-    cursor: pointer;
     -fx-underline: false;
+    -fx-font-weight: 500;
 }
 
 .forgot-password:hover {
     -fx-underline: true;
-    text-decoration: underline;
+    -fx-text-fill: #F57C00;
 }
 
-/* Modern gradient login button */
+/* Modern gradient login button with advanced micro-interactions */
 .login-button {
-    -fx-background-color: linear-gradient(to right, #E65100, #FB8C00);
-    background-image: linear-gradient(to right, #E65100, #FB8C00);
-    background-color: #FB8C00;
+    -fx-background-color: linear-gradient(135deg, #FF6F00 0%, #FB8C00 25%, #F57C00 75%, #EF6C00 100%);
     -fx-text-fill: white;
-    color: white;
-    -fx-font-size: 16px;
-    font-size: 16px;
-    -fx-font-weight: bold;
-    font-weight: bold;
-    -fx-padding: 12px 25px;
-    padding: 12px 25px;
-    -fx-background-radius: 6px;
-    border-radius: 6px;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-padding: 18 36;
+    -fx-background-radius: 20px;
     -fx-cursor: hand;
-    cursor: pointer;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0.0, 0.0, 2.0);
-    -fx-min-width: 200px;
-    min-width: 200px;
-    -fx-min-height: 48px;
-    min-height: 48px;
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.4), 16, 0.0, 0.0, 6.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.3), 1, 0.0, 0.0, 1.0);
+    -fx-min-width: 260px;
+    -fx-min-height: 60px;
     -fx-alignment: center;
-    text-align: center;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
 .login-button:hover {
-    -fx-background-color: linear-gradient(to right, #F57C00, #FFB74D);
-    background-image: linear-gradient(to right, #F57C00, #FFB74D);
-    background-color: #F57C00;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 10, 0.0, 0.0, 3.0);
+    -fx-background-color: linear-gradient(135deg, #FF8F00 0%, #FFB74D 25%, #FFCC02 75%, #FF6F00 100%);
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.6), 24, 0.0, 0.0, 10.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.4), 2, 0.0, 0.0, 1.0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
 }
 
 .login-button:pressed {
-    -fx-background-color: linear-gradient(to right, #BF360C, #E65100);
-    background-image: linear-gradient(to right, #BF360C, #E65100);
-    background-color: #BF360C;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 5, 0.0, 0.0, 1.0);
-    -fx-translate-y: 1px;
+    -fx-background-color: linear-gradient(135deg, #E65100 0%, #F57C00 25%, #FF8F00 75%, #BF360C 100%);
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+    -fx-effect: dropshadow(gaussian, rgba(230, 81, 0, 0.8), 8, 0.0, 0.0, 2.0),
+        innershadow(gaussian, rgba(0, 0, 0, 0.1), 3, 0.0, 0.0, 2.0);
 }
 
-/* ======= Abaixo mantendo o resto do CSS original ======= */
+/* ======= ADMIN DASHBOARD - 2025 ENHANCED STYLING ======= */
 
-/* Admin Dashboard Styling */
-
-/* Top Bar */
+/* Top Bar with advanced gradient and glassmorphism */
 .top-bar {
-    -fx-background-color: linear-gradient(to right, #E65100, #FB8C00);
-    -fx-padding: 8px 15px;
-    -fx-spacing: 10px;
+    -fx-background-color: linear-gradient(135deg, #E65100 0%, #FB8C00 25%, #FF8F00 75%, #FFB74D 100%);
+    -fx-padding: 16 24;
+    -fx-spacing: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 20, 0.0, 0.0, 8.0);
 }
 
 .top-bar .label {
     -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 2, 0.0, 0.0, 1.0);
 }
 
 .brand-label {
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
+    -fx-font-size: 22px;
+    -fx-font-weight: 900;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
 .user-label {
-    -fx-font-size: 14px;
-    -fx-padding: 0 15 0 0;
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-padding: 0 20 0 0;
 }
 
 .logout-button {
-    -fx-background-color: #f44336;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-background-radius: 4px;
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-text-fill: #E65100;
+    -fx-font-weight: 700;
+    -fx-background-radius: 12px;
+    -fx-padding: 10 20;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0.0, 0.0, 2.0);
 }
 
 .logout-button:hover {
-    -fx-background-color: #e53935;
+    -fx-background-color: #FFF3E0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 12, 0.0, 0.0, 4.0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
 }
 
-/* Sidebar */
+/* Enhanced Sidebar with modern aesthetics */
 .sidebar {
-    -fx-background-color: #263238;
-    -fx-padding: 10px;
+    -fx-background-color: linear-gradient(180deg, #1F2937 0%, #111827 50%, #0F172A 100%);
+    -fx-padding: 20 16;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.4), 8, 0.0, 2.0, 0.0);
 }
 
 .sidebar-header {
-    -fx-text-fill: #90a4ae;
-    -fx-font-size: 12px;
-    -fx-font-weight: bold;
-    -fx-padding: 15 0 5 5;
+    -fx-text-fill: #FFB74D;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-padding: 20 0 16 8;
+    -fx-border-color: transparent transparent #374151 transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-border-insets: 0 0 12 0;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
 .sidebar-menu-button {
     -fx-background-color: transparent;
-    -fx-text-fill: white;
-    -fx-font-size: 14px;
+    -fx-text-fill: #E5E7EB;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
     -fx-alignment: CENTER-LEFT;
-    -fx-padding: 10 15;
+    -fx-padding: 16 20;
     -fx-cursor: hand;
+    -fx-background-radius: 12px;
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
 }
 
 .sidebar-menu-button:hover {
-    -fx-background-color: #455a64;
+    -fx-background-color: linear-gradient(135deg, #FB8C00 0%, #F57C00 100%);
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.4), 8, 0.0, 0.0, 2.0);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
 }
 
 .sidebar-menu-button:pressed {
-    -fx-background-color: #607d8b;
+    -fx-background-color: #E65100;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
 }
 
-/* Content area */
+/* Enhanced Content area with modern background */
 .content-area {
-    -fx-background-color: #f5f5f5;
-    -fx-padding: 20px;
+    -fx-background-color: linear-gradient(135deg, #FAFBFC 0%, #F4F6F8 50%, #E5E7EB 100%);
+    -fx-padding: 32px;
 }
 
 .welcome-text {
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
-    -fx-fill: #37474f;
+    -fx-font-size: 28px;
+    -fx-font-weight: 800;
+    -fx-fill: linear-gradient(45deg, #1F2937, #374151);
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
-/* Card styling for dashboard widgets */
+/* Enhanced Card styling with glassmorphism */
 .dashboard-card {
-    -fx-background-color: white;
-    -fx-background-radius: 5px;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 1);
-    -fx-padding: 15px;
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-background-radius: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 24, 0.0, 0.0, 8.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.5), 1, 0.0, 0.0, 1.0);
+    -fx-padding: 24px;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 1px;
+    -fx-border-radius: 20px;
 }
 
 .card-title {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #455a64;
-}
-
-/* Table styling */
-.table-view {
-    -fx-background-color: transparent;
-}
-
-.table-view .column-header {
-    -fx-background-color: #2a5298;
-    -fx-text-fill: white;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-}
-
-.table-row-cell {
-    -fx-background-color: white;
-    -fx-border-color: #f0f0f0;
-    -fx-border-width: 0 0 1 0;
-}
-
-.table-row-cell:odd {
-    -fx-background-color: #f9f9f9;
-}
-
-.table-row-cell:selected {
-    -fx-background-color: #bbdefb;
-}
-
-/* Icon button styling */
-.icon-button {
-    -fx-background-color: transparent;
-    -fx-padding: 5px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-}
-
-.icon-button:hover {
-    -fx-background-color: #f0f0f0;
-}
-
-.icon-button:pressed {
-    -fx-background-color: #dadada;
-}
-
-/* Mesa view styles */
-.green-button {
-    -fx-background-color: #4CAF50;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-padding: 8 15;
-    -fx-background-radius: 4px;
-    -fx-cursor: hand;
-}
-
-.green-button:hover {
-    -fx-background-color: #45a049;
-}
-
-.green-button:pressed {
-    -fx-background-color: #388e3c;
-}
-
-.green-button:disabled {
-    -fx-background-color: #c8e6c9;
-    -fx-text-fill: #a5d6a7;
-}
-
-.red-button {
-    -fx-background-color: #F44336;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-padding: 8 15;
-    -fx-background-radius: 4px;
-    -fx-cursor: hand;
-}
-
-.red-button:hover {
-    -fx-background-color: #e53935;
-}
-
-.red-button:pressed {
-    -fx-background-color: #d32f2f;
-}
-
-.red-button:disabled {
-    -fx-background-color: #ffcdd2;
-    -fx-text-fill: #ef9a9a;
-}
-
-/* Admin Dashboard Styling */
-
-/* Top Bar */
-.top-bar {
-    -fx-background-color: linear-gradient(to right, #1e3c72, #2a5298);
-    -fx-padding: 8px 15px;
-    -fx-spacing: 10px;
-}
-
-.top-bar .label {
-    -fx-text-fill: white;
-}
-
-.brand-label {
     -fx-font-size: 18px;
-    -fx-font-weight: bold;
+    -fx-font-weight: 700;
+    -fx-text-fill: #1F2937;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
 }
 
-.user-label {
-    -fx-font-size: 14px;
-    -fx-padding: 0 15 0 0;
-}
+/* ======= MODERN TABLE STYLING - 2025 ENHANCED ======= */
 
-.logout-button {
-    -fx-background-color: #f44336;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-background-radius: 4px;
-}
-
-.logout-button:hover {
-    -fx-background-color: #e53935;
-}
-
-/* Sidebar */
-.sidebar {
-    -fx-background-color: #263238;
-    -fx-padding: 10px;
-}
-
-.sidebar-header {
-    -fx-text-fill: #90a4ae;
-    -fx-font-size: 12px;
-    -fx-font-weight: bold;
-    -fx-padding: 15 0 5 5;
-}
-
-.sidebar-menu-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: white;
-    -fx-font-size: 14px;
-    -fx-alignment: CENTER-LEFT;
-    -fx-padding: 10 15;
-    -fx-cursor: hand;
-}
-
-.sidebar-menu-button:hover {
-    -fx-background-color: #455a64;
-}
-
-.sidebar-menu-button:pressed {
-    -fx-background-color: #607d8b;
-}
-
-/* Content area */
-.content-area {
-    -fx-background-color: #f5f5f5;
-    -fx-padding: 20px;
-}
-
-.welcome-text {
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
-    -fx-fill: #37474f;
-}
-
-/* Card styling for dashboard widgets */
-.dashboard-card {
-    -fx-background-color: white;
-    -fx-background-radius: 5px;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 1);
-    -fx-padding: 15px;
-}
-
-.card-title {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #455a64;
-}
-
-/* Table styling */
 .table-view {
     -fx-background-color: transparent;
+    -fx-border-color: rgba(251, 140, 0, 0.1);
+    -fx-border-width: 1px;
+    -fx-border-radius: 16px;
+    -fx-background-radius: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 16, 0.0, 0.0, 4.0);
 }
 
 .table-view .column-header {
-    -fx-background-color: #2a5298;
-    -fx-text-fill: white;
+    -fx-background-color: linear-gradient(135deg, #E65100 0%, #FB8C00 50%, #F57C00 100%);
+    -fx-padding: 16 20;
+    -fx-border-color: transparent;
 }
 
 .table-view .column-header .label {
     -fx-text-fill: white;
-    -fx-font-weight: bold;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-font-family: 'SF Pro Display', 'Inter Variable', system-ui, sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 1, 0.0, 0.0, 1.0);
 }
 
 .table-row-cell {
-    -fx-background-color: white;
-    -fx-border-color: #f0f0f0;
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-border-color: rgba(229, 231, 235, 0.5);
     -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 20;
+    -fx-font-size: 14px;
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
 }
 
 .table-row-cell:odd {
-    -fx-background-color: #f9f9f9;
+    -fx-background-color: rgba(249, 250, 251, 0.95);
 }
 
 .table-row-cell:selected {
-    -fx-background-color: #bbdefb;
+    -fx-background-color: rgba(251, 140, 0, 0.15);
+    -fx-text-fill: #1F2937;
+    -fx-effect: innershadow(gaussian, rgba(251, 140, 0, 0.3), 2, 0.0, 0.0, 0.0);
 }
 
-/* Icon button styling */
+.table-row-cell:hover {
+    -fx-background-color: rgba(251, 140, 0, 0.08);
+    -fx-scale-x: 1.005;
+    -fx-scale-y: 1.005;
+}
+
+/* ======= ENHANCED ICON BUTTONS - 2025 STYLING ======= */
+
 .icon-button {
-    -fx-background-color: transparent;
-    -fx-padding: 5px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-padding: 12px;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(251, 140, 0, 0.2);
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 8, 0.0, 0.0, 2.0);
 }
 
 .icon-button:hover {
-    -fx-background-color: #f0f0f0;
+    -fx-background-color: rgba(251, 140, 0, 0.1);
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.3), 12, 0.0, 0.0, 4.0);
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
 }
 
 .icon-button:pressed {
-    -fx-background-color: #dadada;
+    -fx-background-color: rgba(230, 81, 0, 0.2);
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+    -fx-effect: dropshadow(gaussian, rgba(230, 81, 0, 0.4), 6, 0.0, 0.0, 1.0);
 }
 
-/* Mesa view styles */
+/* ======= MODERN ACTION BUTTONS - 2025 ENHANCED ======= */
+
 .green-button {
-    -fx-background-color: #4CAF50;
+    -fx-background-color: linear-gradient(135deg, #10B981 0%, #059669 100%);
     -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-font-size: 10px;
-    -fx-padding: 6 12;
-    -fx-background-radius: 4px;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 12 24;
+    -fx-background-radius: 12px;
     -fx-cursor: hand;
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.4), 12, 0.0, 0.0, 4.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.3), 1, 0.0, 0.0, 1.0);
 }
 
 .green-button:hover {
-    -fx-background-color: #45a049;
+    -fx-background-color: linear-gradient(135deg, #059669 0%, #047857 100%);
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.6), 16, 0.0, 0.0, 6.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.4), 2, 0.0, 0.0, 1.0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
 }
 
 .green-button:pressed {
-    -fx-background-color: #388e3c;
+    -fx-background-color: linear-gradient(135deg, #047857 0%, #065F46 100%);
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+    -fx-effect: dropshadow(gaussian, rgba(4, 120, 87, 0.8), 6, 0.0, 0.0, 2.0);
 }
 
 .green-button:disabled {
-    -fx-background-color: #c8e6c9;
-    -fx-text-fill: #a5d6a7;
+    -fx-background-color: rgba(200, 230, 201, 0.7);
+    -fx-text-fill: rgba(165, 214, 167, 0.8);
+    -fx-effect: none;
 }
 
 .red-button {
-    -fx-background-color: #F44336;
+    -fx-background-color: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
     -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-font-size: 10px;
-    -fx-padding: 6 12;
-    -fx-background-radius: 4px;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-padding: 12 24;
+    -fx-background-radius: 12px;
     -fx-cursor: hand;
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(239, 68, 68, 0.4), 12, 0.0, 0.0, 4.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.3), 1, 0.0, 0.0, 1.0);
 }
 
 .red-button:hover {
-    -fx-background-color: #e53935;
+    -fx-background-color: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    -fx-effect: dropshadow(gaussian, rgba(239, 68, 68, 0.6), 16, 0.0, 0.0, 6.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.4), 2, 0.0, 0.0, 1.0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
 }
 
 .red-button:pressed {
-    -fx-background-color: #d32f2f;
+    -fx-background-color: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%);
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+    -fx-effect: dropshadow(gaussian, rgba(185, 28, 28, 0.8), 6, 0.0, 0.0, 2.0);
 }
 
 .red-button:disabled {
-    -fx-background-color: #ffcdd2;
-    -fx-text-fill: #ef9a9a;
+    -fx-background-color: rgba(255, 205, 210, 0.7);
+    -fx-text-fill: rgba(239, 154, 154, 0.8);
+    -fx-effect: none;
+}
+
+/* ======= ENHANCED ACTION BUTTON - 2025 STYLING ======= */
+
+.action-button {
+    -fx-background-color: linear-gradient(135deg, #FB8C00 0%, #F57C00 50%, #EF6C00 100%);
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-font-size: 15px;
+    -fx-padding: 14 28;
+    -fx-background-radius: 14px;
+    -fx-cursor: hand;
+    -fx-font-family: 'SF Pro Text', 'Inter', system-ui, sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.4), 12, 0.0, 0.0, 4.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.3), 1, 0.0, 0.0, 1.0);
+}
+
+.action-button:hover {
+    -fx-background-color: linear-gradient(135deg, #F57C00 0%, #EF6C00 50%, #E65100 100%);
+    -fx-effect: dropshadow(gaussian, rgba(251, 140, 0, 0.6), 16, 0.0, 0.0, 6.0),
+        innershadow(gaussian, rgba(255, 255, 255, 0.4), 2, 0.0, 0.0, 1.0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+.action-button:pressed {
+    -fx-background-color: linear-gradient(135deg, #E65100 0%, #BF360C 100%);
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+    -fx-effect: dropshadow(gaussian, rgba(230, 81, 0, 0.8), 6, 0.0, 0.0, 2.0);
+}
+
+.action-button:disabled {
+    -fx-background-color: rgba(255, 224, 178, 0.7);
+    -fx-text-fill: rgba(255, 204, 128, 0.8);
+    -fx-effect: none;
 }
