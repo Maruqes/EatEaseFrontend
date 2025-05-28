@@ -48,7 +48,14 @@ public class DashboardView {
     // Parâmetros para dados de itens mais vendidos
     private static final int DEFAULT_DAYS = 30;
     private static final int TOP_ITEMS_COUNT = 3;
+    private static final int MAX_RETRY_ATTEMPTS = 3;
     private GridPane itemsGrid;
+
+    // Controle de tentativas de carregamento para cada posição
+    private final int[] retryAttempts = new int[TOP_ITEMS_COUNT];
+
+    // Array para manter referência aos cards atuais em cada posição
+    private final VBox[] currentItemCards = new VBox[TOP_ITEMS_COUNT];
 
     // Componentes do gráfico de vendas
     private LineChart<Number, Number> salesChart;
@@ -382,6 +389,7 @@ public class DashboardView {
         for (int i = 0; i < TOP_ITEMS_COUNT; i++) {
             VBox placeholder = createTopItemPlaceholder(i + 1);
             itemsGrid.add(placeholder, i, 0);
+            currentItemCards[i] = placeholder; // Guardar referência
         }
     }
 
@@ -446,6 +454,24 @@ public class DashboardView {
 
         medalPane.getChildren().addAll(medal, posText);
         return medalPane;
+    }
+
+    /**
+     * Substitui o card em uma posição específica de forma segura
+     */
+    private void replaceCardAtPosition(int position, VBox newCard) {
+        if (position >= 0 && position < TOP_ITEMS_COUNT) {
+            // Remove o card antigo se existir
+            if (currentItemCards[position] != null) {
+                itemsGrid.getChildren().remove(currentItemCards[position]);
+            }
+
+            // Adiciona o novo card
+            itemsGrid.add(newCard, position, 0);
+            currentItemCards[position] = newCard;
+
+            System.out.println("DEBUG: Card substituído na posição " + position);
+        }
     }
 
     /**
@@ -658,7 +684,20 @@ public class DashboardView {
      * Carrega os itens mais vendidos da API
      */
     private void loadTopItems() {
-        // Limpar itens anteriores
+        // Reiniciar contadores de tentativas
+        for (int i = 0; i < TOP_ITEMS_COUNT; i++) {
+            retryAttempts[i] = 0;
+        }
+
+        // Resetar placeholders para todos os itens
+        Platform.runLater(() -> {
+            for (int i = 0; i < TOP_ITEMS_COUNT; i++) {
+                VBox placeholder = createTopItemPlaceholder(i + 1);
+                replaceCardAtPosition(i, placeholder);
+            }
+        });
+
+        // Carregar itens
         for (int position = 0; position < TOP_ITEMS_COUNT; position++) {
             final int pos = position;
             loadBestItemAtPosition(pos);
@@ -666,9 +705,11 @@ public class DashboardView {
     }
 
     /**
-     * Carrega um item específico por posição no ranking
+     * Carrega um item específico por posição no ranking com sistema de retry
      */
     private void loadBestItemAtPosition(int position) {
+        retryAttempts[position]++;
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig
                         .getApiEndpoint("/dashboard/bestItem?lastDays=" + DEFAULT_DAYS + "&position=" + position)))
@@ -684,21 +725,26 @@ public class DashboardView {
                                     com.EatEaseFrontend.Item.class);
                             loadItemProfit(item, position);
                         } catch (Exception e) {
-                            System.err.println("Erro ao processar item mais vendido: " + e.getMessage());
-                            displayItemError(position);
+                            System.err.println("Erro ao processar item mais vendido (tentativa "
+                                    + retryAttempts[position] + "): " + e.getMessage());
+                            handleItemLoadFailure(position);
                         }
                     } else {
-                        displayItemError(position);
+                        System.err.println("Erro HTTP ao carregar item posição " + position + " (tentativa "
+                                + retryAttempts[position] + "): Status " + response.statusCode());
+                        handleItemLoadFailure(position);
                     }
                 })
                 .exceptionally(ex -> {
-                    displayItemError(position);
+                    System.err.println("Exceção ao carregar item posição " + position + " (tentativa "
+                            + retryAttempts[position] + "): " + ex.getMessage());
+                    handleItemLoadFailure(position);
                     return null;
                 });
     }
 
     /**
-     * Carrega o lucro para um item específico
+     * Carrega o lucro para um item específico com sistema de retry
      */
     private void loadItemProfit(com.EatEaseFrontend.Item item, int position) {
         HttpRequest request = HttpRequest.newBuilder()
@@ -719,17 +765,120 @@ public class DashboardView {
                                 updateTopItemCard(item, quantity, profit, position);
                             });
                         } catch (Exception e) {
-                            System.err.println("Erro ao processar lucro do item: " + e.getMessage());
-                            displayItemError(position);
+                            System.err.println("Erro ao processar lucro do item (tentativa " + retryAttempts[position]
+                                    + "): " + e.getMessage());
+                            handleProfitLoadFailure(item, position);
                         }
                     } else {
-                        displayItemError(position);
+                        System.err.println("Erro HTTP ao carregar lucro do item posição " + position + " (tentativa "
+                                + retryAttempts[position] + "): Status " + response.statusCode());
+                        handleProfitLoadFailure(item, position);
                     }
                 })
                 .exceptionally(ex -> {
-                    displayItemError(position);
+                    System.err.println("Exceção ao carregar lucro do item posição " + position + " (tentativa "
+                            + retryAttempts[position] + "): " + ex.getMessage());
+                    handleProfitLoadFailure(item, position);
                     return null;
                 });
+    }
+
+    /**
+     * Gerencia falhas no carregamento de itens com sistema de retry
+     */
+    private void handleItemLoadFailure(int position) {
+        System.out.println("DEBUG: Falha no carregamento do item posição " + position + ", tentativa "
+                + retryAttempts[position] + "/" + MAX_RETRY_ATTEMPTS);
+
+        if (retryAttempts[position] < MAX_RETRY_ATTEMPTS) {
+            // Tentar novamente após um pequeno delay
+            Platform.runLater(() -> {
+                // Mostrar indicador de retry no card
+                showRetryIndicator(position);
+
+                // Esperar um pouco antes de tentar novamente (progressivamente mais tempo)
+                new Thread(() -> {
+                    try {
+                        long delay = 1000 * retryAttempts[position]; // 1s, 2s, 3s
+                        System.out.println(
+                                "DEBUG: Aguardando " + delay + "ms antes de tentar novamente posição " + position);
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    System.out.println("DEBUG: Tentando novamente carregar item posição " + position);
+                    loadBestItemAtPosition(position);
+                }).start();
+            });
+        } else {
+            // Máximo de tentativas atingido, mostrar erro
+            System.out.println("DEBUG: Máximo de tentativas atingido para posição " + position + ", mostrando erro");
+            displayItemError(position);
+        }
+    }
+
+    /**
+     * Gerencia falhas no carregamento de lucro com sistema de retry
+     */
+    private void handleProfitLoadFailure(com.EatEaseFrontend.Item item, int position) {
+        System.out.println("DEBUG: Falha no carregamento do lucro do item " + item.getNome() + " posição " + position
+                + ", tentativa " + retryAttempts[position] + "/" + MAX_RETRY_ATTEMPTS);
+
+        if (retryAttempts[position] < MAX_RETRY_ATTEMPTS) {
+            // Tentar novamente após um pequeno delay
+            Platform.runLater(() -> {
+                new Thread(() -> {
+                    try {
+                        long delay = 1000 * retryAttempts[position]; // 1s, 2s, 3s
+                        System.out.println("DEBUG: Aguardando " + delay
+                                + "ms antes de tentar carregar lucro novamente para posição " + position);
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    System.out.println("DEBUG: Tentando novamente carregar lucro do item posição " + position);
+                    loadItemProfit(item, position);
+                }).start();
+            });
+        } else {
+            // Máximo de tentativas atingido, mostrar erro
+            System.out.println(
+                    "DEBUG: Máximo de tentativas atingido para lucro posição " + position + ", mostrando erro");
+            displayItemError(position);
+        }
+    }
+
+    /**
+     * Mostra um indicador visual de que está tentando novamente
+     */
+    private void showRetryIndicator(int position) {
+        if (position < TOP_ITEMS_COUNT) {
+            VBox card = new VBox(10);
+            card.getStyleClass().add("dashboard-card");
+            card.setAlignment(Pos.CENTER);
+            card.setPrefWidth(250);
+            card.setPrefHeight(200);
+            card.setPadding(new Insets(15));
+
+            // Posição como medalha
+            StackPane medalPane = createPositionMedal(position + 1);
+
+            Label retryLabel = new Label("Tentando novamente...");
+            retryLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+            retryLabel.setTextFill(Color.valueOf("#FF9800"));
+
+            Label attemptLabel = new Label("Tentativa " + (retryAttempts[position] + 1) + "/" + MAX_RETRY_ATTEMPTS);
+            attemptLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+            attemptLabel.setTextFill(Color.valueOf("#666666"));
+
+            ProgressIndicator progress = new ProgressIndicator();
+            progress.setPrefSize(30, 30);
+
+            card.getChildren().addAll(medalPane, retryLabel, attemptLabel, progress);
+
+            // Substitui o card atual
+            replaceCardAtPosition(position, card);
+        }
     }
 
     /**
@@ -739,10 +888,7 @@ public class DashboardView {
         VBox card = createTopItemCard(item, quantity, profit, position + 1);
 
         // Substitui o placeholder pelo card real
-        if (position < TOP_ITEMS_COUNT) {
-            itemsGrid.getChildren().remove(position);
-            itemsGrid.add(card, position, 0);
-        }
+        replaceCardAtPosition(position, card);
     }
 
     /**
@@ -822,7 +968,7 @@ public class DashboardView {
     }
 
     /**
-     * Exibe um erro no card de item
+     * Exibe um erro no card de item com informações sobre tentativas
      */
     private void displayItemError(int position) {
         Platform.runLater(() -> {
@@ -833,23 +979,34 @@ public class DashboardView {
                 card.setPrefWidth(250);
                 card.setPrefHeight(200);
 
+                // Posição como medalha (mesmo estilo dos itens válidos)
+                StackPane medalPane = createPositionMedal(position + 1);
+
                 FontIcon errorIcon = new FontIcon(MaterialDesign.MDI_ALERT_CIRCLE);
                 errorIcon.setIconColor(Color.valueOf("#F44336"));
-                errorIcon.setIconSize(32);
+                errorIcon.setIconSize(24);
 
-                Label errorLabel = new Label("Erro ao carregar");
+                Label errorLabel = new Label("Falha ao carregar");
                 errorLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
                 errorLabel.setTextFill(Color.valueOf("#F44336"));
 
+                // Mostrar informações sobre as tentativas
+                Label attemptsLabel = new Label("Tentativas: " + retryAttempts[position] + "/" + MAX_RETRY_ATTEMPTS);
+                attemptsLabel.setFont(Font.font("System", FontWeight.NORMAL, 12));
+                attemptsLabel.setTextFill(Color.valueOf("#666666"));
+
                 Button retryButton = new Button("Tentar novamente");
                 retryButton.getStyleClass().add("login-button");
-                retryButton.setOnAction(e -> loadBestItemAtPosition(position));
+                retryButton.setOnAction(e -> {
+                    // Resetar contador de tentativas para retry manual
+                    retryAttempts[position] = 0;
+                    loadBestItemAtPosition(position);
+                });
 
-                card.getChildren().addAll(errorIcon, errorLabel, retryButton);
+                card.getChildren().addAll(medalPane, errorIcon, errorLabel, attemptsLabel, retryButton);
 
                 // Substitui o placeholder pelo card de erro
-                itemsGrid.getChildren().remove(position);
-                itemsGrid.add(card, position, 0);
+                replaceCardAtPosition(position, card);
             }
         });
     }
