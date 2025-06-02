@@ -432,4 +432,265 @@ public class JsonParser {
 
         return pedido;
     }
+
+    /**
+     * Parse JSON array of pedidos rapidos into a List of PedidoRapid objects
+     * Uses Jackson ObjectMapper for proper JSON deserialization
+     *
+     * @param json The JSON string from the API
+     * @return List of PedidoRapid objects
+     */
+    public static List<PedidoRapid> parsePedidosRapid(String json) {
+        List<PedidoRapid> pedidos = new ArrayList<>();
+
+        try {
+            // Use ItemJsonLoader's ObjectMapper to parse the complete response
+            pedidos = ItemJsonLoader.parsePedidosRapid(json);
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear pedidos rápidos com Jackson: " + e.getMessage());
+            e.printStackTrace();
+
+            // Fallback to manual parsing if Jackson fails
+            try {
+                pedidos = parsePedidosRapidManual(json);
+            } catch (Exception fallbackEx) {
+                System.err.println("Erro também no fallback manual: " + fallbackEx.getMessage());
+                fallbackEx.printStackTrace();
+            }
+        }
+
+        return pedidos;
+    }
+
+    /**
+     * Fallback manual parsing method
+     */
+    private static List<PedidoRapid> parsePedidosRapidManual(String json) {
+        List<PedidoRapid> pedidos = new ArrayList<>();
+
+        try {
+            // Remove outer brackets and split by objects
+            String cleanJson = json.trim();
+            if (cleanJson.startsWith("[") && cleanJson.endsWith("]")) {
+                cleanJson = cleanJson.substring(1, cleanJson.length() - 1);
+            }
+
+            // Find individual pedido objects using bracket counting
+            List<String> pedidoJsons = extractJsonObjects(cleanJson);
+
+            for (String pedidoJson : pedidoJsons) {
+                PedidoRapid pedido = parsePedidoRapido(pedidoJson.trim());
+                if (pedido != null) {
+                    pedidos.add(pedido);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear pedidos rápidos manualmente: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return pedidos;
+    }
+
+    /**
+     * Extract individual JSON objects from a JSON array string
+     */
+    private static List<String> extractJsonObjects(String json) {
+        List<String> objects = new ArrayList<>();
+        int braceCount = 0;
+        int start = -1;
+
+        for (int i = 0; i < json.length(); i++) {
+            char c = json.charAt(i);
+
+            if (c == '{') {
+                if (braceCount == 0) {
+                    start = i;
+                }
+                braceCount++;
+            } else if (c == '}') {
+                braceCount--;
+                if (braceCount == 0 && start != -1) {
+                    objects.add(json.substring(start, i + 1));
+                    start = -1;
+                }
+            }
+        }
+
+        return objects;
+    }
+
+    /**
+     * Parse a single pedido rapido JSON object
+     */
+    private static PedidoRapid parsePedidoRapido(String json) {
+        try {
+            PedidoRapid pedido = new PedidoRapid();
+
+            // Extract id
+            Pattern idPattern = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
+            Matcher idMatcher = idPattern.matcher(json);
+            if (idMatcher.find()) {
+                pedido.setId(Integer.parseInt(idMatcher.group(1)));
+            }
+
+            // Extract estadoPedido_id
+            Pattern estadoPattern = Pattern.compile("\"estadoPedido_id\"\\s*:\\s*(\\d+)");
+            Matcher estadoMatcher = estadoPattern.matcher(json);
+            if (estadoMatcher.find()) {
+                pedido.setEstadoPedido_id(Integer.parseInt(estadoMatcher.group(1)));
+            }
+
+            // Extract mesa_number
+            Pattern mesaPattern = Pattern.compile("\"mesa_number\"\\s*:\\s*(\\d+)");
+            Matcher mesaMatcher = mesaPattern.matcher(json);
+            if (mesaMatcher.find()) {
+                pedido.setMesa_number(Integer.parseInt(mesaMatcher.group(1)));
+            }
+
+            // Extract funcionario
+            pedido.setFuncionario(extractString(json, "funcionario"));
+
+            // Extract dataHora
+            pedido.setDataHora(extractString(json, "dataHora"));
+
+            // Extract observacao
+            pedido.setObservacao(extractString(json, "observacao"));
+
+            // Extract ingredientesRemover
+            Pattern ingredRemoverPattern = Pattern.compile("\"ingredientesRemover\"\\s*:\\s*\\[(.*?)\\]");
+            Matcher ingredRemoverMatcher = ingredRemoverPattern.matcher(json);
+            if (ingredRemoverMatcher.find()) {
+                String ingredRemoverString = ingredRemoverMatcher.group(1);
+                List<Integer> ingredRemover = new ArrayList<>();
+
+                if (!ingredRemoverString.trim().isEmpty()) {
+                    Pattern ingredIdPattern = Pattern.compile("(\\d+)");
+                    Matcher ingredIdMatcher = ingredIdPattern.matcher(ingredRemoverString);
+                    while (ingredIdMatcher.find()) {
+                        ingredRemover.add(Integer.parseInt(ingredIdMatcher.group(1)));
+                    }
+                }
+
+                pedido.setIngredientesRemover(ingredRemover);
+            }
+
+            // Extract itensIds (complex nested objects)
+            Pattern itensPattern = Pattern
+                    .compile("\"itensIds\"\\s*:\\s*\\[(.*?)\\](?=\\s*,\\s*\"estadoPedido_id\"|\\s*}\\s*$)");
+            Matcher itensMatcher = itensPattern.matcher(json);
+            if (itensMatcher.find()) {
+                String itensString = itensMatcher.group(1);
+                List<Item> itens = parseItensFromString(itensString);
+                pedido.setItensIds(itens);
+            }
+
+            return pedido;
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear pedido individual: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Parse items from the itensIds string
+     */
+    private static List<Item> parseItensFromString(String itensString) {
+        List<Item> itens = new ArrayList<>();
+
+        try {
+            // Extract individual item objects
+            List<String> itemJsons = extractJsonObjects(itensString);
+
+            for (String itemJson : itemJsons) {
+                Item item = parseItemFromJson(itemJson);
+                if (item != null) {
+                    itens.add(item);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear itens: " + e.getMessage());
+        }
+
+        return itens;
+    }
+
+    /**
+     * Parse a single item from JSON string
+     */
+    private static Item parseItemFromJson(String json) {
+        try {
+            Item item = new Item();
+
+            // Extract id
+            Pattern idPattern = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
+            Matcher idMatcher = idPattern.matcher(json);
+            if (idMatcher.find()) {
+                item.setId(Integer.parseInt(idMatcher.group(1)));
+            }
+
+            // Extract nome
+            item.setNome(extractString(json, "nome"));
+
+            // Extract tipoPrato_id
+            Pattern tipoPattern = Pattern.compile("\"tipoPrato_id\"\\s*:\\s*(\\d+)");
+            Matcher tipoMatcher = tipoPattern.matcher(json);
+            if (tipoMatcher.find()) {
+                item.setTipoPratoId(Integer.parseInt(tipoMatcher.group(1)));
+            }
+
+            // Extract preco
+            Pattern precoPattern = Pattern.compile("\"preco\"\\s*:\\s*([\\d.]+)");
+            Matcher precoMatcher = precoPattern.matcher(json);
+            if (precoMatcher.find()) {
+                item.setPreco(Double.parseDouble(precoMatcher.group(1)));
+            }
+
+            // Extract ingredientesJson and parse it
+            Pattern ingredientesPattern = Pattern.compile("\"ingredientesJson\"\\s*:\\s*\"(.*?)\"(?=\\s*,|\\s*})");
+            Matcher ingredientesMatcher = ingredientesPattern.matcher(json);
+            if (ingredientesMatcher.find()) {
+                String ingredientesJson = ingredientesMatcher.group(1);
+                // Unescape the JSON string properly
+                ingredientesJson = ingredientesJson.replace("\\\"", "\"")
+                        .replace("\\\\", "\\");
+                // Use the Item's internal method to parse ingredients
+                try {
+                    java.lang.reflect.Method method = Item.class.getDeclaredMethod("unpackIngredientes", String.class);
+                    method.setAccessible(true);
+                    method.invoke(item, ingredientesJson);
+                } catch (Exception e) {
+                    System.err.println(
+                            "Erro ao processar ingredientes para item " + item.getNome() + ": " + e.getMessage());
+                    System.err.println("JSON original: " + ingredientesJson);
+                }
+            }
+
+            // Extract eComposto
+            Pattern compostoPattern = Pattern.compile("\"eComposto\"\\s*:\\s*(true|false)");
+            Matcher compostoMatcher = compostoPattern.matcher(json);
+            if (compostoMatcher.find()) {
+                item.setEComposto(Boolean.parseBoolean(compostoMatcher.group(1)));
+            }
+
+            // Extract stockAtual
+            Pattern stockPattern = Pattern.compile("\"stockAtual\"\\s*:\\s*(\\d+)");
+            Matcher stockMatcher = stockPattern.matcher(json);
+            if (stockMatcher.find()) {
+                item.setStockAtual(Integer.parseInt(stockMatcher.group(1)));
+            }
+
+            // Extract foto
+            String foto = extractString(json, "foto");
+            if (!"null".equals(foto) && !foto.isEmpty()) {
+                item.setFoto(foto);
+            }
+
+            return item;
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear item individual: " + e.getMessage());
+            return null;
+        }
+    }
 }

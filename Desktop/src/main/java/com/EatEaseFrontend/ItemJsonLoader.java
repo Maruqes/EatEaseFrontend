@@ -32,4 +32,19 @@ public final class ItemJsonLoader {
 
         return items;
     }
+
+    public static List<PedidoRapid> parsePedidosRapid(String json) throws Exception {
+        System.out.println("[DEBUG] JSON recebido para parsing de pedidos rápidos: " + json);
+        List<PedidoRapid> pedidos = mapper.readValue(json, new TypeReference<List<PedidoRapid>>() {
+        });
+
+        // Debug de cada pedido parseado
+        for (PedidoRapid pedido : pedidos) {
+            System.out.println("[DEBUG] Pedido parseado: ID #" + pedido.getId() +
+                    " - Mesa: " + pedido.getMesa_number() +
+                    " - Itens: " + pedido.getItensIds().size());
+        }
+
+        return pedidos;
+    }
 }

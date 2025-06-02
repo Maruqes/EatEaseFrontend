@@ -3,8 +3,7 @@ package com.EatEaseFrontend.SideBarViews;
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Item;
 import com.EatEaseFrontend.JsonParser;
-import com.EatEaseFrontend.Pedido;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.EatEaseFrontend.PedidoRapid;
 
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -19,7 +18,6 @@ import javafx.scene.text.Text;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.materialdesign.MaterialDesign;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -81,25 +79,25 @@ public class PedidosView {
     }
 
     /**
-     * Carrega os pedidos do servidor
+     * Carrega os pedidos do servidor usando o endpoint rápido
      */
     private void loadPedidos() {
         HttpRequest getPedidosReq = HttpRequest.newBuilder()
-                .uri(URI.create(AppConfig.getApiEndpoint("/pedido/getAll")))
+                .uri(URI.create(AppConfig.getApiEndpoint("/pedido/getAllRapid")))
                 .GET()
                 .build();
 
         httpClient.sendAsync(getPedidosReq, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     if (response.statusCode() == 200) {
-                        System.out.println("Pedidos recebidos: " + response.body());
-                        return JsonParser.parsePedidos(response.body());
+                        System.out.println("Pedidos rápidos recebidos: " + response.body());
+                        return JsonParser.parsePedidosRapid(response.body());
                     } else {
                         Platform.runLater(() -> {
                             PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar pedidos",
                                     "Erro: Código " + response.statusCode());
                         });
-                        return List.<Pedido>of();
+                        return List.<PedidoRapid>of();
                     }
                 })
                 .thenAccept(pedidos -> {
@@ -160,17 +158,17 @@ public class PedidosView {
 
         System.out.println("Realizando atualização automática dos pedidos...");
         HttpRequest getPedidosReq = HttpRequest.newBuilder()
-                .uri(URI.create(AppConfig.getApiEndpoint("/pedido/getAll")))
+                .uri(URI.create(AppConfig.getApiEndpoint("/pedido/getAllRapid")))
                 .GET()
                 .build();
 
         httpClient.sendAsync(getPedidosReq, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     if (response.statusCode() == 200) {
-                        return JsonParser.parsePedidos(response.body());
+                        return JsonParser.parsePedidosRapid(response.body());
                     } else {
                         System.err.println("Erro ao atualizar pedidos: " + response.statusCode());
-                        return List.<Pedido>of();
+                        return List.<PedidoRapid>of();
                     }
                 })
                 .thenAccept(pedidos -> {
@@ -228,7 +226,7 @@ public class PedidosView {
      * 
      * @param pedidos Lista de pedidos a serem exibidos
      */
-    private void displayPedidosAsCards(List<Pedido> pedidos) {
+    private void displayPedidosAsCards(List<PedidoRapid> pedidos) {
         contentArea.getChildren().clear();
 
         // Header with title and refresh button
@@ -264,10 +262,10 @@ public class PedidosView {
             pedidosContainer.getChildren().add(noPedidosText);
         } else {
             // Ordenar os pedidos por ID em ordem decrescente (mais novos primeiro)
-            pedidos.sort(Comparator.comparing(Pedido::getId).reversed());
+            pedidos.sort(Comparator.comparing(PedidoRapid::getId).reversed());
 
             // Adicione cada pedido como um card
-            for (Pedido pedido : pedidos) {
+            for (PedidoRapid pedido : pedidos) {
                 pedidosContainer.getChildren().add(createPedidoCard(pedido));
             }
         }
@@ -284,71 +282,6 @@ public class PedidosView {
         mainLayout.getChildren().addAll(header, scrollPane);
 
         contentArea.getChildren().add(mainLayout);
-    }
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
-    private Item getItemById(int id) throws IOException, InterruptedException {
-        HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(AppConfig.getApiEndpoint("/item/getByPratoId?pratoId=" + id)))
-                .GET()
-                .build();
-        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-
-        return MAPPER.readValue(resp.body(), Item.class);
-    }
-
-    /**
-     * Busca o número da mesa pelo ID
-     * 
-     * @param mesaId ID da mesa
-     * @return Número da mesa ou "N/A" se não encontrado
-     */
-    private String getMesaNumberById(int mesaId) {
-        try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(AppConfig.getApiEndpoint("/mesa/getMesaNumberById?mesaId=" + mesaId)))
-                    .GET()
-                    .build();
-            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-
-            if (resp.statusCode() == 200) {
-                return resp.body().trim();
-            } else {
-                System.err.println("Erro ao buscar número da mesa " + mesaId + ": " + resp.statusCode());
-                return "N/A";
-            }
-        } catch (Exception e) {
-            System.err.println("Exceção ao buscar número da mesa " + mesaId + ": " + e.getMessage());
-            return "N/A";
-        }
-    }
-
-    /**
-     * Busca o nome do funcionário pelo ID
-     * 
-     * @param funcionarioId ID do funcionário
-     * @return Nome do funcionário ou "N/A" se não encontrado
-     */
-    private String getFuncionarioNameById(int funcionarioId) {
-        try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(
-                            AppConfig.getApiEndpoint("/auth/getFuncionarioNameById?funcionarioId=" + funcionarioId)))
-                    .GET()
-                    .build();
-            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
-
-            if (resp.statusCode() == 200) {
-                return resp.body().trim();
-            } else {
-                System.err.println("Erro ao buscar nome do funcionário " + funcionarioId + ": " + resp.statusCode());
-                return "N/A";
-            }
-        } catch (Exception e) {
-            System.err.println("Exceção ao buscar nome do funcionário " + funcionarioId + ": " + e.getMessage());
-            return "N/A";
-        }
     }
 
     /**
@@ -407,7 +340,7 @@ public class PedidosView {
      * @param pedido Pedido para o qual criar o card
      * @return VBox contendo o card do pedido
      */
-    private VBox createPedidoCard(Pedido pedido) {
+    private VBox createPedidoCard(PedidoRapid pedido) {
         VBox card = new VBox(12);
         card.getStyleClass().add("dashboard-card");
         card.setPrefWidth(Region.USE_COMPUTED_SIZE);
@@ -438,12 +371,16 @@ public class PedidosView {
 
         // Adicionar informações ao grid
         infoGrid.add(new Label("Mesa:"), 0, 0);
-        String numeroMesa = getMesaNumberById(pedido.getMesa_id());
-        infoGrid.add(new Label(numeroMesa), 1, 0);
+        infoGrid.add(new Label(String.valueOf(pedido.getMesa_number())), 1, 0);
 
         infoGrid.add(new Label("Funcionário:"), 0, 1);
-        String nomeFuncionario = getFuncionarioNameById(pedido.getFuncionario_id());
-        infoGrid.add(new Label(nomeFuncionario), 1, 1);
+        infoGrid.add(new Label(pedido.getFuncionario()), 1, 1);
+
+        infoGrid.add(new Label("Preço Total:"), 0, 2);
+        Label precoLabel = new Label("€" + String.format("%.2f", pedido.getPrecoTotal()));
+        precoLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+        precoLabel.setTextFill(Color.valueOf("#2a5298"));
+        infoGrid.add(precoLabel, 1, 2);
 
         // Estado do pedido com badge colorida
         HBox estadoBox = new HBox(10);
@@ -567,29 +504,19 @@ public class PedidosView {
         if (pedido.getItensIds().isEmpty()) {
             itemsContainer.getChildren().add(new Label("Nenhum item no pedido"));
         } else {
-            int i = 0;
-            for (Integer itemId : pedido.getItensIds()) {
-                try {
-                    Item item = getItemById(itemId);
-                    if (item == null) {
-                        itemsContainer.getChildren().add(new Label("Item #" + itemId + " não encontrado"));
-                        continue;
-                    }
+            int i = 1;
+            for (Item item : pedido.getItensIds()) {
+                HBox itemBox = new HBox(8);
+                itemBox.setAlignment(Pos.CENTER_LEFT);
 
-                    HBox itemBox = new HBox(8);
-                    itemBox.setAlignment(Pos.CENTER_LEFT);
+                FontIcon itemIcon = new FontIcon(MaterialDesign.MDI_FOOD);
+                itemIcon.setIconColor(Color.valueOf("#2a5298"));
 
-                    FontIcon itemIcon = new FontIcon(MaterialDesign.MDI_FOOD);
-                    itemIcon.setIconColor(Color.valueOf("#2a5298"));
+                Label itemLabel = new Label(
+                        "Item " + i + ": " + item.getNome() + " - €" + String.format("%.2f", item.getPreco()));
 
-                    Label itemLabel = new Label("Item " + i + " " + item.getNome());
-
-                    itemBox.getChildren().addAll(itemIcon, itemLabel);
-                    itemsContainer.getChildren().add(itemBox);
-                } catch (Exception e) {
-                    System.err.println("Erro ao carregar item #" + itemId + ": " + e.getMessage());
-                    itemsContainer.getChildren().add(new Label("Erro ao carregar item #" + itemId));
-                }
+                itemBox.getChildren().addAll(itemIcon, itemLabel);
+                itemsContainer.getChildren().add(itemBox);
                 i++;
             }
         }
@@ -618,12 +545,9 @@ public class PedidosView {
         } else {
             for (Integer ingredId : pedido.getIngredientesRemover()) {
                 try {
-                    Item item = getItemById(ingredId);
-                    if (item == null) {
-                        ingredContent.getChildren().add(new Label("Ingrediente #" + ingredId + " não encontrado"));
-                        continue;
-                    }
-                    ingredContent.getChildren().add(new Label("Ingrediente " + item.getNome()));
+                    // For now, just show the ingredient ID - we could create a method to get
+                    // ingredient name
+                    ingredContent.getChildren().add(new Label("Ingrediente ID: " + ingredId));
                 } catch (Exception e) {
                     System.err.println("Erro ao carregar ingrediente #" + ingredId + ": " + e.getMessage());
                     ingredContent.getChildren().add(new Label("Erro ao carregar ingrediente #" + ingredId));

@@ -65,13 +65,31 @@ public class Item {
             return;
 
         try {
+            // Debug: print the raw JSON being parsed
+            System.out.println("[DEBUG] Parsing ingredientesJson for " + nome + ": " + raw);
+
+            // Handle escaped JSON strings properly
+            String cleanedJson = raw;
+
+            // If the string contains escaped quotes, unescape them
+            if (raw.contains("\\\"")) {
+                cleanedJson = raw.replace("\\\"", "\"")
+                        .replace("\\\\", "\\");
+                System.out.println("[DEBUG] Cleaned JSON: " + cleanedJson);
+            }
+
             ObjectMapper mapper = new ObjectMapper();
             this.ingredientes = mapper.readValue(
-                    raw,
+                    cleanedJson,
                     new TypeReference<List<ItemIngrediente>>() {
                     });
+
+            System.out.println("[DEBUG] Successfully parsed " + ingredientes.size() + " ingredientes for " + nome);
         } catch (Exception ex) {
-            System.err.println("Falha a ler ingredientes do item id " + id + ": " + ex.getMessage());
+            System.err.println("Falha a ler ingredientes do item id " + id + " (" + nome + "): " + ex.getMessage());
+            System.err.println("Raw JSON: " + raw);
+            // Initialize empty list to avoid null pointer exceptions
+            this.ingredientes = new ArrayList<>();
         }
     }
 
