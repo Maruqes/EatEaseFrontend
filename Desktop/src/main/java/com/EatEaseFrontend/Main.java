@@ -7,7 +7,6 @@ import com.EatEaseFrontend.SideBarViews.ItemView;
 import com.EatEaseFrontend.SideBarViews.MenuView;
 import com.EatEaseFrontend.SideBarViews.MesasView;
 import com.EatEaseFrontend.SideBarViews.PedidosView;
-import com.EatEaseFrontend.SideBarViews.PopUp;
 import com.EatEaseFrontend.SideBarViews.QRCodesView;
 import com.EatEaseFrontend.SideBarViews.RelatoriosView;
 
@@ -43,6 +42,10 @@ public class Main extends Application {
     private Stage primaryStage;
     // Main content area that will be updated based on navigation
     private StackPane contentArea;
+    // Current view being displayed
+    private String currentView = "Dashboard";
+    // Store the top bar to update it when view changes
+    private HBox topBar;
 
     // Views
     private DashboardView dashboardView;
@@ -114,46 +117,39 @@ public class Main extends Application {
 
     private void mostrarAdminPanel(String username) {
         BorderPane root = new BorderPane();
-        HBox topBar = createTopBar(username);
+        topBar = createTopBar(username);
         root.setTop(topBar);
         VBox sidebar = createSidebar();
         root.setLeft(sidebar);
 
         contentArea = new StackPane();
         contentArea.getStyleClass().add("content-area");
-        Text welcomeText = new Text("Bem-vindo ao EatEase Admin");
-        welcomeText.getStyleClass().add("welcome-text");
-        contentArea.getChildren().add(welcomeText);
         root.setCenter(contentArea);
 
-        // 2) Inicializa todas as views AQUI, antes de criar os botões
+        // Inicializa todas as views
         dashboardView = new DashboardView(contentArea, http);
         employeeView = new EmployeeView(contentArea, http);
         ingredientsView = new IngredientsView(contentArea, http);
         itemView = new ItemView(contentArea, http);
-        menuView = new MenuView(contentArea, http); // ← aqui
+        menuView = new MenuView(contentArea, http);
         mesasView = new MesasView(contentArea, http);
         pedidosView = new PedidosView(contentArea, http);
         qrCodesView = new QRCodesView(contentArea, http);
         relatoriosView = new RelatoriosView(contentArea, http);
 
-        // **Cria a cena com tamanho fixo inicial**
+        // Cria a cena
         Scene dashboardScene = new Scene(root, 1024, 768);
         dashboardScene.getStylesheets().add(
                 getClass().getResource("/css/modern_style.css").toExternalForm());
 
-        // **Aplica ao stage**
         primaryStage.setTitle("EatEase - Painel de Administração");
         primaryStage.setScene(dashboardScene);
-
-        // Garante que o utilizador pode continuar a redimensionar
         primaryStage.setResizable(true);
-        // (Opcional) mantém os limites mínimos
         primaryStage.setMinWidth(800);
         primaryStage.setMinHeight(600);
 
-        // Se não quiseres obrigar o maximize inicial, podes remover isto:
-        // primaryStage.setMaximized(true);
+        // Mostrar a dashboard diretamente
+        showDashboardView();
     }
 
     private HBox createTopBar(String username) {
@@ -163,7 +159,7 @@ public class Main extends Application {
         topBar.setAlignment(Pos.CENTER_RIGHT);
 
         // Branding on left
-        Label brandLabel = new Label("EatEase");
+        Label brandLabel = new Label("EatEase - " + currentView);
         brandLabel.getStyleClass().add("brand-label");
 
         // User info with icon
@@ -288,6 +284,7 @@ public class Main extends Application {
      * Show the dashboard view with statistics and quick actions
      */
     private void showDashboardView() {
+        updateCurrentView("Dashboard");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         dashboardView.show();
@@ -297,6 +294,7 @@ public class Main extends Application {
      * Show the employees view with cards for each employee
      */
     private void showEmployeesView() {
+        updateCurrentView("Funcionários");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         employeeView.show();
@@ -306,6 +304,7 @@ public class Main extends Application {
      * Show the ingredients view with cards for each ingredient
      */
     private void showIngredientsView() {
+        updateCurrentView("Ingredientes");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         ingredientsView.show();
@@ -315,6 +314,7 @@ public class Main extends Application {
      * Show the items view with cards for each menu item
      */
     private void showItemView() {
+        updateCurrentView("Item");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         itemView.show();
@@ -324,6 +324,7 @@ public class Main extends Application {
      * Show the menu view with cards for each menu
      */
     private void showMenuView() {
+        updateCurrentView("Menus");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         menuView.show();
@@ -333,6 +334,7 @@ public class Main extends Application {
      * Show the mesas view with tables and their status
      */
     private void showMesasView() {
+        updateCurrentView("Mesas");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         mesasView.show();
@@ -342,6 +344,7 @@ public class Main extends Application {
      * Show the pedidos view with orders and their details
      */
     private void showPedidosView() {
+        updateCurrentView("Pedidos");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         pedidosView.show();
@@ -351,6 +354,7 @@ public class Main extends Application {
      * Show the QR Codes view to generate QR codes for tables
      */
     private void showQRCodesView() {
+        updateCurrentView("QR Codes");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         qrCodesView.show();
@@ -360,6 +364,7 @@ public class Main extends Application {
      * Show the reports view with analytics and statistics
      */
     private void showRelatoriosView() {
+        updateCurrentView("Relatórios");
         // Desativar a atualização automática das views quando sair da tela
         disposeAllViews();
         relatoriosView.show();
@@ -411,6 +416,18 @@ public class Main extends Application {
         }
 
         // Adicione outras views aqui se elas tiverem um método dispose()
+    }
+
+    /**
+     * Updates the current view name and refreshes the top bar
+     */
+    private void updateCurrentView(String viewName) {
+        this.currentView = viewName;
+        // Update the brand label in the top bar
+        if (topBar != null && !topBar.getChildren().isEmpty()) {
+            Label brandLabel = (Label) topBar.getChildren().get(0);
+            brandLabel.setText("EatEase - " + currentView);
+        }
     }
 
     public static void main(String[] args) {

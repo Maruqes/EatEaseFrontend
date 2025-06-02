@@ -37,6 +37,9 @@ public class MenuView {
 
     private final StackPane contentArea;
     private final HttpClient httpClient;
+    private List<Menu> allMenus; // Store all menus for filtering
+    private List<TipoMenu> allTipos; // Store all tipos for reference
+    private TextField searchField; // Search field reference
 
     public MenuView(StackPane contentArea, HttpClient httpClient) {
         this.contentArea = contentArea;
@@ -86,6 +89,9 @@ public class MenuView {
 
                     Platform.runLater(() -> {
                         System.out.println("[MENU] Atualizando UI com dados carregados sincronamente");
+                        // Store data for filtering
+                        allMenus = menus;
+                        allTipos = tipos;
                         displayMenusAsCards(menus, tipos);
                     });
                 } else {
@@ -105,13 +111,13 @@ public class MenuView {
 
     private void showError(String header, int status) {
         Platform.runLater(() -> {
-            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", header, "Status code: " + status);
+            PopUp.showMenuLoadError(status);
         });
     }
 
     private void showError(String header, String message) {
         Platform.runLater(() -> {
-            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", header, "Erro: " + message);
+            PopUp.showMenuLoadError(message);
         });
     }
 
@@ -121,23 +127,39 @@ public class MenuView {
     private void displayMenusAsCards(List<Menu> menus, List<TipoMenu> tipos) {
         contentArea.getChildren().clear();
 
-        ScrollPane pane = new ScrollPane();
-        pane.setFitToWidth(true);
-        pane.setPadding(new Insets(20));
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setFitToWidth(true);
+        scrollPane.setPadding(new Insets(20));
 
-        FlowPane cards = new FlowPane();
-        cards.setHgap(20);
-        cards.setVgap(20);
-        cards.setPadding(new Insets(20));
+        VBox contentBox = new VBox(20);
+        contentBox.setPadding(new Insets(20));
 
-        VBox box = new VBox(20);
+        // Header with title and add button
         HBox headerBox = new HBox();
         headerBox.setPadding(new Insets(0, 0, 20, 0));
+        headerBox.setAlignment(Pos.CENTER_LEFT);
 
         // Título da seção
         Label title = new Label("Menus");
         title.setFont(Font.font("System", FontWeight.BOLD, 24));
         headerBox.getChildren().add(title);
+
+        // Search bar
+        HBox searchBox = new HBox(10);
+        searchBox.setPadding(new Insets(0, 0, 20, 0));
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label searchLabel = new Label("Buscar:");
+        searchLabel.setFont(Font.font("System", FontWeight.BOLD, 14));
+
+        searchField = new TextField();
+        searchField.setPromptText("Digite o nome do menu...");
+        searchField.setPrefWidth(300);
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterMenus(newValue);
+        });
+
+        searchBox.getChildren().addAll(searchLabel, searchField);
 
         // Adicionar spacer para empurrar o botão para a direita
         Region spacer = new Region();
@@ -150,79 +172,36 @@ public class MenuView {
         addButton.setOnAction(e -> showAddMenuDialog(tipos));
 
         headerBox.getChildren().addAll(spacer, addButton);
-        box.getChildren().add(headerBox);
+        contentBox.getChildren().addAll(headerBox, searchBox);
+
+        // Create FlowPane for menu cards
+        FlowPane menuCards = new FlowPane();
+        menuCards.setHgap(20);
+        menuCards.setVgap(20);
+        menuCards.setPadding(new Insets(20));
 
         if (menus.isEmpty()) {
-            Label none = new Label("Nenhum menu encontrado");
-            none.setFont(Font.font("System", FontWeight.NORMAL, 18));
-            box.getChildren().add(none);
+            Label noMenusLabel = new Label("Nenhum menu encontrado");
+            noMenusLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
+            contentBox.getChildren().add(noMenusLabel);
         } else {
             Map<Integer, String> mapa = tipos.stream()
                     .collect(Collectors.toMap(TipoMenu::getId, TipoMenu::getNome));
-            for (Menu m : menus) {
-                VBox card = new VBox(10);
-                card.getStyleClass().add("dashboard-card");
-                card.setPrefWidth(300);
-                card.setPrefHeight(180);
-                card.setPadding(new Insets(15));
 
-                // Nome
-                Label nm = new Label(m.getNome());
-                nm.setFont(Font.font("System", FontWeight.BOLD, 18));
-                nm.getStyleClass().add("card-title");
+            // Sort menus alphabetically by name
+            List<Menu> sortedMenus = menus.stream()
+                    .sorted((m1, m2) -> m1.getNome().compareToIgnoreCase(m2.getNome()))
+                    .collect(Collectors.toList());
 
-                // Descrição
-                Label desc = new Label("Descrição: " + m.getDescricao());
-                desc.setWrapText(true); // permite quebrar linha automaticamente
-                desc.setMaxWidth(270); // largura máxima dentro do card (ajusta se precisares)
-                desc.setFont(Font.font("System", 14)); // tamanho de letra maior se quiseres mais destaque
-
-                // Tipo
-                Label tp = new Label("Tipo: " + mapa.getOrDefault(m.getTipoMenuId(), ""));
-
-                // Botões de ação
-                HBox buttonsBox = new HBox(10);
-                buttonsBox.setAlignment(Pos.CENTER_RIGHT);
-                buttonsBox.setPadding(new Insets(10, 0, 0, 0));
-
-                // Botão Editar
-                Button editButton = new Button("");
-                editButton.setTooltip(new Tooltip("Editar"));
-                FontIcon editIcon = new FontIcon(MaterialDesign.MDI_PENCIL);
-                editIcon.setIconColor(Color.BLUE);
-                editButton.setGraphic(editIcon);
-                editButton.getStyleClass().add("icon-button");
-                editButton.setOnAction(e -> {
-                    showEditMenuDialog(m, tipos);
-                });
-
-                // Botão Excluir
-                Button deleteButton = new Button("");
-                deleteButton.setTooltip(new Tooltip("Excluir"));
-                FontIcon deleteIcon = new FontIcon(MaterialDesign.MDI_DELETE);
-                deleteIcon.setIconColor(Color.RED);
-                deleteButton.setGraphic(deleteIcon);
-                deleteButton.getStyleClass().add("icon-button");
-                deleteButton.setOnAction(e -> {
-                    PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
-                            "Confirmação de Exclusão",
-                            "Tem certeza que deseja excluir este menu?",
-                            "Esta ação não pode ser desfeita.", () -> {
-                                deleteMenu(m.getId());
-                            });
-                });
-
-                buttonsBox.getChildren().addAll(editButton, deleteButton);
-
-                // Adicionar ao card
-                card.getChildren().addAll(nm, desc, tp, buttonsBox);
-                cards.getChildren().add(card);
+            for (Menu m : sortedMenus) {
+                VBox card = createMenuCard(m, mapa, tipos);
+                menuCards.getChildren().add(card);
             }
-            box.getChildren().add(cards);
+            contentBox.getChildren().add(menuCards);
         }
 
-        pane.setContent(box);
-        contentArea.getChildren().add(pane);
+        scrollPane.setContent(contentBox);
+        contentArea.getChildren().add(scrollPane);
     }
 
     /**
@@ -361,7 +340,7 @@ public class MenuView {
                 "-fx-background-color: #F5F5F5; -fx-text-fill: #666666; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand; -fx-min-width: 100;");
         cancelButton.setOnAction(e -> popup.hide());
 
-        Button saveButton = new Button("Salvar");
+        Button saveButton = new Button("Guardar");
         saveButton.getStyleClass().addAll("login-button", "popup-primary-button");
         saveButton.setDisable(true);
 
@@ -465,47 +444,38 @@ public class MenuView {
                         headerLabel.getStyleClass().add("popup-label");
                         headerLabel.setStyle("-fx-text-fill: #444444; -fx-padding: 0 0 10 0;");
 
+                        // Adicionar search bar para itens
+                        HBox itemSearchBox = new HBox(10);
+                        itemSearchBox.setPadding(new Insets(0, 0, 10, 0));
+                        itemSearchBox.setAlignment(Pos.CENTER_LEFT);
+
+                        Label itemSearchLabel = new Label("Buscar:");
+                        itemSearchLabel.setFont(Font.font("System", FontWeight.BOLD, 12));
+
+                        TextField itemSearchField = new TextField();
+                        itemSearchField.setPromptText("Digite o nome do item...");
+                        itemSearchField.setPrefWidth(250);
+
+                        itemSearchBox.getChildren().addAll(itemSearchLabel, itemSearchField);
+
                         // Criar lista de checkboxes para os itens
                         VBox checkBoxContainer = new VBox(8);
                         checkBoxContainer.setPadding(new Insets(5));
                         ScrollPane scrollPane = new ScrollPane(checkBoxContainer);
                         scrollPane.setFitToWidth(true);
-                        scrollPane.setPrefHeight(300);
+                        scrollPane.setPrefHeight(250);
                         scrollPane.getStyleClass().add("popup-scroll-pane");
 
-                        for (Item item : items) {
-                            CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
-                                    item.getTipoPratoName() + " (€" + item.getPreco() + ")");
-                            cb.setUserData(item.getId());
-                            cb.getStyleClass().add("popup-check-box");
+                        // Store all items for filtering
+                        List<Item> allItems = new ArrayList<>(items);
 
-                            // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
-                            boolean isPreSelected = selectedItemsIds.contains(item.getId());
-                            cb.setSelected(isPreSelected);
-                            System.out.println("[MENU] Item " + item.getNome() + " (ID: " + item.getId()
-                                    + ") - Pré-selecionado: " + isPreSelected);
+                        // Add search functionality
+                        itemSearchField.textProperty().addListener((observable, oldValue, newValue) -> {
+                            filterItemCheckboxes(allItems, checkBoxContainer, selectedItemsIds, newValue);
+                        });
 
-                            // Quando o checkbox é marcado/desmarcado, atualize a lista de IDs selecionados
-                            cb.selectedProperty().addListener((obs, oldVal, newVal) -> {
-                                int itemId = (int) cb.getUserData();
-                                System.out.println("[MENU] Mudança de seleção - Item ID: " + itemId
-                                        + " - Novo estado: " + newVal);
-                                if (newVal) {
-                                    if (!selectedItemsIds.contains(itemId)) {
-                                        selectedItemsIds.add(itemId);
-                                        System.out
-                                                .println("[MENU] Item adicionado à seleção. IDs selecionados: "
-                                                        + selectedItemsIds);
-                                    }
-                                } else {
-                                    selectedItemsIds.remove(Integer.valueOf(itemId));
-                                    System.out.println("[MENU] Item removido da seleção. IDs selecionados: "
-                                            + selectedItemsIds);
-                                }
-                            });
-
-                            checkBoxContainer.getChildren().add(cb);
-                        }
+                        // Initially populate with all items
+                        populateItemCheckboxes(allItems, checkBoxContainer, selectedItemsIds);
 
                         // Display selected count
                         Label selectionLabel = new Label(selectedItemsIds.size() + " item(s) selecionado(s)");
@@ -519,7 +489,7 @@ public class MenuView {
                                 });
 
                         // Layout
-                        container.getChildren().addAll(headerLabel, scrollPane, selectionLabel);
+                        container.getChildren().addAll(headerLabel, itemSearchBox, scrollPane, selectionLabel);
                         System.out.println("[MENU] Interface de seleção de itens criada com sucesso");
                     });
                 } catch (Exception ex) {
@@ -605,8 +575,7 @@ public class MenuView {
             if (resp.statusCode() == 200 || resp.statusCode() == 201) {
                 Platform.runLater(() -> {
                     System.out.println("[MENU] Menu criado com sucesso!");
-                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu criado com sucesso!",
-                            "");
+                    PopUp.showMenuCreateSuccess();
 
                     // Recarregar a view após criar o menu
                     show();
@@ -645,16 +614,14 @@ public class MenuView {
                 if (resp.statusCode() == 200 || resp.statusCode() == 204) {
                     // Sucesso
                     System.out.println("[MENU] Menu excluído com sucesso!");
-                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Menu Excluído",
-                            "O menu foi excluído com sucesso!");
+                    PopUp.showMenuDeleteSuccess();
 
                     // Recarregar a lista de menus
                     show();
                 } else {
                     // Erro
                     System.err.println("[MENU] Falha ao excluir menu. Status: " + resp.statusCode());
-                    PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
-                            "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
+                    PopUp.showMenuDeleteError(resp.statusCode());
                 }
             });
         } catch (Exception ex) {
@@ -662,8 +629,7 @@ public class MenuView {
             ex.printStackTrace();
 
             Platform.runLater(() -> {
-                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao excluir menu",
-                        "Ocorreu um erro ao tentar enviar a solicitação: " + ex.getMessage());
+                PopUp.showMenuDeleteError(ex.getMessage());
             });
         }
     }
@@ -814,7 +780,7 @@ public class MenuView {
                 "-fx-background-color: #F5F5F5; -fx-text-fill: #666666; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-border-radius: 8; -fx-cursor: hand; -fx-min-width: 100;");
         cancelButton.setOnAction(e -> popup.hide());
 
-        Button saveButton = new Button("Salvar");
+        Button saveButton = new Button("Guardar");
         saveButton.getStyleClass().addAll("login-button", "popup-primary-button");
         saveButton.setDisable(false); // Não desabilitar inicialmente porque já temos valores válidos
 
@@ -1022,8 +988,7 @@ public class MenuView {
             if (resp.statusCode() == 200) {
                 Platform.runLater(() -> {
                     System.out.println("[MENU] Menu atualizado com sucesso!");
-                    PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
-                            "Menu atualizado com sucesso!", "");
+                    PopUp.showMenuUpdateSuccess();
 
                     // Recarregar a view após atualizar o menu
                     show();
@@ -1037,5 +1002,229 @@ public class MenuView {
             ex.printStackTrace();
             showError("Falha ao atualizar menu", ex.getMessage());
         }
+    }
+
+    /**
+     * Filters the menus based on the search query
+     * 
+     * @param searchQuery The text to search for in menu names
+     */
+    private void filterMenus(String searchQuery) {
+        if (allMenus == null || allTipos == null) {
+            return;
+        }
+
+        List<Menu> filteredMenus;
+
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            // Show all menus if search is empty
+            filteredMenus = allMenus;
+        } else {
+            // Filter menus that contain the search query (case insensitive)
+            String lowerCaseQuery = searchQuery.toLowerCase().trim();
+            filteredMenus = allMenus.stream()
+                    .filter(menu -> menu.getNome().toLowerCase().contains(lowerCaseQuery) ||
+                            menu.getDescricao().toLowerCase().contains(lowerCaseQuery))
+                    .collect(Collectors.toList());
+        }
+
+        // Sort filtered menus alphabetically by name
+        filteredMenus = filteredMenus.stream()
+                .sorted((m1, m2) -> m1.getNome().compareToIgnoreCase(m2.getNome()))
+                .collect(Collectors.toList());
+
+        // Update the display with filtered menus
+        displayFilteredMenus(filteredMenus);
+    }
+
+    /**
+     * Displays the filtered menus without affecting the search bar
+     * 
+     * @param menus List of filtered menus to display
+     */
+    private void displayFilteredMenus(List<Menu> menus) {
+        // Find the content box and update only the menu cards part
+        ScrollPane scrollPane = (ScrollPane) contentArea.getChildren().get(0);
+        VBox contentBox = (VBox) scrollPane.getContent();
+
+        // Remove existing menu cards (keep header and search bar)
+        if (contentBox.getChildren().size() > 2) {
+            contentBox.getChildren().remove(2, contentBox.getChildren().size());
+        }
+
+        // Create new FlowPane for menu cards
+        FlowPane menuCards = new FlowPane();
+        menuCards.setHgap(20);
+        menuCards.setVgap(20);
+        menuCards.setPadding(new Insets(20));
+
+        // Add menu cards
+        if (menus.isEmpty()) {
+            Label noMenusLabel = new Label("Nenhum menu encontrado");
+            noMenusLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
+            contentBox.getChildren().add(noMenusLabel);
+        } else {
+            Map<Integer, String> mapa = allTipos.stream()
+                    .collect(Collectors.toMap(TipoMenu::getId, TipoMenu::getNome));
+
+            // Sort menus alphabetically by name
+            List<Menu> sortedMenus = menus.stream()
+                    .sorted((m1, m2) -> m1.getNome().compareToIgnoreCase(m2.getNome()))
+                    .collect(Collectors.toList());
+
+            for (Menu menu : sortedMenus) {
+                VBox card = createMenuCard(menu, mapa, allTipos);
+                menuCards.getChildren().add(card);
+            }
+            contentBox.getChildren().add(menuCards);
+        }
+    }
+
+    /**
+     * Creates a card for a menu
+     * 
+     * @param menu  Menu for which to create the card
+     * @param mapa  Map of tipo menu IDs to names
+     * @param tipos List of all tipos for editing
+     * @return VBox containing the menu card
+     */
+    private VBox createMenuCard(Menu menu, Map<Integer, String> mapa, List<TipoMenu> tipos) {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("dashboard-card");
+        card.setPrefWidth(300);
+        card.setPrefHeight(180);
+        card.setPadding(new Insets(15));
+
+        // Nome
+        Label nome = new Label(menu.getNome());
+        nome.setFont(Font.font("System", FontWeight.BOLD, 18));
+        nome.getStyleClass().add("card-title");
+
+        // Descrição
+        Label descricao = new Label("Descrição: " + menu.getDescricao());
+        descricao.setWrapText(true); // permite quebrar linha automaticamente
+        descricao.setMaxWidth(270); // largura máxima dentro do card
+        descricao.setFont(Font.font("System", 14));
+
+        // Tipo
+        Label tipo = new Label("Tipo: " + mapa.getOrDefault(menu.getTipoMenuId(), ""));
+
+        // Botões de ação
+        HBox buttonsBox = new HBox(10);
+        buttonsBox.setAlignment(Pos.CENTER_RIGHT);
+        buttonsBox.setPadding(new Insets(10, 0, 0, 0));
+
+        // Botão Editar
+        Button editButton = new Button("");
+        editButton.setTooltip(new Tooltip("Editar"));
+        FontIcon editIcon = new FontIcon(MaterialDesign.MDI_PENCIL);
+        editIcon.setIconColor(Color.BLUE);
+        editButton.setGraphic(editIcon);
+        editButton.getStyleClass().add("icon-button");
+        editButton.setOnAction(e -> {
+            showEditMenuDialog(menu, tipos);
+        });
+
+        // Botão Excluir
+        Button deleteButton = new Button("");
+        deleteButton.setTooltip(new Tooltip("Excluir"));
+        FontIcon deleteIcon = new FontIcon(MaterialDesign.MDI_DELETE);
+        deleteIcon.setIconColor(Color.RED);
+        deleteButton.setGraphic(deleteIcon);
+        deleteButton.getStyleClass().add("icon-button");
+        deleteButton.setOnAction(e -> {
+            PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                    "Confirmação de Exclusão",
+                    "Tem certeza que deseja excluir este menu?",
+                    "Esta ação não pode ser desfeita.", () -> {
+                        deleteMenu(menu.getId());
+                    });
+        });
+
+        buttonsBox.getChildren().addAll(editButton, deleteButton);
+
+        // Adicionar ao card
+        card.getChildren().addAll(nome, descricao, tipo, buttonsBox);
+
+        return card;
+    }
+
+    /**
+     * Populates the checkbox container with items
+     * 
+     * @param items             List of items to display
+     * @param checkBoxContainer Container for the checkboxes
+     * @param selectedItemsIds  List of selected item IDs
+     */
+    private void populateItemCheckboxes(List<Item> items, VBox checkBoxContainer,
+            ObservableList<Integer> selectedItemsIds) {
+        checkBoxContainer.getChildren().clear();
+
+        for (Item item : items) {
+            CheckBox cb = new CheckBox(item.getId() + " - " + item.getNome() + " - " +
+                    item.getTipoPratoName() + " (€" + item.getPreco() + ")");
+            cb.setUserData(item.getId());
+            cb.getStyleClass().add("popup-check-box");
+
+            // Pré-selecionar o checkbox se o item já estiver na lista de selecionados
+            boolean isPreSelected = selectedItemsIds.contains(item.getId());
+            cb.setSelected(isPreSelected);
+            System.out.println("[MENU] Item " + item.getNome() + " (ID: " + item.getId()
+                    + ") - Pré-selecionado: " + isPreSelected);
+
+            // Quando o checkbox é marcado/desmarcado, atualize a lista de IDs selecionados
+            cb.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                int itemId = (int) cb.getUserData();
+                System.out.println("[MENU] Mudança de seleção - Item ID: " + itemId
+                        + " - Novo estado: " + newVal);
+                if (newVal) {
+                    if (!selectedItemsIds.contains(itemId)) {
+                        selectedItemsIds.add(itemId);
+                        System.out
+                                .println("[MENU] Item adicionado à seleção. IDs selecionados: "
+                                        + selectedItemsIds);
+                    }
+                } else {
+                    selectedItemsIds.remove(Integer.valueOf(itemId));
+                    System.out.println("[MENU] Item removido da seleção. IDs selecionados: "
+                            + selectedItemsIds);
+                }
+            });
+
+            checkBoxContainer.getChildren().add(cb);
+        }
+    }
+
+    /**
+     * Filters the item checkboxes based on search query
+     * 
+     * @param allItems          List of all available items
+     * @param checkBoxContainer Container for the checkboxes
+     * @param selectedItemsIds  List of selected item IDs
+     * @param searchQuery       Search query to filter by
+     */
+    private void filterItemCheckboxes(List<Item> allItems, VBox checkBoxContainer,
+            ObservableList<Integer> selectedItemsIds, String searchQuery) {
+        List<Item> filteredItems;
+
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            // Show all items if search is empty
+            filteredItems = allItems;
+        } else {
+            // Filter items that contain the search query (case insensitive)
+            String lowerCaseQuery = searchQuery.toLowerCase().trim();
+            filteredItems = allItems.stream()
+                    .filter(item -> item.getNome().toLowerCase().contains(lowerCaseQuery) ||
+                            item.getTipoPratoName().toLowerCase().contains(lowerCaseQuery))
+                    .collect(Collectors.toList());
+        }
+
+        // Sort filtered items alphabetically by name
+        filteredItems = filteredItems.stream()
+                .sorted((item1, item2) -> item1.getNome().compareToIgnoreCase(item2.getNome()))
+                .collect(Collectors.toList());
+
+        // Repopulate checkboxes with filtered items
+        populateItemCheckboxes(filteredItems, checkBoxContainer, selectedItemsIds);
     }
 }

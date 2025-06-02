@@ -722,7 +722,7 @@ public class RelatoriosView {
     private void generatePdfFile(List<String> selectedReports) {
         // Choose the directory to save the PDF
         DirectoryChooser directoryChooser = new DirectoryChooser();
-        directoryChooser.setTitle("Salvar Relatório PDF");
+        directoryChooser.setTitle("Guardar Relatório PDF");
         File directory = directoryChooser.showDialog(null);
 
         if (directory == null) {
@@ -759,9 +759,9 @@ public class RelatoriosView {
         } catch (FileNotFoundException e) {
             PopUp.showPopupDialog(
                     Alert.AlertType.ERROR,
-                    "Erro ao Salvar Arquivo",
+                    "Erro ao Guardar Arquivo",
                     "Falha na Criação do PDF",
-                    "Não foi possível salvar o arquivo. O arquivo está aberto em outro programa?");
+                    "Não foi possível guardar o arquivo. O arquivo está aberto em outro programa?");
             e.printStackTrace();
         } catch (Exception e) {
             PopUp.showPopupDialog(

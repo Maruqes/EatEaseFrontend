@@ -1397,11 +1397,7 @@ public class DashboardView {
      */
     private void showAlert(String title, String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
+            PopUp.showExceptionErrorPopup(title, "Erro no Dashboard", message);
         });
     }
 

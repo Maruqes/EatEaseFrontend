@@ -4,6 +4,7 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/DialogHelper.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Employee.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/EmployeeView.java
+/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/ErrorMessages.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Ingredient.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/Item.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/ItemJsonLoader.java
@@ -19,10 +20,8 @@
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/EmployeeView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/IngredientsView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/ItemView.java
-/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/ItemView_new.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/MenuView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/MesasView.java
-/home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/MesasView_backup.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/PedidosView.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/PopUp.java
 /home/marques/projects/EatEaseFrontend/Desktop/src/main/java/com/EatEaseFrontend/SideBarViews/QRCodesView.java

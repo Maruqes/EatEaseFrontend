@@ -1,5 +1,6 @@
 package com.EatEaseFrontend.SideBarViews;
 
+import com.EatEaseFrontend.ErrorMessages;
 import com.EatEaseFrontend.StageManager;
 
 import javafx.geometry.Insets;
@@ -158,5 +159,594 @@ public class PopUp {
 
         // Show popup centered
         popup.show(primaryStage, centerX - 200, centerY - 100);
+    }
+
+    // /**
+    // * Shows an improved error popup with better messaging for HTTP errors
+    // *
+    // * @param title The title of the dialog
+    // * @param header The header text of the dialog
+    // * @param statusCode The HTTP status code
+    // */
+    // public static void showHttpErrorPopup(String title, String header, int
+    // statusCode) {
+    // String improvedMessage = ErrorMessages.formatHttpError(statusCode);
+    // showPopupDialog(Alert.AlertType.ERROR, title, header, improvedMessage);
+    // }
+
+    /**
+     * Shows an improved error popup with better messaging for exceptions
+     *
+     * @param title     The title of the dialog
+     * @param header    The header text of the dialog
+     * @param exception The exception message
+     */
+    public static void showExceptionErrorPopup(String title, String header,
+            String exception) {
+        String improvedMessage = ErrorMessages.formatExceptionError(exception);
+        showPopupDialog(Alert.AlertType.ERROR, title, header, improvedMessage);
+    }
+
+    /**
+     * Shows a predefined error popup for ingredient loading failures
+     */
+    public static void showIngredientLoadError() {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Ingredients.LOAD_TITLE,
+                ErrorMessages.Ingredients.LOAD_HEADER,
+                ErrorMessages.Ingredients.LOAD_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined error popup for ingredient loading failures with status
+     * code
+     */
+    public static void showIngredientLoadError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Ingredients.LOAD_TITLE,
+                ErrorMessages.Ingredients.LOAD_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for ingredient loading failures with
+     * exception
+     */
+    public static void showIngredientLoadError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Ingredients.LOAD_TITLE,
+                ErrorMessages.Ingredients.LOAD_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    /**
+    * Shows a predefined error popup for item loading failures
+    */
+    public static void showItemLoadError() {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Items.LOAD_TITLE,
+    ErrorMessages.Items.LOAD_HEADER,
+    ErrorMessages.Items.LOAD_MESSAGE);
+    }
+
+    /**
+    * Shows a predefined error popup for item loading failures with status code
+    */
+    public static void showItemLoadError(int statusCode) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Items.LOAD_TITLE,
+    ErrorMessages.Items.LOAD_HEADER,
+    ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+    * Shows a predefined error popup for item loading failures with exception
+    */
+    public static void showItemLoadError(String exception) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Items.LOAD_TITLE,
+    ErrorMessages.Items.LOAD_HEADER,
+    ErrorMessages.formatExceptionError(exception));
+    }
+
+    /**
+     * Shows a predefined error popup for employee loading failures
+     */
+    public static void showEmployeeLoadError() {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.LOAD_TITLE,
+                ErrorMessages.Employees.LOAD_HEADER,
+                ErrorMessages.Employees.LOAD_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined error popup for employee loading failures with status
+     * code
+     */
+    public static void showEmployeeLoadError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.LOAD_TITLE,
+                ErrorMessages.Employees.LOAD_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for employee loading failures with exception
+     */
+    public static void showEmployeeLoadError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.LOAD_TITLE,
+                ErrorMessages.Employees.LOAD_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    // /**
+    // * Shows a predefined error popup for order loading failures
+    // */
+    // public static void showOrderLoadError() {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Orders.LOAD_TITLE,
+    // ErrorMessages.Orders.LOAD_HEADER,
+    // ErrorMessages.Orders.LOAD_MESSAGE);
+    // }
+
+    // /**
+    // * Shows a predefined error popup for order loading failures with status code
+    // */
+    // public static void showOrderLoadError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Orders.LOAD_TITLE,
+    // ErrorMessages.Orders.LOAD_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for order loading failures with exception
+    // */
+    // public static void showOrderLoadError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Orders.LOAD_TITLE,
+    // ErrorMessages.Orders.LOAD_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    /**
+    * Shows a predefined error popup for menu loading failures
+    */
+    public static void showMenuLoadError() {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Menus.LOAD_TITLE,
+    ErrorMessages.Menus.LOAD_HEADER,
+    ErrorMessages.Menus.LOAD_MESSAGE);
+    }
+
+    /**
+    * Shows a predefined error popup for menu loading failures with status code
+    */
+    public static void showMenuLoadError(int statusCode) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Menus.LOAD_TITLE,
+    ErrorMessages.Menus.LOAD_HEADER,
+    ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+    * Shows a predefined error popup for menu loading failures with exception
+    */
+    public static void showMenuLoadError(String exception) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Menus.LOAD_TITLE,
+    ErrorMessages.Menus.LOAD_HEADER,
+    ErrorMessages.formatExceptionError(exception));
+    }
+
+    // Additional ingredient operation methods
+    /**
+     * Shows a predefined error popup for ingredient add failures
+     */
+    public static void showIngredientAddError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Ingredients.ADD_TITLE,
+                ErrorMessages.Ingredients.ADD_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for ingredient add failures with exception
+     */
+    public static void showIngredientAddError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Ingredients.ADD_TITLE,
+                ErrorMessages.Ingredients.ADD_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    // /**
+    // * Shows a predefined error popup for ingredient update failures
+    // */
+    // public static void showIngredientUpdateError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.UPDATE_TITLE,
+    // ErrorMessages.Ingredients.UPDATE_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for ingredient update failures with
+    // exception
+    // */
+    // public static void showIngredientUpdateError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.UPDATE_TITLE,
+    // ErrorMessages.Ingredients.UPDATE_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for ingredient delete failures
+    // */
+    // public static void showIngredientDeleteError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.DELETE_TITLE,
+    // ErrorMessages.Ingredients.DELETE_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for ingredient delete failures with
+    // exception
+    // */
+    // public static void showIngredientDeleteError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.DELETE_TITLE,
+    // ErrorMessages.Ingredients.DELETE_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for ingredient stock movement failures
+    // */
+    // public static void showIngredientStockError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.STOCK_TITLE,
+    // ErrorMessages.Ingredients.STOCK_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for ingredient stock movement failures with
+    // * exception
+    // */
+    // public static void showIngredientStockError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Ingredients.STOCK_TITLE,
+    // ErrorMessages.Ingredients.STOCK_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // Additional item operation methods
+    /**
+    * Shows a predefined error popup for item create failures
+    */
+    public static void showItemCreateError(int statusCode) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Items.CREATE_TITLE,
+    ErrorMessages.Items.CREATE_HEADER,
+    ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+    * Shows a predefined error popup for item create failures with exception
+    */
+    public static void showItemCreateError(String exception) {
+    showPopupDialog(Alert.AlertType.ERROR,
+    ErrorMessages.Items.CREATE_TITLE,
+    ErrorMessages.Items.CREATE_HEADER,
+    ErrorMessages.formatExceptionError(exception));
+    }
+
+    // /**
+    // * Shows a predefined error popup for item update failures
+    // */
+    // public static void showItemUpdateError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.UPDATE_TITLE,
+    // ErrorMessages.Items.UPDATE_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for item update failures with exception
+    // */
+    // public static void showItemUpdateError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.UPDATE_TITLE,
+    // ErrorMessages.Items.UPDATE_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for item delete failures
+    // */
+    // public static void showItemDeleteError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.DELETE_TITLE,
+    // ErrorMessages.Items.DELETE_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for item delete failures with exception
+    // */
+    // public static void showItemDeleteError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.DELETE_TITLE,
+    // ErrorMessages.Items.DELETE_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for item ingredient loading failures
+    // */
+    // public static void showItemIngredientsLoadError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.LOAD_INGREDIENTS_TITLE,
+    // ErrorMessages.Items.LOAD_INGREDIENTS_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for item ingredient loading failures with
+    // * exception
+    // */
+    // public static void showItemIngredientsLoadError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Items.LOAD_INGREDIENTS_TITLE,
+    // ErrorMessages.Items.LOAD_INGREDIENTS_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    // Additional employee operation methods
+    /**
+     * Shows a predefined error popup for employee create failures
+     */
+    public static void showEmployeeCreateError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.CREATE_TITLE,
+                ErrorMessages.Employees.CREATE_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for employee create failures with exception
+     */
+    public static void showEmployeeCreateError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.CREATE_TITLE,
+                ErrorMessages.Employees.CREATE_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    /**
+     * Shows a predefined error popup for employee update failures
+     */
+    public static void showEmployeeUpdateError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.UPDATE_TITLE,
+                ErrorMessages.Employees.UPDATE_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for employee update failures with exception
+     */
+    public static void showEmployeeUpdateError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Employees.UPDATE_TITLE,
+                ErrorMessages.Employees.UPDATE_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    // /**
+    // * Shows a predefined error popup for order status update failures
+    // */
+    // public static void showOrderStatusUpdateError(int statusCode) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Orders.UPDATE_STATUS_TITLE,
+    // ErrorMessages.Orders.UPDATE_STATUS_HEADER,
+    // ErrorMessages.formatHttpError(statusCode));
+    // }
+
+    // /**
+    // * Shows a predefined error popup for order status update failures with
+    // * exception
+    // */
+    // public static void showOrderStatusUpdateError(String exception) {
+    // showPopupDialog(Alert.AlertType.ERROR,
+    // ErrorMessages.Orders.UPDATE_STATUS_TITLE,
+    // ErrorMessages.Orders.UPDATE_STATUS_HEADER,
+    // ErrorMessages.formatExceptionError(exception));
+    // }
+
+    /**
+     * Shows a predefined error popup for menu delete failures
+     */
+    public static void showMenuDeleteError(int statusCode) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Menus.DELETE_TITLE,
+                ErrorMessages.Menus.DELETE_HEADER,
+                ErrorMessages.formatHttpError(statusCode));
+    }
+
+    /**
+     * Shows a predefined error popup for menu delete failures with exception
+     */
+    public static void showMenuDeleteError(String exception) {
+        showPopupDialog(Alert.AlertType.ERROR,
+                ErrorMessages.Menus.DELETE_TITLE,
+                ErrorMessages.Menus.DELETE_HEADER,
+                ErrorMessages.formatExceptionError(exception));
+    }
+
+    // // Success popup methods using predefined success messages
+
+    // /**
+    // * Shows a predefined success popup for ingredient add operations
+    // */
+    // public static void showIngredientAddSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Ingredients.ADD_TITLE,
+    // ErrorMessages.SuccessMessages.Ingredients.ADD_HEADER,
+    // ErrorMessages.SuccessMessages.Ingredients.ADD_MESSAGE);
+    // }
+
+    // /**
+    // * Shows a predefined success popup for ingredient update operations
+    // */
+    // public static void showIngredientUpdateSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Ingredients.UPDATE_TITLE,
+    // ErrorMessages.SuccessMessages.Ingredients.UPDATE_HEADER,
+    // ErrorMessages.SuccessMessages.Ingredients.UPDATE_MESSAGE);
+    // }
+
+    // /**
+    // * Shows a predefined success popup for ingredient delete operations
+    // */
+    // public static void showIngredientDeleteSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Ingredients.DELETE_TITLE,
+    // ErrorMessages.SuccessMessages.Ingredients.DELETE_HEADER,
+    // ErrorMessages.SuccessMessages.Ingredients.DELETE_MESSAGE);
+    // }
+
+    // /**
+    // * Shows a predefined success popup for ingredient stock operations
+    // */
+    // public static void showIngredientStockSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Ingredients.STOCK_TITLE,
+    // ErrorMessages.SuccessMessages.Ingredients.STOCK_HEADER,
+    // ErrorMessages.SuccessMessages.Ingredients.STOCK_MESSAGE);
+    // }
+
+    /**
+    * Shows a predefined success popup for item create operations
+    */
+    public static void showItemCreateSuccess() {
+    showPopupDialog(Alert.AlertType.INFORMATION,
+    ErrorMessages.SuccessMessages.Items.CREATE_TITLE,
+    ErrorMessages.SuccessMessages.Items.CREATE_HEADER,
+    ErrorMessages.SuccessMessages.Items.CREATE_MESSAGE);
+    }
+
+    // /**
+    // * Shows a predefined success popup for item update operations
+    // */
+    // public static void showItemUpdateSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Items.UPDATE_TITLE,
+    // ErrorMessages.SuccessMessages.Items.UPDATE_HEADER,
+    // ErrorMessages.SuccessMessages.Items.UPDATE_MESSAGE);
+    // }
+
+    // /**
+    // * Shows a predefined success popup for item delete operations
+    // */
+    // public static void showItemDeleteSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Items.DELETE_TITLE,
+    // ErrorMessages.SuccessMessages.Items.DELETE_HEADER,
+    // ErrorMessages.SuccessMessages.Items.DELETE_MESSAGE);
+    // }
+
+    /**
+     * Shows a predefined success popup for employee create operations
+     */
+    public static void showEmployeeCreateSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Employees.CREATE_TITLE,
+                ErrorMessages.SuccessMessages.Employees.CREATE_HEADER,
+                ErrorMessages.SuccessMessages.Employees.CREATE_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined success popup for employee update operations
+     */
+    public static void showEmployeeUpdateSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Employees.UPDATE_TITLE,
+                ErrorMessages.SuccessMessages.Employees.UPDATE_HEADER,
+                ErrorMessages.SuccessMessages.Employees.UPDATE_MESSAGE);
+    }
+
+    // /**
+    // * Shows a predefined success popup for order status update operations
+    // */
+    // public static void showOrderStatusUpdateSuccess() {
+    // showPopupDialog(Alert.AlertType.INFORMATION,
+    // ErrorMessages.SuccessMessages.Orders.UPDATE_STATUS_TITLE,
+    // ErrorMessages.SuccessMessages.Orders.UPDATE_STATUS_HEADER,
+    // ErrorMessages.SuccessMessages.Orders.UPDATE_STATUS_MESSAGE);
+    // }
+
+    /**
+     * Shows a predefined success popup for menu create operations
+     */
+    public static void showMenuCreateSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Menus.CREATE_TITLE,
+                ErrorMessages.SuccessMessages.Menus.CREATE_HEADER,
+                ErrorMessages.SuccessMessages.Menus.CREATE_MESSAGE);
+    }
+
+    /**
+    * Shows a predefined success popup for menu update operations
+    */
+    public static void showMenuUpdateSuccess() {
+    showPopupDialog(Alert.AlertType.INFORMATION,
+    ErrorMessages.SuccessMessages.Menus.UPDATE_TITLE,
+    ErrorMessages.SuccessMessages.Menus.UPDATE_HEADER,
+    ErrorMessages.SuccessMessages.Menus.UPDATE_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined success popup for menu delete operations
+     */
+    public static void showMenuDeleteSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Menus.DELETE_TITLE,
+                ErrorMessages.SuccessMessages.Menus.DELETE_HEADER,
+                ErrorMessages.SuccessMessages.Menus.DELETE_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined success popup for table create operations
+     */
+    public static void showTableCreateSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Tables.CREATE_TITLE,
+                ErrorMessages.SuccessMessages.Tables.CREATE_HEADER,
+                ErrorMessages.SuccessMessages.Tables.CREATE_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined success popup for table free operations
+     */
+    public static void showTableFreeSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Tables.STATUS_UPDATE_TITLE,
+                ErrorMessages.SuccessMessages.Tables.STATUS_UPDATE_HEADER,
+                ErrorMessages.SuccessMessages.Tables.FREE_MESSAGE);
+    }
+
+    /**
+     * Shows a predefined success popup for table occupied operations
+     */
+    public static void showTableOccupiedSuccess() {
+        showPopupDialog(Alert.AlertType.INFORMATION,
+                ErrorMessages.SuccessMessages.Tables.STATUS_UPDATE_TITLE,
+                ErrorMessages.SuccessMessages.Tables.STATUS_UPDATE_HEADER,
+                ErrorMessages.SuccessMessages.Tables.OCCUPIED_MESSAGE);
     }
 }

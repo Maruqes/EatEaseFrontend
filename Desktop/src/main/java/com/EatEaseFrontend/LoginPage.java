@@ -157,6 +157,19 @@ public class LoginPage {
         loginBtn.setMaxWidth(Double.MAX_VALUE);
         loginBtn.setOnAction(e -> handler.handle(usernameFld.getText(), passwordFld.getText()));
 
+        // Add Enter key functionality to both username and password fields
+        usernameFld.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                handler.handle(usernameFld.getText(), passwordFld.getText());
+            }
+        });
+
+        passwordFld.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER) {
+                handler.handle(usernameFld.getText(), passwordFld.getText());
+            }
+        });
+
         // Add some spacing before button
         VBox formBox = new VBox(20);
         formBox.getChildren().addAll(welcomeText, loginTitle, usernameBox, passwordBox, optionsBox, loginBtn);

@@ -46,8 +46,11 @@ import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import javafx.collections.ObservableList;
 
 /**
  * View para gerenciar e exibir itens do menu
@@ -142,16 +145,14 @@ public class ItemView {
 
                     } else {
                         Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar itens",
-                                    "Status code: " + resp.statusCode());
+                            PopUp.showItemLoadError(resp.statusCode());
                         });
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar itens",
-                                "Erro: " + ex.getMessage());
+                        PopUp.showItemLoadError(ex.getMessage());
                     });
                     return null;
                 });
@@ -221,7 +222,12 @@ public class ItemView {
             noItemsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
             contentBox.getChildren().add(noItemsLabel);
         } else {
-            for (Item item : items) {
+            // Sort items alphabetically by name
+            List<Item> sortedItems = items.stream()
+                    .sorted(Comparator.comparing(Item::getNome, String.CASE_INSENSITIVE_ORDER))
+                    .collect(Collectors.toList());
+
+            for (Item item : sortedItems) {
                 VBox card = createItemCard(item);
                 itemCards.getChildren().add(card);
             }
@@ -255,6 +261,11 @@ public class ItemView {
                     .collect(Collectors.toList());
         }
 
+        // Sort filtered items alphabetically by name
+        filteredItems = filteredItems.stream()
+                .sorted(Comparator.comparing(Item::getNome, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+
         // Update the display with filtered items
         displayFilteredItems(filteredItems);
     }
@@ -286,7 +297,12 @@ public class ItemView {
             noItemsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
             contentBox.getChildren().add(noItemsLabel);
         } else {
-            for (Item item : items) {
+            // Sort items alphabetically by name
+            List<Item> sortedItems = items.stream()
+                    .sorted(Comparator.comparing(Item::getNome, String.CASE_INSENSITIVE_ORDER))
+                    .collect(Collectors.toList());
+
+            for (Item item : sortedItems) {
                 VBox card = createItemCard(item);
                 itemCards.getChildren().add(card);
             }
@@ -755,7 +771,7 @@ public class ItemView {
 
                     Platform.runLater(() -> {
                         originalList.clear();
-                        originalList.addAll(list); // Salvar lista original para filtro
+                        originalList.addAll(list); // Guardar lista original para filtro
                         ingCombo.getItems().setAll(list);
                         loadBtn.setText("Recarregar");
                         loadBtn.setDisable(false);
@@ -813,11 +829,20 @@ public class ItemView {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             boolean tipoOk = tipoPratoCombo.getValue() != null;
             boolean precoOk = !precoField.getText().trim().isEmpty();
-            boolean ok = nameOk && tipoOk && precoOk;
+
+            // If item is composite, it must have ingredients
+            boolean ingredientsOk = true;
+            if (compostoCheck.isSelected()) {
+                ingredientsOk = !table.getItems().isEmpty();
+            }
+
+            boolean ok = nameOk && tipoOk && precoOk && ingredientsOk;
 
             System.out.println("DEBUG ADD - Nome: " + nameOk + " (" + nameField.getText() + "), " +
                     "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
                     "Preço: " + precoOk + " (" + precoField.getText() + "), " +
+                    "Composto: " + compostoCheck.isSelected() + ", " +
+                    "Ingredientes: " + ingredientsOk + " (" + table.getItems().size() + "), " +
                     "Final: " + ok);
 
             submit.setDisable(!ok);
@@ -825,6 +850,14 @@ public class ItemView {
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
+        compostoCheck.selectedProperty().addListener(validator);
+        // Add listener to table items to validate when ingredients are added/removed
+        table.getItems().addListener((javafx.collections.ListChangeListener<IngredientRowData>) change -> {
+            validator.changed(null, null, null);
+        });
+
+        // Trigger initial validation
+        Platform.runLater(() -> validator.changed(null, null, null));
 
         // 5) Layout moderno com dimensões apropriadas
         VBox popupContent = new VBox(25);
@@ -838,10 +871,76 @@ public class ItemView {
                         "-fx-min-width: 800;" +
                         "-fx-min-height: 750;");
 
-        // Title and header
+        // Header with title and close button
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(0, 0, 15, 0));
+
         Label titleLabel = new Label("Adicionar Item");
         titleLabel.getStyleClass().add("popup-title");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #FB8C00;");
+
+        // Spacer to push close button to the right
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Close button (X)
+        Button closeButton = new Button("×");
+        closeButton.getStyleClass().add("popup-close-button");
+        closeButton.setStyle(
+                "-fx-background-color: transparent; " +
+                        "-fx-text-fill: #666666; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;");
+
+        closeButton.setOnMouseEntered(e -> closeButton.setStyle(
+                "-fx-background-color: #f0f0f0; " +
+                        "-fx-text-fill: #333333; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;"));
+
+        closeButton.setOnMouseExited(e -> closeButton.setStyle(
+                "-fx-background-color: transparent; " +
+                        "-fx-text-fill: #666666; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;"));
+
+        // Close button action with validation
+        closeButton.setOnAction(e -> {
+            boolean hasData = !nameField.getText().trim().isEmpty() ||
+                    tipoPratoCombo.getValue() != null ||
+                    !precoField.getText().trim().isEmpty() ||
+                    compostoCheck.isSelected() ||
+                    !table.getItems().isEmpty();
+
+            if (hasData) {
+                PopUp.showConfirmationPopup(
+                        Alert.AlertType.WARNING,
+                        "Confirmar Saída",
+                        "Dados não salvos serão perdidos",
+                        "Tem a certeza que deseja fechar sem guardar as alterações?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
+
+        headerBox.getChildren().addAll(titleLabel, spacer, closeButton);
 
         Label headerLabel = new Label("Preencha os detalhes do novo item");
         headerLabel.getStyleClass().add("popup-subtitle");
@@ -915,7 +1014,7 @@ public class ItemView {
         buttonBox.getChildren().addAll(cancel, submit);
 
         // Add all components to popup content
-        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+        popupContent.getChildren().addAll(headerBox, headerLabel, grid, buttonBox);
         popup.getContent().add(popupContent);
 
         // 6) Mostra o popup centrado
@@ -925,7 +1024,24 @@ public class ItemView {
         Platform.runLater(() -> nameField.requestFocus());
 
         // 7) Ações
-        cancel.setOnAction(e -> popup.hide());
+        cancel.setOnAction(e -> {
+            boolean hasData = !nameField.getText().trim().isEmpty() ||
+                    tipoPratoCombo.getValue() != null ||
+                    !precoField.getText().trim().isEmpty() ||
+                    compostoCheck.isSelected() ||
+                    !table.getItems().isEmpty();
+
+            if (hasData) {
+                PopUp.showConfirmationPopup(
+                        Alert.AlertType.WARNING,
+                        "Confirmar Saída",
+                        "Dados não salvos serão perdidos",
+                        "Tem a certeza que deseja cancelar? Todos os dados inseridos serão perdidos.",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
         submit.setOnAction(e -> {
             String nome = nameField.getText().trim();
             int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
@@ -1004,15 +1120,13 @@ public class ItemView {
                         Platform.runLater(() -> {
                             if (resp.statusCode() == 200 || resp.statusCode() == 201) {
                                 // Sucesso
-                                PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso", "Item Criado",
-                                        "O item foi criado com sucesso!");
+                                PopUp.showItemCreateSuccess();
 
                                 // Recarregar a lista de itens
                                 show();
                             } else {
                                 // Erro
-                                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
-                                        "Status code: " + resp.statusCode() + "\n\nResposta: " + resp.body());
+                                PopUp.showItemCreateError(resp.statusCode());
                             }
                         });
                     })
@@ -1020,8 +1134,7 @@ public class ItemView {
                         ex.printStackTrace();
 
                         Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
-                                    "Ocorreu um erro ao tentar enviar os dados: " + ex.getMessage());
+                            PopUp.showItemCreateError(ex.getMessage());
                         });
 
                         return null;
@@ -1031,8 +1144,7 @@ public class ItemView {
             e.printStackTrace();
 
             Platform.runLater(() -> {
-                PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao criar item",
-                        "Ocorreu um erro ao processar os dados: " + e.getMessage());
+                PopUp.showItemCreateError(e.getMessage());
             });
         }
     }
@@ -1101,10 +1213,65 @@ public class ItemView {
                         "-fx-min-width: 750;" +
                         "-fx-min-height: 750;");
 
-        // Title and header
+        // Header with title and close button
+        HBox headerBox = new HBox();
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        headerBox.setPadding(new Insets(0, 0, 15, 0));
+
         Label titleLabel = new Label("Editar Item");
         titleLabel.getStyleClass().add("popup-title");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #FB8C00;");
+
+        // Spacer to push close button to the right
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Close button (X)
+        Button closeButton = new Button("×");
+        closeButton.getStyleClass().add("popup-close-button");
+        closeButton.setStyle(
+                "-fx-background-color: transparent; " +
+                        "-fx-text-fill: #666666; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;");
+
+        closeButton.setOnMouseEntered(e -> closeButton.setStyle(
+                "-fx-background-color: #f0f0f0; " +
+                        "-fx-text-fill: #333333; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;"));
+
+        closeButton.setOnMouseExited(e -> closeButton.setStyle(
+                "-fx-background-color: transparent; " +
+                        "-fx-text-fill: #666666; " +
+                        "-fx-font-size: 20px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-padding: 5 10; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-background-radius: 15; " +
+                        "-fx-min-width: 30; " +
+                        "-fx-min-height: 30;"));
+
+        // Store original values for comparison
+        final String originalName = item.getNome();
+        final int originalTipoPratoId = item.getTipoPratoId();
+        final double originalPreco = item.getPreco();
+        final boolean originalComposto = item.isEComposto();
+        final List<Item.ItemIngrediente> originalIngredients = item.getIngredientes() != null
+                ? new ArrayList<>(item.getIngredientes())
+                : new ArrayList<>();
+
+        headerBox.getChildren().addAll(titleLabel, spacer, closeButton);
 
         Label headerLabel = new Label("Atualize as informações do item");
         headerLabel.getStyleClass().add("popup-subtitle");
@@ -1288,7 +1455,7 @@ public class ItemView {
 
                     Platform.runLater(() -> {
                         originalList.clear();
-                        originalList.addAll(list); // Salvar lista original para filtro
+                        originalList.addAll(list); // Guardar lista original para filtro
                         ingCombo.getItems().setAll(list);
 
                         // pré-carrega os existentes do item
@@ -1369,8 +1536,8 @@ public class ItemView {
                     });
         });
 
-        // 7) Botões Salvar e Cancelar
-        Button saveBtn = new Button("Salvar Alterações");
+        // 7) Botões Guardar e Cancelar
+        Button saveBtn = new Button("Guardar Alterações");
         saveBtn.getStyleClass().add("popup-primary-button");
         Button cancelBtn = new Button("Cancelar");
         cancelBtn.getStyleClass().add("popup-secondary-button");
@@ -1381,10 +1548,20 @@ public class ItemView {
             boolean nameOk = !nameField.getText().trim().isEmpty();
             boolean tipoOk = tipoPratoCombo.getValue() != null;
             boolean precoOk = !precoField.getText().trim().isEmpty();
-            boolean ok = nameOk && tipoOk && precoOk;
+
+            // If item is composite, it must have ingredients
+            boolean ingredientsOk = true;
+            if (compostoCheck.isSelected()) {
+                ingredientsOk = !table.getItems().isEmpty();
+            }
+
+            boolean ok = nameOk && tipoOk && precoOk && ingredientsOk;
+
             System.out.println("DEBUG EDIT - Nome: " + nameOk + " (" + nameField.getText() + "), " +
                     "Tipo: " + tipoOk + " (" + tipoPratoCombo.getValue() + "), " +
                     "Preço: " + precoOk + " (" + precoField.getText() + "), " +
+                    "Composto: " + compostoCheck.isSelected() + ", " +
+                    "Ingredientes: " + ingredientsOk + " (" + table.getItems().size() + "), " +
                     "Final: " + ok);
 
             saveBtn.setDisable(!ok);
@@ -1392,6 +1569,11 @@ public class ItemView {
         nameField.textProperty().addListener(validator);
         tipoPratoCombo.valueProperty().addListener(validator);
         precoField.textProperty().addListener(validator);
+        compostoCheck.selectedProperty().addListener(validator);
+        // Add listener to table items to validate when ingredients are added/removed
+        table.getItems().addListener((javafx.collections.ListChangeListener<IngredientRowData>) change -> {
+            validator.changed(null, null, null);
+        });
 
         // Chama o validador uma vez para avaliar o estado inicial
         validator.changed(null, null, null);
@@ -1437,11 +1619,48 @@ public class ItemView {
         buttonBox.getChildren().addAll(cancelBtn, saveBtn);
 
         // Add all components to popup content
-        popupContent.getChildren().addAll(titleLabel, headerLabel, grid, buttonBox);
+        popupContent.getChildren().addAll(headerBox, headerLabel, grid, buttonBox);
         popup.getContent().add(popupContent);
 
+        // Close button action with validation (now that all components are available)
+        closeButton.setOnAction(e -> {
+            boolean hasChanges = !nameField.getText().trim().equals(originalName) ||
+                    tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1 != originalTipoPratoId ||
+                    !precoField.getText().trim().equals(String.format("%.2f", originalPreco)) ||
+                    compostoCheck.isSelected() != originalComposto ||
+                    hasIngredientChanges(table.getItems(), originalIngredients);
+
+            if (hasChanges) {
+                PopUp.showConfirmationPopup(
+                        Alert.AlertType.WARNING,
+                        "Confirmar Saída",
+                        "Alterações não guardadas serão perdidas",
+                        "Tem a certeza que deseja fechar sem guardar as alterações?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
+
         // 9) Ações finais
-        cancelBtn.setOnAction(e -> popup.hide());
+        cancelBtn.setOnAction(e -> {
+            boolean hasChanges = !nameField.getText().trim().equals(originalName) ||
+                    tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1 != originalTipoPratoId ||
+                    !precoField.getText().trim().equals(String.format("%.2f", originalPreco)) ||
+                    compostoCheck.isSelected() != originalComposto ||
+                    hasIngredientChanges(table.getItems(), originalIngredients);
+
+            if (hasChanges) {
+                PopUp.showConfirmationPopup(
+                        Alert.AlertType.WARNING,
+                        "Confirmar Cancelamento",
+                        "Alterações não guardadas serão perdidas",
+                        "Tem a certeza que deseja cancelar? Todas as alterações serão perdidas.",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
         saveBtn.setOnAction(e -> {
             String nome = nameField.getText().trim();
             int tipoId = tipoPratoCombo.getSelectionModel().getSelectedIndex() + 1;
@@ -2094,5 +2313,36 @@ public class ItemView {
 
         // Show popup centered
         popup.show(primaryStage, centerX - 200, centerY - 150);
+    }
+
+    /**
+     * Helper method to check if there are changes in the ingredients list
+     * 
+     * @param currentIngredients  Current ingredients in the table
+     * @param originalIngredients Original ingredients from the item
+     * @return true if there are changes, false otherwise
+     */
+    private boolean hasIngredientChanges(ObservableList<IngredientRowData> currentIngredients,
+            List<Item.ItemIngrediente> originalIngredients) {
+        // Check if sizes are different
+        if (currentIngredients.size() != originalIngredients.size()) {
+            return true;
+        }
+
+        // Convert current ingredients to a map for easier comparison
+        Map<Integer, Integer> currentMap = new HashMap<>();
+        for (IngredientRowData current : currentIngredients) {
+            currentMap.put(current.getId(), current.getQuantity());
+        }
+
+        // Check each original ingredient
+        for (Item.ItemIngrediente original : originalIngredients) {
+            Integer currentQuantity = currentMap.get(original.getIngredienteId());
+            if (currentQuantity == null || !currentQuantity.equals(original.getQuantidade())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

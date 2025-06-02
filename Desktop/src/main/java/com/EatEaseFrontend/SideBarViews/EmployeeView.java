@@ -3,6 +3,7 @@ package com.EatEaseFrontend.SideBarViews;
 import com.EatEaseFrontend.AppConfig;
 import com.EatEaseFrontend.Cargo;
 import com.EatEaseFrontend.Employee;
+import com.EatEaseFrontend.ErrorMessages;
 import com.EatEaseFrontend.JsonParser;
 import com.EatEaseFrontend.StageManager;
 import javafx.application.Platform;
@@ -75,9 +76,7 @@ public class EmployeeView {
                         });
                     } else {
                         Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro",
-                                    "Falha ao carregar funcionários",
-                                    "Status code: " + resp.statusCode());
+                            PopUp.showEmployeeLoadError(resp.statusCode());
                         });
                     }
                 })
@@ -389,7 +388,7 @@ public class EmployeeView {
             if (nome.isEmpty() || username.isEmpty() || email.isEmpty() ||
                     telefone.isEmpty() || password.isEmpty() || cargo == null) {
                 PopUp.showPopupDialog(Alert.AlertType.WARNING, "Campos Obrigatórios",
-                        "Todos os campos são obrigatórios",
+                        ErrorMessages.Validation.REQUIRED_FIELDS,
                         "Por favor, preencha todos os campos obrigatórios.");
                 return;
             }
@@ -397,7 +396,7 @@ public class EmployeeView {
             // Email validation
             if (!email.contains("@") || !email.contains(".")) {
                 PopUp.showPopupDialog(Alert.AlertType.WARNING, "Email Inválido",
-                        "Formato de email inválido",
+                        ErrorMessages.Validation.INVALID_EMAIL,
                         "Por favor, insira um email válido.");
                 return;
             }
@@ -405,7 +404,7 @@ public class EmployeeView {
             // Password validation
             if (password.length() < 6) {
                 PopUp.showPopupDialog(Alert.AlertType.WARNING, "Senha Inválida",
-                        "A senha deve ter pelo menos 6 caracteres",
+                        ErrorMessages.Validation.PASSWORD_TOO_SHORT,
                         "Por favor, insira uma senha com pelo menos 6 caracteres.");
                 return;
             }
@@ -464,16 +463,12 @@ public class EmployeeView {
                     Platform.runLater(() -> {
                         // Reload employees after registration
                         show();
-                        PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
-                                "Funcionário registrado",
-                                "O funcionário foi registrado com sucesso!");
+                        PopUp.showEmployeeCreateSuccess();
                     });
                 })
                 .exceptionally(e -> {
                     Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro",
-                                "Falha ao registrar funcionário",
-                                "Erro: " + e.getMessage());
+                        PopUp.showEmployeeCreateError(e.getMessage());
                     });
                     e.printStackTrace();
                     return null;
@@ -561,7 +556,7 @@ public class EmployeeView {
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER);
 
-        Button saveButton = new Button("Salvar");
+        Button saveButton = new Button("Guardar");
         saveButton.setStyle("-fx-background-color: #007bff; -fx-text-fill: white; -fx-font-weight: bold;");
         saveButton.setOnAction(e -> {
             // Validation
@@ -655,16 +650,12 @@ public class EmployeeView {
                     Platform.runLater(() -> {
                         // Reload employees after update
                         show();
-                        PopUp.showPopupDialog(Alert.AlertType.INFORMATION, "Sucesso",
-                                "Funcionário atualizado",
-                                "O funcionário foi atualizado com sucesso!");
+                        PopUp.showEmployeeUpdateSuccess();
                     });
                 })
                 .exceptionally(e -> {
                     Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro",
-                                "Falha ao atualizar funcionário",
-                                "Erro: " + e.getMessage());
+                        PopUp.showEmployeeUpdateError(e.getMessage());
                     });
                     e.printStackTrace();
                     return null;

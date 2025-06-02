@@ -111,16 +111,14 @@ public class IngredientsView {
                         });
                     } else {
                         Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
-                                    "Status code: " + resp.statusCode());
+                            PopUp.showIngredientLoadError(resp.statusCode());
                         });
                     }
                 })
                 .exceptionally(ex -> {
                     ex.printStackTrace();
                     Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao carregar ingredientes",
-                                "Erro: " + ex.getMessage());
+                        PopUp.showIngredientLoadError(ex.getMessage());
                     });
                     return null;
                 });
@@ -190,7 +188,12 @@ public class IngredientsView {
             noIngredientsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
             contentBox.getChildren().add(noIngredientsLabel);
         } else {
-            for (Ingredient ingredient : ingredients) {
+            // Sort ingredients alphabetically by name
+            List<Ingredient> sortedIngredients = ingredients.stream()
+                    .sorted((i1, i2) -> i1.getNome().compareToIgnoreCase(i2.getNome()))
+                    .collect(Collectors.toList());
+
+            for (Ingredient ingredient : sortedIngredients) {
                 VBox card = createIngredientCard(ingredient);
                 ingredientCards.getChildren().add(card);
             }
@@ -255,7 +258,12 @@ public class IngredientsView {
             noIngredientsLabel.setFont(Font.font("System", FontWeight.NORMAL, 18));
             contentBox.getChildren().add(noIngredientsLabel);
         } else {
-            for (Ingredient ingredient : ingredients) {
+            // Sort ingredients alphabetically by name
+            List<Ingredient> sortedIngredients = ingredients.stream()
+                    .sorted((i1, i2) -> i1.getNome().compareToIgnoreCase(i2.getNome()))
+                    .collect(Collectors.toList());
+
+            for (Ingredient ingredient : sortedIngredients) {
                 VBox card = createIngredientCard(ingredient);
                 ingredientCards.getChildren().add(card);
             }
@@ -390,7 +398,7 @@ public class IngredientsView {
 
         // 2) Cria a Popup
         Popup popup = new Popup();
-        popup.setAutoHide(true); // fecha ao clicar fora
+        popup.setAutoHide(false); // Não fecha ao clicar fora - requer confirmação
 
         // 3) Conteúdo principal da popup
         VBox popupContent = new VBox(20);
@@ -417,7 +425,24 @@ public class IngredientsView {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
         titleLabel.setTextFill(Color.valueOf("#333333"));
 
-        headerBox.getChildren().addAll(headerIcon, titleLabel);
+        // Spacer para empurrar o botão X para a direita
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Botão X para fechar
+        Button closeBtn = new Button("");
+        FontIcon closeIcon = new FontIcon(MaterialDesign.MDI_CLOSE);
+        closeIcon.setIconColor(Color.valueOf("#666666"));
+        closeIcon.setIconSize(16);
+        closeBtn.setGraphic(closeIcon);
+        closeBtn.getStyleClass().add("icon-button");
+        closeBtn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: transparent;" +
+                        "-fx-padding: 5;" +
+                        "-fx-cursor: hand;");
+
+        headerBox.getChildren().addAll(headerIcon, titleLabel, spacer, closeBtn);
 
         // 5) Seção de campos do formulário
         VBox formSection = new VBox(15);
@@ -504,6 +529,24 @@ public class IngredientsView {
         unidadeSection.getChildren().addAll(unidadeLabel, unidadeCombo);
 
         formSection.getChildren().addAll(nameSection, stockSection, stockMinSection, unidadeSection);
+
+        // Definir ação do botão X após os campos estarem criados
+        closeBtn.setOnAction(e -> {
+            // Verificar se há campos preenchidos antes de fechar
+            boolean hasData = !nameField.getText().trim().isEmpty() ||
+                    !stockField.getText().trim().isEmpty() ||
+                    !stockMinField.getText().trim().isEmpty() ||
+                    unidadeCombo.getValue() != null;
+
+            if (hasData) {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                        "Confirmar Fechamento", "Fechar Diálogo",
+                        "Existem dados preenchidos. Tem certeza que deseja fechar?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
 
         // 6) Botões com styling melhorado
         HBox buttonBox = new HBox(12);
@@ -598,7 +641,23 @@ public class IngredientsView {
         popup.show(primary, centerX - 225, centerY - 200);
 
         // 11) Ações dos botões
-        cancelBtn.setOnAction(e -> popup.hide());
+        cancelBtn.setOnAction(e -> {
+            // Verificar se há campos preenchidos antes de cancelar
+            boolean hasData = !nameField.getText().trim().isEmpty() ||
+                    !stockField.getText().trim().isEmpty() ||
+                    !stockMinField.getText().trim().isEmpty() ||
+                    unidadeCombo.getValue() != null;
+
+            if (hasData) {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                        "Confirmar Cancelamento", "Cancelar Adição",
+                        "Existem dados preenchidos. Tem certeza que deseja cancelar?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
+
         addBtn.setOnAction(e -> {
             String nome = nameField.getText().trim();
             int stock = Integer.parseInt(stockField.getText());
@@ -677,8 +736,7 @@ public class IngredientsView {
 
                         // Mostrar mensagem de erro
                         Platform.runLater(() -> {
-                            PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao adicionar ingrediente",
-                                    "Status code: " + resp.statusCode() + "\nResposta: " + resp.body());
+                            PopUp.showIngredientAddError(resp.statusCode());
                         });
                     }
                 })
@@ -687,8 +745,7 @@ public class IngredientsView {
 
                     // Mostrar mensagem de erro
                     Platform.runLater(() -> {
-                        PopUp.showPopupDialog(Alert.AlertType.ERROR, "Erro", "Falha ao adicionar ingrediente",
-                                "Erro: " + ex.getMessage());
+                        PopUp.showIngredientAddError(ex.getMessage());
                     });
                     return null;
                 });
@@ -707,7 +764,7 @@ public class IngredientsView {
 
         // 2) Cria o Popup
         Popup popup = new Popup();
-        popup.setAutoHide(true); // fecha ao clicar fora
+        popup.setAutoHide(false); // Não fecha ao clicar fora - requer confirmação
 
         // 3) Conteúdo principal da popup
         VBox popupContent = new VBox(20);
@@ -734,7 +791,24 @@ public class IngredientsView {
         titleLabel.setFont(Font.font("System", FontWeight.BOLD, 18));
         titleLabel.setTextFill(Color.valueOf("#333333"));
 
-        headerBox.getChildren().addAll(headerIcon, titleLabel);
+        // Spacer para empurrar o botão X para a direita
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Botão X para fechar
+        Button closeBtn = new Button("");
+        FontIcon closeIcon = new FontIcon(MaterialDesign.MDI_CLOSE);
+        closeIcon.setIconColor(Color.valueOf("#666666"));
+        closeIcon.setIconSize(16);
+        closeBtn.setGraphic(closeIcon);
+        closeBtn.getStyleClass().add("icon-button");
+        closeBtn.setStyle(
+                "-fx-background-color: transparent;" +
+                        "-fx-border-color: transparent;" +
+                        "-fx-padding: 5;" +
+                        "-fx-cursor: hand;");
+
+        headerBox.getChildren().addAll(headerIcon, titleLabel, spacer, closeBtn);
 
         // 5) Informação do ingrediente atual
         VBox currentInfoCard = new VBox(8);
@@ -837,6 +911,24 @@ public class IngredientsView {
 
         formSection.getChildren().addAll(nameSection, stockSection, stockMinSection, unidadeSection);
 
+        // Definir ação do botão X após os campos estarem criados
+        closeBtn.setOnAction(e -> {
+            // Verificar se houve alterações nos campos antes de fechar
+            boolean hasChanges = !nameField.getText().trim().equals(ingredient.getNome()) ||
+                    !stockField.getText().equals(String.valueOf(ingredient.getStock())) ||
+                    !stockMinField.getText().equals(String.valueOf(ingredient.getStock_min())) ||
+                    !unidadeCombo.getValue().equals(getUnidadeName(ingredient.getUnidade_id()));
+
+            if (hasChanges) {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                        "Confirmar Fechamento", "Fechar Diálogo",
+                        "Existem alterações não guardadas. Tem certeza que deseja fechar?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
+
         // 7) Botões com styling melhorado
         HBox buttonBox = new HBox(12);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
@@ -852,7 +944,7 @@ public class IngredientsView {
                         "-fx-background-radius: 6;" +
                         "-fx-cursor: hand;");
 
-        Button saveBtn = new Button("Salvar");
+        Button saveBtn = new Button("Guardar");
         saveBtn.setPrefWidth(100);
         saveBtn.setPrefHeight(40);
         saveBtn.setDisable(true);
@@ -930,7 +1022,23 @@ public class IngredientsView {
         popup.show(primary, centerX - 225, centerY - 220);
 
         // 12) Ações dos botões
-        cancelBtn.setOnAction(e -> popup.hide());
+        cancelBtn.setOnAction(e -> {
+            // Verificar se houve alterações nos campos antes de cancelar
+            boolean hasChanges = !nameField.getText().trim().equals(ingredient.getNome()) ||
+                    !stockField.getText().equals(String.valueOf(ingredient.getStock())) ||
+                    !stockMinField.getText().equals(String.valueOf(ingredient.getStock_min())) ||
+                    !unidadeCombo.getValue().equals(getUnidadeName(ingredient.getUnidade_id()));
+
+            if (hasChanges) {
+                PopUp.showConfirmationPopup(Alert.AlertType.CONFIRMATION,
+                        "Confirmar Cancelamento", "Cancelar Edição",
+                        "Existem alterações não guardadas. Tem certeza que deseja cancelar?",
+                        () -> popup.hide());
+            } else {
+                popup.hide();
+            }
+        });
+
         saveBtn.setOnAction(e -> {
             String nome = nameField.getText().trim();
             int stock = Integer.parseInt(stockField.getText());

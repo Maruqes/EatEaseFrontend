@@ -354,15 +354,15 @@ public class MesasView {
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
                     if (response.statusCode() == 200) {
-                        System.out.println("Posição relativa da mesa " + mesaId + " salva com sucesso no servidor");
+                        System.out.println("Posição relativa da mesa " + mesaId + " guardada com sucesso no servidor");
                         return true;
                     } else {
-                        System.err.println("Erro ao salvar posição da mesa " + mesaId + ": " + response.statusCode());
+                        System.err.println("Erro ao guardar posição da mesa " + mesaId + ": " + response.statusCode());
                         return false;
                     }
                 })
                 .exceptionally(e -> {
-                    System.err.println("Exceção ao salvar posição da mesa " + mesaId + ": " + e.getMessage());
+                    System.err.println("Exceção ao guardar posição da mesa " + mesaId + ": " + e.getMessage());
                     return false;
                 });
     }
@@ -875,8 +875,22 @@ public class MesasView {
      * @param alertType Tipo do alerta
      */
     private void showAlert(String message, Alert.AlertType alertType) {
-        String title = alertType == Alert.AlertType.ERROR ? "Erro" : "Sucesso";
-        PopUp.showPopupDialog(alertType, title, "", message);
+        if (alertType == Alert.AlertType.ERROR) {
+            // Erro
+            PopUp.showExceptionErrorPopup("Erro", "Falha na Operação", message);
+        } else if (message.contains("liberada")) {
+            // Mesa liberada
+            PopUp.showTableFreeSuccess();
+        } else if (message.contains("ocupada")) {
+            // Mesa ocupada
+            PopUp.showTableOccupiedSuccess();
+        } else if (message.contains("criada")) {
+            // Mesa criada
+            PopUp.showTableCreateSuccess();
+        } else {
+            // Outros sucessos genéricos
+            PopUp.showPopupDialog(alertType, "Sucesso", "", message);
+        }
     }
 
     /**
@@ -922,7 +936,7 @@ public class MesasView {
         grid.add(capacidadeField, 1, 1);
 
         // Buttons
-        Button saveButton = new Button("Salvar");
+        Button saveButton = new Button("Guardar");
         saveButton.getStyleClass().add("login-button");
         saveButton.setDisable(true);
 
