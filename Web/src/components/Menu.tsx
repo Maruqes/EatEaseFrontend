@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dishPlaceholder from '../assets/dishes/placeholder.svg';
-import { formatIngredient } from '../utils/ingredientsHelper';
+import { formatIngredient, fetchAllIngredients } from '../utils/ingredientsHelper';
 
 interface ApiItem {
   id: number;
@@ -26,18 +26,53 @@ interface Dish {
   type: 'Prato Principal' | 'Entradas' | 'Bebida' | 'Sobremesa';
 }
 
+interface ItemPhoto {
+  foto: string;
+}
+
 const Menu: React.FC = () => {
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [dishTypes] = useState<string[]>(['Prato Principal', 'Entradas', 'Bebida', 'Sobremesa']);
 
+  // Função para buscar a foto de um item
+  const fetchItemPhoto = async (itemId: number): Promise<string> => {
+    try {
+      const response = await fetch(`/api/item/getFoto/${itemId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data: ItemPhoto = await response.json();
+        if (data.foto) {
+          return `/api/uploads/items/${data.foto}`;
+        }
+      }
+    } catch (error) {
+      console.error(`Erro ao buscar foto do item ${itemId}:`, error);
+    }
+
+    // Retorna placeholder se não conseguir buscar a foto
+    return dishPlaceholder;
+  };
+
   useEffect(() => {
     const fetchMenu = async () => {
       try {
         setLoading(true);
+
+        // Carregar todos os ingredientes uma única vez no início
+        console.log('Carregando ingredientes...');
+        await fetchAllIngredients();
+        console.log('Ingredientes carregados com sucesso!');
+
         const apiUrl = 'api/item/getAll';
-        
+
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -45,27 +80,27 @@ const Menu: React.FC = () => {
             'Content-Type': 'application/json',
           }
         });
-        
+
         if (response.type === 'opaque') {
           throw new Error('Resposta opaca devido ao modo no-cors. Não foi possível aceder aos dados.');
         }
-        
+
         if (!response.ok) {
           throw new Error(`Erro ao carregar menu: ${response.status}`);
         }
-        
+
         const data: ApiItem[] = await response.json();
         console.log('Dados recebidos da API:', data);
-        
+
         // Verificar se há dados antes de continuar
         if (!data || data.length === 0) {
           throw new Error('Não foram encontrados pratos no menu.');
         }
 
         console.log('Valores de eCpmposto:', data.map(item => ({ id: item.id, nome: item.nome, eCpmposto: item.eCpmposto })));
-        
+
         let filteredData = data.filter(item => item.eCpmposto === true || item.eCpmposto === 1);
-        
+
         // Mapeamento dos IDs de tipo para os tipos de prato
         const tiposPrato: Record<number, 'Prato Principal' | 'Entradas' | 'Bebida' | 'Sobremesa'> = {
           1: 'Prato Principal',
@@ -73,42 +108,48 @@ const Menu: React.FC = () => {
           3: 'Bebida',
           4: 'Sobremesa'
         };
-        
+
         console.log('Dados filtrados:', filteredData);
         if (filteredData.length === 0) {
           console.warn('Nenhum prato composto encontrado. A utilizar todos os pratos.');
           filteredData = data;
         }
-        
-        const formattedDishes: Dish[] = filteredData.map(item => {
+
+        const formattedDishes: Dish[] = await Promise.all(filteredData.map(async item => {
           let ingredientsList: string[] = [];
           try {
             const ingredientsData = JSON.parse(item.ingredientesJson);
-            ingredientsList = ingredientsData.map((ing: IngredientItem) => 
-              formatIngredient(ing.ingredienteId, ing.quantidade)
+            // Usar Promise.all para processar todos os ingredientes de forma assíncrona
+            ingredientsList = await Promise.all(
+              ingredientsData.map(async (ing: IngredientItem) =>
+                await formatIngredient(ing.ingredienteId, ing.quantidade)
+              )
             );
           } catch (e) {
             console.error('Erro ao processar ingredientes:', e);
             ingredientsList = ['Ingredientes indisponíveis'];
           }
-          
+
+          // Buscar a foto do item
+          const imageUrl = await fetchItemPhoto(item.id);
+
           return {
             id: item.id,
             name: item.nome,
             price: item.preco,
             ingredients: ingredientsList,
-            image: dishPlaceholder,
+            image: imageUrl,
             type: tiposPrato[item.tipoPrato_id] || 'Prato Principal'
           };
-        });
-        
+        }));
+
         console.log('Pratos formatados a serem exibidos:', formattedDishes);
         setDishes(formattedDishes);
         setError(null);
       } catch (err) {
         console.error("Erro ao buscar dados do menu:", err);
         setError("Não foi possível carregar o menu. Tente novamente mais tarde.");
-        
+
         // Dados de fallback para teste em caso de erro na API
         setDishes([
           {
@@ -194,7 +235,7 @@ const Menu: React.FC = () => {
 
     fetchMenu();
   }, []); // Array vazio garante que a função seja executada apenas uma vez
-  
+
   if (loading) {
     return (
       <section id="menu" className="section">
@@ -225,7 +266,7 @@ const Menu: React.FC = () => {
       {renderMenuContent()}
     </section>
   );
-  
+
   function renderMenuContent() {
     return (
       <>
@@ -233,11 +274,11 @@ const Menu: React.FC = () => {
           // Filtra os pratos por tipo para verificar se essa categoria tem pratos
           const dishesOfType = dishes.filter(dish => dish.type === type);
           const hasDishes = dishesOfType.length > 0;
-          
+
           return (
             <div key={type} className="menu-category">
               <h3 className="category-title">{type}</h3>
-              
+
               {hasDishes ? (
                 // Renderiza grid de pratos se houver pratos nessa categoria
                 <div className="menu-grid">
