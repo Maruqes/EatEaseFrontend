@@ -348,7 +348,7 @@ public class MesasView {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/updatePosition?id=" + mesaId +
                         "&pos_x=" + relativeX + "&pos_y=" + relativeY)))
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -804,7 +804,7 @@ public class MesasView {
     private void liberarMesa(int mesaId) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/liberar?id=" + mesaId)))
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -840,7 +840,7 @@ public class MesasView {
     private void ocuparMesa(int mesaId) {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/mesa/ocupar?id=" + mesaId)))
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())

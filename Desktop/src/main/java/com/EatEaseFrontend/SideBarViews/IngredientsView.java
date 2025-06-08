@@ -1074,7 +1074,7 @@ public class IngredientsView {
         HttpRequest updateIngredientReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/ingredientes/edit?id=" + id)))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
         // Enviar a requisição de forma assíncrona

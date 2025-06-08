@@ -1735,7 +1735,7 @@ public class ItemView {
             HttpRequest updateItemReq = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.getApiEndpoint("/item/edit?id=" + id)))
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             // Enviar a requisição de forma assíncrona

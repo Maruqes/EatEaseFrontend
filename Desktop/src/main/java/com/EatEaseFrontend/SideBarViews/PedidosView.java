@@ -305,7 +305,7 @@ public class PedidosView {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig
                         .getApiEndpoint("/pedido/setEstado?id=" + pedidoId + "&estadoPedido_id=" + estadoPedidoId)))
-                .POST(HttpRequest.BodyPublishers.noBody())
+                .PUT(HttpRequest.BodyPublishers.noBody())
                 .build();
 
         httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())

@@ -632,7 +632,7 @@ public class EmployeeView {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/auth/updateFuncionario?funcionarioId=" + employeeId)))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
         httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())

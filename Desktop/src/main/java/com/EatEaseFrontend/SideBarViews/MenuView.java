@@ -973,7 +973,7 @@ public class MenuView {
         HttpRequest updateMenuReq = HttpRequest.newBuilder()
                 .uri(URI.create(AppConfig.getApiEndpoint("/menu/update?id=" + id)))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
         System.out.println(
