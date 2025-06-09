@@ -103,8 +103,8 @@ const Menu: React.FC = () => {
 
         // Mapeamento dos IDs de tipo para os tipos de prato
         const tiposPrato: Record<number, 'Prato Principal' | 'Entradas' | 'Bebida' | 'Sobremesa'> = {
-          1: 'Prato Principal',
-          2: 'Entradas',
+          1: 'Entradas',
+          2: 'Prato Principal',
           3: 'Sobremesa',
           4: 'Bebida'
         };
